@@ -1,6 +1,6 @@
 import passport from "passport";
 import User from "../models/user.js";
-import determineRole from "../utils/determinUserRole.js";
+import {determineRole, determineSubRole } from "../utils/determinUserRole.js";
 import { sendVerificationEmail } from "../utils/nodeMailer.js";
 import { generateVerificationCode } from "../utils/verficationCodeGenerator.js";
 
@@ -11,14 +11,18 @@ const verificationcode = generateVerificationCode()
 const authController = {
   register: async (req, res) => {
     try {
-      const { userType, email, password, phone, firstName, lastName } = req.body;
+      const { userType, subUserType, email, password, phone, firstName, lastName } = req.body;
       const lowercasedUserType = userType.toLowerCase();
       const role = determineRole(lowercasedUserType);
+      const lowercasedSubUserType = subUserType.toLowerCase();
+      const subRole = determineSubRole(lowercasedSubUserType);
+     
 
       const newUser = new User({
         username: email,
         email,
         role,
+        subRole,
         firstName,
         lastName,
         phone,

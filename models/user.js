@@ -8,6 +8,7 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 
 const userSchema = new mongoose.Schema({
     role: { type: String, required: true },
+    subRole: { type: String, default: null},
     username: { type: String, required: true },
     password: String,
     email: { type: String, required: true },
@@ -21,7 +22,9 @@ const userSchema = new mongoose.Schema({
     walletBalance: { type: Number, default: 0 },
     isAdmin: { type: Boolean, default: false },
     isVerified: { type: Boolean, default: false },
+    kycVerification: { type: Boolean, default: false },
     verificationcode: String,
+    googleId: String,
 });
 
 
@@ -50,16 +53,13 @@ passport.deserializeUser(function (id, done) {
 passport.use(new GoogleStrategy({
   clientID: process.env.CLIENT_ID,
   clientSecret: process.env.CLIENT_SECRET,
-  callbackURL: "http://localhost:3000/auth/google/secrets",
+  callbackURL: "http://localhost:3000/auth/google/user",
   userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
 },
   function (accessToken, refreshToken, profile, cb) {
     console.log(profile);
 
     User.findOrCreate({ googleId: profile.id }, function (err, user) {
-      // Update user's profile picture if available in Google profile
-      user.profilePicture = profile.photos && profile.photos.length > 0 ? profile.photos[0].value : null;
-
       return cb(err, user);
     });
   }
