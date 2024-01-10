@@ -12,10 +12,9 @@ const authController = {
   register: async (req, res) => {
     try {
       const { userType, subUserType, email, password, phone, firstName, lastName } = req.body;
-      const lowercasedUserType = userType.toLowerCase();
-      const role = determineRole(lowercasedUserType);
-      const lowercasedSubUserType = subUserType.toLowerCase();
-      const subRole = determineSubRole(lowercasedSubUserType);
+     
+      const role = determineRole(userType);
+      const subRole = determineSubRole(subUserType);
      
 
       const newUser = new User({
@@ -147,7 +146,7 @@ const authController = {
 
       // Return information to populate dashboard
       return res.status(201).json({
-        message: 'Successfully Registered a Student',
+        message: 'Successfully Registered',
         user: {
           fName: req.user.fName,
           id: req.user._id,

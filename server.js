@@ -5,7 +5,8 @@ import passport from 'passport';
 import bodyParser from "body-parser";
 import cors from 'cors';
 import { connect } from "./config/connectionState.js";
-import authRoute from "./routes/authRoute.js"
+import authRoute from "./routes/authRoute.js";
+import userRouter from './routes/userRoute.js';
 const app = express();
 
 
@@ -28,7 +29,8 @@ app.use(passport.session());
 connect();
 
 
-app.use("/", authRoute);
+app.use("/auth", authRoute);
+app.use("/user", userRouter);
 
 
 

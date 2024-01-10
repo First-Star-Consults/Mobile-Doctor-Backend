@@ -7,8 +7,11 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 
 
 const userSchema = new mongoose.Schema({
+    profilePhoto: { type: String, default: null },
     role: { type: String, required: true },
     subRole: { type: String, default: null},
+    approved: { type: Boolean, default: false},
+    rating: { type: Number, default: 0 },
     username: { type: String, required: true },
     password: String,
     email: { type: String, required: true },
