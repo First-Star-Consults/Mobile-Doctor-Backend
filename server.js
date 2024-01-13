@@ -3,10 +3,12 @@ import express from "express";
 import session from 'express-session';
 import passport from 'passport';
 import bodyParser from "body-parser";
+import fileUpload from "express-fileupload";
 import cors from 'cors';
 import { connect } from "./config/connectionState.js";
 import authRoute from "./routes/authRoute.js";
 import userRouter from './routes/userRoute.js';
+import providerRouter from './routes/healthProviderRoute.js';
 const app = express();
 
 
@@ -26,11 +28,18 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+app.use(
+    fileUpload({
+      useTempFiles: true
+    })
+);
+
 connect();
 
 
 app.use("/auth", authRoute);
 app.use("/user", userRouter);
+app.use("/provider", providerRouter)
 
 
 

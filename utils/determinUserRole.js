@@ -9,31 +9,13 @@ const determineRole = (userType) => {
             return 'pharmacy';
         case 'laboratory':
             return 'laboratory';
-        case 'Therapist':
-            return 'Therapist';
+        case 'therapist':
+            return 'therapist';
         default:
             return 'patient';
     }
 };
 
 
-const determineSubRole = (subUserType) => {
-    switch (subUserType) {
-        case 'child healthcare/support':
-            return 'child healthcare/support';
-        case 'Dermatology/Skin Care':
-            return 'Dermatology/Skin Care';
-        case 'General Surgery':
-            return 'General Surgery';
-        case 'Dental/Oral Care':
-            return 'Dental/Oral Care';
-        case 'Mental Health':
-            return 'Mental Health';
-        case 'Stroke/Heptathletes':
-            return 'Stroke/Heptathletes';
-        default:
-            return 'Health Provider';
-    }
-};
 
-export  {determineRole, determineSubRole};
+export default determineRole
