@@ -25,8 +25,8 @@ const healthProviderControllers = {
       // Upload image to Cloudinary
       const cloudFile = await upload(image.tempFilePath);
 
-      // Update Doctor model with the Cloudinary URL for the specific image type
-      const updateQuery = { $set: { [`images.${imageTitle}`]: cloudFile.url } };
+      // Update user model with the Cloudinary URL for the specific image type
+      const updateQuery = { $set: { [`profilePicture`]: cloudFile.url } };
       const updatedDoctor = await Doctor.findByIdAndUpdate(req.params.doctorId, updateQuery, { new: true });
 
       res.status(201).json({
@@ -55,8 +55,6 @@ const healthProviderControllers = {
       } = req.body;
   
       const userId = req.params.userId;
-
-      console.log(userId);
   
       // Find the user by ID
       const foundUser = await Doctor.findById(userId);
