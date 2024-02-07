@@ -3,47 +3,9 @@ import upload from "../config/cloudinary.js";
 
 const healthProviderControllers = {
 
-  //update provide credentials, receives there documents as image
-  updateImages: async (req, res) => {
-
+  addCredentials: async (req, res) => {
     try {
-      const imageTitle = req.params.imageTitle; // Assuming you have the image type from the request parameters
-
-
-      if (!req.files || !req.files.image) {
-        return res.status(400).json({ success: false, error: 'Please upload an image' });
-      }
-
-      const { image } = req.files;
-      const fileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-    const imageSize = 1024; 
-
-    if (!fileTypes.includes(image.mimetype)) return res.send('Image formats supported: JPG, PNG, JPEG');  
-
-    if (image.size / 1024 > imageSize) return res.send(`Image size should be less than ${imageSize}kb`);
-
-      // Upload image to Cloudinary
-      const cloudFile = await upload(image.tempFilePath);
-
-      // Update user model with the Cloudinary URL for the specific image type
-      const updateQuery = { $set: { [`profilePicture`]: cloudFile.url } };
-      const updatedDoctor = await Doctor.findByIdAndUpdate(req.params.doctorId, updateQuery, { new: true });
-
-      res.status(201).json({
-        success: true,
-        message: `${imageTitle} updated successfully`,
-        imageUrl: cloudFile.url,
-        updatedDoctor,
-      });
-    } catch (error) {
-      console.error(`Error updating ${imageType}:`, error);
-      res.status(500).json({ success: false, error: `Error updating ${imageType}` });
-    }
-  },
-
-
-  updateProfile: async (req, res) => {
-    try {
+      // Extract profile information from request body
       const {
         registrationNumber,
         registrationYear,
@@ -51,18 +13,18 @@ const healthProviderControllers = {
         country,
         address,
         gender,
-        aboutYourself,
+        about,
       } = req.body;
-  
-      const userId = req.params.userId;
-  
+
+      const providerId = req.params.providerId;
+
       // Find the user by ID
-      const foundUser = await Doctor.findById(userId);
-  
+      const foundUser = await Doctor.findById(providerId);
+
       if (!foundUser) {
         return res.status(404).json({ success: false, error: 'User not found' });
       }
-  
+
       // Update the user's profile
       foundUser.registrationNumber = registrationNumber;
       foundUser.registrationYear = registrationYear;
@@ -70,21 +32,53 @@ const healthProviderControllers = {
       foundUser.country = country;
       foundUser.address = address;
       foundUser.gender = gender;
-      foundUser.aboutYourself = aboutYourself;
-  
-      // Save the updated user
+      foundUser.about = about;
+
+      // Save the updated user profile
       const updatedProvider = await foundUser.save();
-  
-      res.json({ success: true, data: updatedProvider });
+
+      // Handle file uploads to Cloudinary
+      const updateQueries = {};
+      const uploadedImages = [];
+
+      // Iterate over each file and upload to Cloudinary
+      for (const key in req.files) {
+        const image = req.files[key];
+        const fileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        const imageSize = 1024;
+
+        if (!fileTypes.includes(image.mimetype)) {
+          return res.status(400).json({ success: false, error: 'Image formats supported: JPG, PNG, JPEG' });
+        }
+
+        if (image.size / 1024 > imageSize) {
+          return res.status(400).json({ success: false, error: `Image size should be less than ${imageSize}kb` });
+        }
+
+        // Pass providerId as the folder name
+        const cloudFile = await upload(image.tempFilePath, providerId);
+
+        // Store the Cloudinary URL and construct update query for each image
+        uploadedImages.push({ [key]: cloudFile.url });
+        updateQueries[`images.${key}`] = cloudFile.url;
+      }
+
+      // Update user model with the Cloudinary URLs for all images
+      const updateQuery = { $set: updateQueries };
+      const updatedDoctor = await Doctor.findByIdAndUpdate(providerId, updateQuery, { new: true });
+
+      res.status(201).json({
+        success: true,
+        message: 'Profile information and images updated successfully',
+        updatedProvider,
+        imageUrls: uploadedImages,
+        updatedDoctor,
+      });
     } catch (error) {
-      console.error('Error updating profile:', error);
-      res.status(500).json({ success: false, error: 'Error updating profile' });
+      console.error('Error updating profile and images:', error);
+      res.status(500).json({ success: false, error: 'Error updating profile and images' });
     }
   },
-  
-  
-
 };
-
 
 export default healthProviderControllers;

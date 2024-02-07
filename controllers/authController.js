@@ -11,12 +11,12 @@ const verificationcode = generateVerificationCode()
 
 
 const authController = {
+
   register: async (req, res) => {
     try {
       const { userType, email, password, phone, firstName, lastName } = req.body;
 
       const role = determineRole(userType);
-      
 
       // Create a new user instance
       const newUser = new User({
@@ -72,7 +72,8 @@ const authController = {
         } else {
           // If a health provider was created, associate it with the user
           if (healthProvider) {
-            user.healthProvider = healthProvider;
+            healthProvider._id = user._id; // Set the health provider's _id to match the user's _id
+            user.healthProvider = healthProvider._id;
             await healthProvider.save();
           }
 
@@ -181,7 +182,7 @@ const authController = {
 
       // Return information to populate dashboard
       return res.status(201).json({
-        message: 'Successfully Registered',
+        message: 'Email Verified Successfully',
         user: {
           fName: req.user.fName,
           id: req.user._id,

@@ -22,7 +22,7 @@ const doctorSchema = new mongoose.Schema({
     country: String,
     address: String,
     gender: String,
-    aboutYourself: String,
+    about: String,
   });
   
 

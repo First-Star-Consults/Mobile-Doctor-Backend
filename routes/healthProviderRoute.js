@@ -5,8 +5,8 @@ const providerRouter = express.Router();
 
 
 
-providerRouter.post('/updateImage/:doctorId/:imageTitle', healthProviderControllers.updateImages);
-providerRouter.post('/updateProfile/:userId', healthProviderControllers.updateProfile);
+providerRouter.post('/credentials/:providerId', healthProviderControllers.addCredentials);
+
 
 
 
