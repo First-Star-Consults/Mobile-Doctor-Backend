@@ -9,6 +9,7 @@ import { connect } from "./config/connectionState.js";
 import authRoute from "./routes/authRoute.js";
 import userRouter from './routes/userRoute.js';
 import providerRouter from './routes/healthProviderRoute.js';
+import adminRouter from './routes/adminRoute.js';
 const app = express();
 
 
@@ -40,6 +41,7 @@ connect();
 app.use("/auth", authRoute);
 app.use("/user", userRouter);
 app.use("/provider", providerRouter)
+app.use('/admin', adminRouter)
 
 
 

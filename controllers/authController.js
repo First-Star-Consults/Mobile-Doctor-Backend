@@ -5,6 +5,7 @@ import { Doctor, Therapist, Pharmacy, Laboratory } from "../models/healthProvide
 import determineRole from "../utils/determinUserRole.js";
 import { sendVerificationEmail } from "../utils/nodeMailer.js";
 import { generateVerificationCode } from "../utils/verficationCodeGenerator.js";
+import { generateSessionToken } from '../models/user.js';
 
 
 const verificationcode = generateVerificationCode()
@@ -118,10 +119,24 @@ const authController = {
           }
 
           // Manually log in the user
-          req.logIn(user, (err) => {
+          req.logIn(user, async (err) => {
             if (err) {
               console.log(err);
               return res.status(500).json({ message: 'Internal Server Error' });
+            }
+
+            // Set session token for doctor if user is a doctor
+            console.log(user._id);
+            if (user.role === 'doctor') {
+              const doctor = await Doctor.findById(user._id);
+              console.log(doctor);
+              if (doctor) {
+                const sessionToken = generateSessionToken();
+                console.log(sessionToken);
+
+                doctor.sessionToken = sessionToken;
+                await doctor.save();
+              }
             }
 
             // Check if the user is verified
@@ -138,42 +153,61 @@ const authController = {
     });
   },
 
-  logout: function (req, res) {
-    req.logout((err) => {
-      if (err) {
-        console.log(err);
-      } else {
-        res.status(200).json({ message: "Successfully logged out" })
-      }
-    });
+  logout: async function (req, res) {
+    // Check if the user is authenticated
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
 
+    try {
+      // Clear session token for doctor if user is a doctor
+      if (req.user.role === 'doctor') {
+        const doctor = await Doctor.findById(req.user._id);
+        if (doctor) {
+          doctor.sessionToken = null;
+          await doctor.save();
+        }
+      }
+
+      // Logout the user
+      req.logout((err) => {
+        if (err) {
+          console.log(err);
+        } else {
+          res.status(200).json({ message: "Successfully logged out" });
+        }
+      });
+    } catch (error) {
+      console.error('Error during logout:', error);
+      res.status(500).json({ message: 'Internal Server Error' });
+    }
   },
 
 
-  
+
   // Verify 
   verify: async (req, res) => {
     try {
       const verifyCode = req.body.verifyCode;
 
-      
+
       // Check if the user is authenticated
       if (!req.isAuthenticated()) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
 
       // Check if the user is already verified
-    if (req.user.isVerified) {
-      return res.status(400).json({ message: 'User is already verified' });
-    }
+      if (req.user.isVerified) {
+        return res.status(400).json({ message: 'User is already verified' });
+      }
 
-    console.log(req.user.verificationcode, verifyCode);
+      console.log(req.user.verificationcode, verifyCode);
       // Check if the verification code matches the one in the database
       if (req.user.verificationcode !== verifyCode) {
         return res.status(400).json({ message: 'Invalid verification code' });
       }
 
-      
+
 
       // Update user's verification status
       req.user.isVerified = true;
@@ -196,7 +230,7 @@ const authController = {
       console.error(error);
       return res.status(500).json({ message: 'Unexpected error during verification' });
     }
-  },  
+  },
 };
 
 export default authController;

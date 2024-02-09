@@ -5,9 +5,12 @@ import mongoose from "mongoose";
 
 // Doctor schema
 const doctorSchema = new mongoose.Schema({
+    fullName: { type: String, default: null },
     specialties: [{ type: String }],
     consultations: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Consultation' }],
     approval: { type: Boolean, default: false },
+    onlineStatus: { type: Boolean, default: true },
+    sessionToken: String,
     images: {
       profilePhoto: { type: String },
       governmentIdfront: { type: String },
@@ -23,6 +26,13 @@ const doctorSchema = new mongoose.Schema({
     address: String,
     gender: String,
     about: String,
+    kycVerification: { type: Boolean, default: false },
+    feedback: [{ 
+      patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      comment: String,
+      rating: { type: Number, min: 1, max: 5 }
+  }],
+
   });
   
 

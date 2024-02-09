@@ -1,11 +1,22 @@
+//user.js file
 import mongoose from "mongoose";
 import passport from "passport";
 import passportLocalMongoose from "passport-local-mongoose";
 import findOrCreate from 'mongoose-findorcreate';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import crypto from 'crypto';
 
 
-
+export const generateSessionToken = () => {
+  try {
+    // Generate a random 32-character hexadecimal string
+    const token = crypto.randomBytes(16).toString('hex');
+    return token;
+  } catch (error) {
+    console.error('Error generating session token:', error);
+    return null;
+  }
+};
 
 // User schema (patient, doctor, therapist, etc.)
 const userSchema = new mongoose.Schema({
@@ -29,7 +40,6 @@ const userSchema = new mongoose.Schema({
   walletBalance: { type: Number, default: 0 },
   isAdmin: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
-  kycVerification: { type: Boolean, default: false },
   verificationcode: String,
   googleId: String,
 });
@@ -65,14 +75,23 @@ passport.use(new GoogleStrategy({
   callbackURL: "http://localhost:3000/auth/google/user",
   userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
 },
-  function (accessToken, refreshToken, profile, cb) {
+async function (accessToken, refreshToken, profile, cb) {
+  try {
     console.log(profile);
 
-    User.findOrCreate({ googleId: profile.id }, function (err, user) {
-      return cb(err, user);
-    });
+    // Find or create the doctor based on Google ID
+    const [doctor, created] = await Doctor.findOrCreate({ googleId: profile.id });
+
+    // Generate a session token and save it to the doctor document
+    const sessionToken = generateSessionToken();
+    doctor.sessionToken = sessionToken;
+    await doctor.save();
+
+    return cb(null, doctor);
+  } catch (error) {
+    return cb(error, null);
   }
-));
+}));
 
 export default User
 
