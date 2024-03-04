@@ -37,13 +37,14 @@ app.use(
 
 connect();
 
-app.get("/", (req, res)=>{
-    res.json({ message: "Welcome to the root route of mobile doctor" });
-})
-app.use("/auth", authRoute);
-app.use("/user", userRouter);
-app.use("/provider", providerRouter)
-app.use('/admin', adminRouter)
+app.use("/api/auth", authRoute);
+app.use("/api/user", userRouter);
+app.use("/api/provider", providerRouter);
+app.use("/api/admin", adminRouter);
+
+app.get("/api", (req, res) => {
+    res.json({ message: "Welcome to the API root" });
+});
 
 
 
@@ -55,4 +56,8 @@ app.use('/admin', adminRouter)
 app.listen(process.env.PORT || 3000, () => {
     console.log("Server is running on port 3000");
 })
+
+
+export default app;
+
 
