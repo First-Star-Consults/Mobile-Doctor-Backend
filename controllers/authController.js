@@ -101,7 +101,7 @@ const authController = {
       password: req.body.password
     });
 
-    console.log(user);
+    
 
     req.login(user, async (err) => {
       if (err) {
@@ -126,13 +126,13 @@ const authController = {
             }
 
             // Set session token for doctor if user is a doctor
-            console.log(user._id);
+            
             if (user.role === 'doctor') {
               const doctor = await Doctor.findById(user._id);
-              console.log(doctor);
+              
               if (doctor) {
                 const sessionToken = generateSessionToken();
-                console.log(sessionToken);
+                
 
                 doctor.sessionToken = sessionToken;
                 await doctor.save();

@@ -91,6 +91,29 @@ const userController = {
       return res.status(500).json({ message: 'Unexpected error during profile update' });
     }
   },
+
+    // Endpoint to get all users with their roles
+  getAllRoles: async (req, res) => {
+    try {
+      const users = await User.find({}, 'firstName lastName role');
+      return res.status(200).json({ users });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+  },
+
+  // Endpoint to get appropriate information based on a specific role
+  getAppropriateByRole: async (req, res) => {
+    try {
+      const role = req.params.role;
+      const users = await User.find({ role }, 'appropriate firstName lastName');
+      return res.status(200).json({ users });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+  },
 };
 
 export default userController;

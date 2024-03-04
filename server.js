@@ -10,6 +10,7 @@ import authRoute from "./routes/authRoute.js";
 import userRouter from './routes/userRoute.js';
 import providerRouter from './routes/healthProviderRoute.js';
 import adminRouter from './routes/adminRoute.js';
+
 const app = express();
 
 
@@ -37,11 +38,15 @@ app.use(
 
 connect();
 
-
+app.use("/", rootRouter)
 app.use("/auth", authRoute);
 app.use("/user", userRouter);
 app.use("/provider", providerRouter)
 app.use('/admin', adminRouter)
+
+
+
+
 
 
 
