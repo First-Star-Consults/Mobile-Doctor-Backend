@@ -13,8 +13,7 @@ import adminRouter from './routes/adminRoute.js';
 
 const app = express();
 
-
-
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
@@ -38,24 +37,17 @@ app.use(
 
 connect();
 
-app.use("/", rootRouter)
-app.use("/auth", authRoute);
-app.use("/user", userRouter);
-app.use("/provider", providerRouter)
-app.use('/admin', adminRouter)
+// Prefix all routes with `/api`
+const apiRouter = express.Router();
 
+apiRouter.use("/auth", authRoute);
+apiRouter.use("/user", userRouter);
+apiRouter.use("/provider", providerRouter);
+apiRouter.use('/admin', adminRouter);
 
+// Use the apiRouter with '/api' prefix
+app.use('/api', apiRouter);
 
-
-
-
-
-
-
-
-
-
-app.listen(process.env.PORT || 3000, () => {
-    console.log("Server is running on port 3000");
-})
-
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
