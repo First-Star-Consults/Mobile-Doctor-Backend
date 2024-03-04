@@ -37,7 +37,9 @@ app.use(
 
 connect();
 
-
+app.get("/", (req, res)=>{
+    res.json({ message: "Welcome to the root route of mobile doctor" });
+})
 app.use("/auth", authRoute);
 app.use("/user", userRouter);
 app.use("/provider", providerRouter)
