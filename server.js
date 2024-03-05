@@ -43,7 +43,11 @@ app.use("/api/provider", providerRouter);
 app.use("/api/admin", adminRouter);
 
 app.get("/api", (req, res) => {
-    res.json({ message: "Welcome to the API root" });
+    res.json({ message: "Welcome to /api" });
+});
+
+app.get("/", (req, res) => {
+    res.json({ message: "Welcome to mobile doctor" });
 });
 
 
@@ -58,6 +62,6 @@ app.listen(process.env.PORT || 3000, () => {
 })
 
 
-export default app;
+
 
 
