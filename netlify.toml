@@ -1,8 +1,0 @@
-[build]
-  functions = "netlify/functions" # Adjust if your functions are in a different directory
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/express/:splat"
-  status = 200
-  force = true
