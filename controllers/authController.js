@@ -7,6 +7,7 @@ import determineRole from "../utils/determinUserRole.js";
 import { generateVerificationCode } from "../utils/verficationCodeGenerator.js";
 import { generateSessionToken } from '../models/user.js';
 
+//i am wondering why am getting 500 when i from heroku
 
 const verificationcode = generateVerificationCode()
 
