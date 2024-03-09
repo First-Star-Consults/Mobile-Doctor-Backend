@@ -14,7 +14,8 @@ const connect = async () => {
   console.log("Database connecting...");
 
   try {
-    await mongoose.connect(`mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.rl4rlvq.mongodb.net/`);
+    await mongoose.connect(`mongodb+srv://firststarconsults01:mobiledoctor$1@cluster0.rl4rlvq.mongodb.net/`);
+    
 
     connectionState.connected = true;
     console.log("Database Connected!");

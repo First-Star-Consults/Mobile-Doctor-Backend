@@ -57,7 +57,7 @@ const authController = {
       if (healthProviderModel) {
         healthProvider = new healthProviderModel({
           // Add fields specific to health providers
-          name: 'Example Pharmacy', // Example field; replace with actual fields
+          name: role, // Example field; replace with actual fields
         });
       }
 
