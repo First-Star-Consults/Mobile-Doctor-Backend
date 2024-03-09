@@ -1,4 +1,4 @@
-//servicesSchema.js
+//services.js
 import mongoose from "mongoose";
 
 

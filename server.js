@@ -10,10 +10,18 @@ import authRoute from "./routes/authRoute.js";
 import userRouter from './routes/userRoute.js';
 import providerRouter from './routes/healthProviderRoute.js';
 import adminRouter from './routes/adminRoute.js';
+import messageRoute from './routes/messageRoute.js';
+import http from 'http'; 
+import { Server as SocketIOServer } from 'socket.io'; 
+
 const app = express();
-
-
-
+const server = http.createServer(app); // Wrap the express app with http server
+const io = new SocketIOServer(server, { // Initialize Socket.IO server
+  cors: {
+    origin: "*", // Or specify your client's URL
+    methods: ["GET", "POST"]
+  }
+});
 
 // Middleware
 app.use(cors());
@@ -41,6 +49,7 @@ app.use("/api/auth", authRoute);
 app.use("/api/user", userRouter);
 app.use("/api/provider", providerRouter);
 app.use("/api/admin", adminRouter);
+app.use('/api/messages', messageRoute);
 
 app.get("/api", (req, res) => {
     res.json({ message: "Welcome to /api" });
@@ -50,18 +59,16 @@ app.get("/", (req, res) => {
     res.json({ message: "Welcome to mobile doctor" });
 });
 
+// Socket.IO logic
+io.on('connection', (socket) => {
+  console.log('A user connected', socket.id);
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected', socket.id);
+  });
+});
 
 
-
-
-
-
-
-app.listen(process.env.PORT || 3000, () => {
+server.listen(process.env.PORT || 3000, () => {
     console.log("Server is running on port 3000");
-})
-
-
-
-
-
+});
