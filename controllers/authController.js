@@ -3,7 +3,7 @@ import passport from "passport";
 import User from "../models/user.js";
 import { Doctor, Therapist, Pharmacy, Laboratory } from "../models/healthProviders.js"
 import determineRole from "../utils/determinUserRole.js";
-import { sendVerificationEmail } from "../utils/nodeMailer.js";
+// import { sendVerificationEmail } from "../utils/nodeMailer.js";
 import { generateVerificationCode } from "../utils/verficationCodeGenerator.js";
 import { generateSessionToken } from '../models/user.js';
 
@@ -79,11 +79,11 @@ const authController = {
           }
 
           // Send verification code via email
-          await sendVerificationEmail(user.email, verificationcode);
+          // await sendVerificationEmail(user.email, verificationcode);
 
           passport.authenticate('local')(req, res, () => {
             // Redirect to verify route
-            res.status(200).json({ message: "Verification code sent to email", redirectTo: "/verify" });
+            res.status(200).json({ message: `Verification code: ${verificationcode}`, redirectTo: "/verify" });
           });
         }
       });
