@@ -8,6 +8,7 @@ const doctorSchema = new mongoose.Schema({
     fullName: { type: String, default: null },
     specialties: [{ type: String }],
     consultations: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Consultation' }],
+    reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Reviews' }],
     approval: { type: Boolean, default: false },
     onlineStatus: { type: Boolean, default: true },
     sessionToken: String,

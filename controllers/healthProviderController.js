@@ -1,6 +1,7 @@
 //health Provider controller
 
 import { Doctor } from "../models/healthProviders.js";
+import { Reviews} from "../models/services.js"
 import upload from "../config/cloudinary.js";
 
 const healthProviderControllers = {
@@ -84,6 +85,79 @@ const healthProviderControllers = {
       res.status(500).json({ success: false, error: 'Error updating profile and images' });
     }
   },
+
+  // Add a new review for a doctor
+addReview: async (req, res) => {
+  try {
+    const doctorId = req.params.doctorId;
+    const { patientId, rating, comment } = req.body;
+
+    // Ensure rating is within the 1-5 range
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ success: false, message: "Rating must be between 1 and 5." });
+    }
+
+    // Find the doctor by ID
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: "Doctor not found" });
+    }
+
+    // Create a new review
+    const review = await Reviews.create({
+      doctor: doctorId,
+      patient: patientId,
+      rating,
+      comment,
+    });
+
+    // Add review to doctor's reviews
+    doctor.reviews.push(review._id);
+    await doctor.save();
+
+    return res.status(201).json({ success: true, message: "Review added successfully", review });
+  } catch (error) {
+    console.error("Error adding review:", error);
+    return res.status(500).json({ success: false, message: "Error adding review" });
+  }
+},
+
+
+// Function to get top-rated doctors
+getTopRatedDoctors: async (req, res) => {
+  try {
+    const topRatedDoctors = await Doctor.aggregate([
+      {
+        $lookup: {
+          from: "reviews", // Assuming your reviews collection is named "reviews"
+          localField: "_id",
+          foreignField: "doctor",
+          as: "reviews"
+        }
+      },
+      {
+        $addFields: {
+          averageRating: { $avg: "$reviews.rating" }
+        }
+      },
+      { $sort: { averageRating: -1 } }, // Sort by averageRating in descending order
+      { $limit: 10 } // You can adjust the limit as per your requirement
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: topRatedDoctors
+    });
+  } catch (error) {
+    console.error("Error fetching top rated doctors:", error);
+    res.status(500).json({ success: false, message: "Error fetching top rated doctors" });
+  }
+},
+
+
+
+
+
 };
 
 export default healthProviderControllers;

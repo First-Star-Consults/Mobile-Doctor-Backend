@@ -22,7 +22,7 @@ const consultationSchema = new mongoose.Schema({
   const reviewSchema = new mongoose.Schema({
     doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
     patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    rating: { type: Number, required: true },
+    rating: { type: Number },
     comment: { type: String },
   });
 
@@ -30,8 +30,8 @@ const consultationSchema = new mongoose.Schema({
 
 const Consultation = new mongoose.model("Consultation", consultationSchema);
 const Prescription = new mongoose.model("Prescription", prescriptionSchema);
-const Review = new mongoose.model("Review", reviewSchema);
+const Reviews = new mongoose.model("Reviews", reviewSchema);
 
 
 
-export {Consultation, Prescription, Review};
+export {Consultation, Prescription, Reviews};
