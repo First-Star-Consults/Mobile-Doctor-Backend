@@ -9,6 +9,7 @@ import { connect } from "./config/connectionState.js";
 import authRoute from "./routes/authRoute.js";
 import userRouter from './routes/userRoute.js';
 import providerRouter from './routes/healthProviderRoute.js';
+import searchRouter from './routes/searchRoute.js';
 import adminRouter from './routes/adminRoute.js';
 import messageRoute from './routes/messageRoute.js';
 import http from 'http'; 
@@ -48,6 +49,7 @@ connect();
 app.use("/api/auth", authRoute);
 app.use("/api/user", userRouter);
 app.use("/api/provider", providerRouter);
+app.use("/api/search", searchRouter);
 app.use("/api/admin", adminRouter);
 app.use('/api/messages', messageRoute);
 

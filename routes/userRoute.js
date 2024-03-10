@@ -10,10 +10,8 @@ userRouter.get("/", (req, res) => {
 });
 
 
-// Endpoint to get all user roles
-userRouter.get('/roles', userController.getAllRoles);
-// Endpoint to get appropriate information based on a specific role
-userRouter.get('/roles/:role/appropriate', userController.getAppropriateByRole);
+
+
 //get users profile
 userRouter.get("/getProfile/:userId", userController.getProfile);
 // Update user profile route
