@@ -145,8 +145,18 @@ const authController = {
               return res.status(403).json({ message: 'User not verified', redirectTo: "/auth/verify" });
             }
 
+
+
             res.status(201).json({
               message: 'Successfully logged in',
+              user: {
+                firstName: req.user.firstName,
+                lastName: req.user.lastName,
+                id: req.user._id,
+                username: req.user.username,
+                email: req.user.email,
+                role: req.user.role,
+              },
             });
           });
         })(req, res);
@@ -219,7 +229,8 @@ const authController = {
       return res.status(201).json({
         message: 'Email Verified Successfully',
         user: {
-          fName: req.user.fName,
+          firstName: req.user.firstName,
+          lastName: req.user.lastName,
           id: req.user._id,
           username: req.user.username,
           email: req.user.email,
