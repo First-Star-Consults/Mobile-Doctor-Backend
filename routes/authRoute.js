@@ -1,3 +1,5 @@
+//authRoute.js
+
 import passport from "passport";
 import express from "express";
 import authController from "../controllers/authController.js";
@@ -34,5 +36,11 @@ router.get("/logout", authController.logout);
 router.post("/register", authController.register);
 router.post("/login", authController.login);
 router.post("/verify", authController.verify);
+
+router.post('/fund-wallet', authController.fundWallet);
+router.post('/paystack/webhook', express.json(), authController.handlePaystackWebhook);
+
+
+
 
 export default router;

@@ -6,6 +6,7 @@ import determineRole from "../utils/determinUserRole.js";
 // import { sendVerificationEmail } from "../utils/nodeMailer.js";
 import { generateVerificationCode } from "../utils/verficationCodeGenerator.js";
 import { generateSessionToken } from '../models/user.js';
+import { chargePatient, verifyTransaction, creditWallet } from "../config/paymentService.js";
 
 //i am wondering why am getting 500 when i from heroku
 
@@ -243,6 +244,63 @@ const authController = {
       return res.status(500).json({ message: 'Unexpected error during verification' });
     }
   },
+
+  
+
+  fundWallet: async (req, res) => {
+    const { email, amount } = req.body;
+    try {
+        const authorizationUrl = await chargePatient(email, amount);
+        if (authorizationUrl) {
+            // Directly send the authorization URL to the client
+            res.status(200).json({ success: true, authorizationUrl });
+        } else {
+            throw new Error('Unable to initiate wallet funding');
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: error.toString() });
+    }
+},
+
+
+  handlePaystackWebhook: async (req, res) => {
+    try {
+        const event = req.body;
+
+        // It's important to verify the integrity of the webhook event
+        // For simplicity, this example doesn't include signature verification
+        // Paystack sends a signature in the header that you should verify
+
+        if (event.event === 'charge.success') {
+            // Extract necessary information from event data
+            const email = event.data.customer.email;
+            const amount = event.data.amount / 100; // Convert from kobo to naira
+            const reference = event.data.reference;
+
+            // You might want to verify the transaction again, even though
+            // webhook indicates success, to ensure everything matches up
+            const verificationResult = await verifyTransaction(reference);
+            if (verificationResult && verificationResult.success) {
+                const creditResult = await creditWallet(email, amount);
+                if (creditResult.success) {
+                    console.log('Wallet credited successfully');
+                } else {
+                    console.error('Failed to credit wallet:', creditResult.message);
+                }
+            } else {
+                console.error('Payment verification failed');
+            }
+        }
+
+        // Respond to Paystack to acknowledge receipt of the webhook
+        res.status(200).send('Webhook received');
+    } catch (error) {
+        console.error('Error handling Paystack webhook:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
 };
 
 export default authController;
