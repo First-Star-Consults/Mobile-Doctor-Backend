@@ -18,6 +18,11 @@ router.get("/getProfile/:userId", userController.getProfile);
 router.put("/updateProfile/:userId",  userController.upDateprofile);
 
 router.post("/reset-password/:userId", userController.resetPassword);
+// In your routes file (e.g., userRouter.js)
+
+router.post('/forgot-password', userController.forgotPassword);
+router.post('/reset-password-with-token', userController.resetPasswordWithToken);
+
 
 
 

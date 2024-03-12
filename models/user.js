@@ -25,6 +25,8 @@ const userSchema = new mongoose.Schema({
   appropriate: { type: String, default: null },
   username: { type: String, required: true },
   password: String,
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
   email: { type: String, required: true },
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },

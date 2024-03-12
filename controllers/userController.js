@@ -1,5 +1,7 @@
 // userController.js
 import User from "../models/user.js";
+import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 import upload from "../config/cloudinary.js";
 
 const userController = {
@@ -124,6 +126,64 @@ const userController = {
       res.status(500).json({ message: 'Unexpected error during password reset' });
     }
   },
+
+  forgotPassword: async (req, res) => {
+    const { email } = req.body;
+    try {
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res.status(404).json({ message: 'No account with that email address exists.' });
+      }
+  
+      // Generate a token
+      const token = crypto.randomBytes(20).toString('hex');
+  
+      // Set token and expiry on user model
+      user.resetPasswordToken = token;
+      user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+  
+      await user.save();
+  
+      // Prepare reset link
+      const resetLink = `http://${req.headers.host}/reset-password/${token}`; // Make sure this URL matches your frontend route for resetting passwords
+  
+      // Use your sendVerificationEmail function
+      await sendVerificationEmail(user.email, `Please click on the following link, or paste this into your browser to complete the process: ${resetLink}`);
+  
+      res.status(200).json({ message: 'An e-mail has been sent to ' + user.email + ' with further instructions.' });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Unexpected error during the forgot password process' });
+    }
+  },
+
+  resetPasswordWithToken: async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      const user = await User.findOne({ resetPasswordToken: token, resetPasswordExpires: { $gt: Date.now() } });
+  
+      if (!user) {
+        return res.status(400).json({ message: 'Password reset token is invalid or has expired.' });
+      }
+  
+      // Reset the password
+      user.setPassword(newPassword, async (err) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ message: 'Error resetting password' });
+        }
+  
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+  
+        await user.save();
+        res.status(200).json({ message: 'Password has been reset successfully' });
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Unexpected error during the password reset process' });
+    }
+  }
   
 
    
