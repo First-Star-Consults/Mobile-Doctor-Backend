@@ -279,41 +279,42 @@ const authController = {
 handlePaystackWebhook: async (req, res) => {
   try {
     const event = req.body;
-    const hash = crypto
-      .createHmac('sha512', process.env.PAYSTACK_SECRET_KEY)
-      .update(JSON.stringify(req.body)) // use the raw body data
-      .digest('hex');
 
-    const signature = req.headers['x-paystack-signature'];
-
-    // Compare the signature in the header with the computed hash
-    if (signature !== hash) {
-      return res.status(401).end('Invalid signature'); // or any other error handling
+    // Verify Paystack webhook signature
+    const secret = process.env.PAYSTACK_SECRET_KEY;
+    const hash = crypto.createHmac('sha512', secret)
+                       .update(JSON.stringify(req.body))
+                       .digest('hex');
+    if (req.headers['x-paystack-signature'] !== hash) {
+      return res.status(401).send('Invalid signature');
     }
 
     if (event.event === 'charge.success') {
       const reference = event.data.reference;
-      // Re-verify transaction
       const verificationResult = await verifyTransaction(reference);
-      if (verificationResult) { // assuming verifyTransaction returns a truthy value on success
-        const email = event.data.customer.email;
-        const amount = event.data.amount / 100; // Convert from kobo to naira
+
+      if (verificationResult.success) {
+        // Extract email and amount from the verified transaction
+        const email = verificationResult.data.customer.email;
+        const amount = verificationResult.data.amount / 100; // Convert from kobo to naira
         const creditResult = await creditWallet(email, amount);
+
         if (creditResult.success) {
           console.log('Wallet credited successfully');
         } else {
           console.error('Failed to credit wallet:', creditResult.message);
         }
       } else {
-        console.error('Payment verification failed');
+        console.error('Payment verification failed:', verificationResult.message);
       }
     }
+
     res.status(200).send('Webhook received');
   } catch (error) {
     console.error('Error handling Paystack webhook:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
-}
+},
 
 
 };

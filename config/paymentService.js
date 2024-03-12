@@ -33,12 +33,20 @@ export async function chargePatient(email, amount) {
 export async function verifyTransaction(reference) {
   try {
     const response = await paystack.get(`/transaction/verify/${reference}`);
-    // Check response data to determine if transaction was successful
-    if (response.data.data.status === 'success') {
-      // Handle successful transaction (e.g., update user's wallet or confirm service payment)
+    // Paystack transaction verification response
+    const data = response.data.data;
+
+    if (data.status === 'success') {
+      // Transaction was successful
+      return { success: true, data };
+    } else {
+      // Transaction was not successful
+      return { success: false, message: 'Transaction not successful' };
     }
   } catch (error) {
     console.error(error);
+    // An error occurred during the verification process
+    return { success: false, message: error.response?.data?.message || error.message };
   }
 }
 
