@@ -61,6 +61,7 @@ app.get("/", (req, res) => {
     res.json({ message: "Welcome to mobile doctor" });
 });
 
+
 // Socket.IO logic
 io.on('connection', (socket) => {
   console.log('A user connected', socket.id);

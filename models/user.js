@@ -7,6 +7,7 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import crypto from 'crypto';
 
 
+
 export const generateSessionToken = () => {
   try {
     // Generate a random 32-character hexadecimal string
@@ -21,16 +22,16 @@ export const generateSessionToken = () => {
 // User schema (patient, doctor, therapist, etc.)
 const userSchema = new mongoose.Schema({
   profilePhoto: { type: String, default: null },
-  role:{ type: String, required: true },
+  role:{ type: String, required: false },
   appropriate: { type: String, default: null },
   username: { type: String, required: true },
   password: String,
   resetPasswordToken: String,
   resetPasswordExpires: Date,
-  email: { type: String, required: true },
-  firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
-  phone: { type: String, required: true },
+  email: { type: String, required: false },
+  firstName: { type: String, required: false },
+  lastName: { type: String, required: false },
+  phone: { type: String, required: false },
   address: { type: String, default: null },
   state: { type: String, default: null },
   gender: { type: String, default: null },
@@ -85,24 +86,34 @@ passport.deserializeUser(function (id, done) {
 passport.use(new GoogleStrategy({
   clientID: process.env.CLIENT_ID,
   clientSecret: process.env.CLIENT_SECRET,
-  callbackURL: "http://localhost:3000/auth/google/user",
+  callbackURL: "http://localhost:3000/api/auth/google/user",
   userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
 },
-async function (accessToken, refreshToken, profile, cb) {
+async (accessToken, refreshToken, profile, done) => {
   try {
-    console.log(profile);
+    // Try to find the user based on their googleId
+    let user = await User.findOne({ googleId: profile.id });
 
-    // Find or create the doctor based on Google ID
-    const [doctor, created] = await Doctor.findOrCreate({ googleId: profile.id });
+    // If the user doesn't exist, create a new user with the profile information
+    if (!user) {
+      user = new User({
+        googleId: profile.id,
+        email: profile._json.email, // Using directly from profile JSON
+        username: profile._json.email, // Assuming username is the email
+        firstName: profile._json.given_name,
+        lastName: profile._json.family_name,
+        role: 'patient', // default role
+        isVerified: true, // default isVerified
+        verificationcode: null, //default value
+        profilePhoto: profile._json.picture // Optional: saving user's Google profile photo
+      });
 
-    // Generate a session token and save it to the doctor document
-    const sessionToken = generateSessionToken();
-    doctor.sessionToken = sessionToken;
-    await doctor.save();
-
-    return cb(null, doctor);
+      await user.save();
+    }
+    
+    return done(null, user);
   } catch (error) {
-    return cb(error, null);
+    return done(error);
   }
 }));
 
