@@ -37,7 +37,7 @@ router.post("/register", authController.register);
 router.post("/login", authController.login);
 router.post("/verify", authController.verify);
 
-router.post('/fund-wallet', authController.fundWallet);
+router.post('/fund-wallet/:userId', authController.fundWallet);
 router.post('/paystack/webhook', express.json(), authController.handlePaystackWebhook);
 
 
