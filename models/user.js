@@ -44,6 +44,17 @@ const userSchema = new mongoose.Schema({
   googleId: String,
 });
 
+// methods for password verification and password change
+userSchema.methods.setPassword = function(oldPassword, newPassword, callback) {
+  this.setPassword(oldPassword, newPassword, callback);
+};
+
+userSchema.methods.comparePassword = function(password, callback) {
+  this.authenticate(password, callback);
+};
+
+
+
 
 
 userSchema.plugin(passportLocalMongoose, { usernameField: 'email' });

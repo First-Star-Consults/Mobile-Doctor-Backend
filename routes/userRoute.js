@@ -2,10 +2,10 @@ import express from "express";
 import userController from "../controllers/userController.js";
 
 
-const userRouter = express.Router();
+const router = express.Router();
 
 // Welcome message
-userRouter.get("/", (req, res) => {
+router.get("/", (req, res) => {
   res.json({ message: "Welcome to Mobile Doctor user route" });
 });
 
@@ -13,11 +13,13 @@ userRouter.get("/", (req, res) => {
 
 
 //get users profile
-userRouter.get("/getProfile/:userId", userController.getProfile);
+router.get("/getProfile/:userId", userController.getProfile);
 // Update user profile route
-userRouter.put("/updateProfile/:userId",  userController.upDateprofile);
+router.put("/updateProfile/:userId",  userController.upDateprofile);
+
+router.post("/reset-password/:userId", userController.resetPassword);
 
 
 
 
-export default userRouter;
+export default router;

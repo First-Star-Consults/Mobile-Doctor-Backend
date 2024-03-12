@@ -92,6 +92,40 @@ const userController = {
     }
   },
 
+  resetPassword: async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const { oldPassword, newPassword } = req.body;
+  
+      // Find the user by ID
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+  
+      // passport-local-mongoose provides a method to change the password
+      user.changePassword(oldPassword, newPassword, async (err) => {
+        if (err) {
+          // If oldPassword is incorrect, it will throw an error
+          if (err.name === 'IncorrectPasswordError') {
+            return res.status(400).json({ message: 'Old password is incorrect' });
+          } else {
+            console.error(err);
+            return res.status(500).json({ message: 'Could not update password', err });
+          }
+        }
+  
+        // Save the updated user record with the new password
+        await user.save();
+        res.status(200).json({ message: 'Password updated successfully' });
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Unexpected error during password reset' });
+    }
+  },
+  
+
    
 };
 
