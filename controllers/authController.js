@@ -248,8 +248,25 @@ const authController = {
   
 
   fundWallet: async (req, res) => {
-    const { email, amount } = req.body;
+    const { amount } = req.body; // Only get amount from the request body
+
+    // Check if the user is logged in (e.g., check if req.userId exists)
+    if (!req.userId) {
+        // If req.userId doesn't exist, it means the user is not logged in.
+        return res.status(401).json({ success: false, message: 'You must be logged in to fund your wallet.' });
+    }
+
     try {
+        // Assuming you can identify the user (e.g., through session or a user ID in the request)
+        // Fetch the user details using the user ID from the request
+        const user = await User.findById(req.userId);
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        const email = user.email; // Get email from the user model
+
         const authorizationUrl = await chargePatient(email, amount);
         if (authorizationUrl) {
             // Directly send the authorization URL to the client
@@ -262,6 +279,7 @@ const authController = {
         res.status(500).json({ success: false, message: error.toString() });
     }
 },
+
 
 
   handlePaystackWebhook: async (req, res) => {
