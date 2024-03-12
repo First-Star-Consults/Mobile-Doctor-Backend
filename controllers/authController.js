@@ -1,4 +1,5 @@
 //authcontroller
+import crypto from 'crypto';
 import passport from "passport";
 import User from "../models/user.js";
 import { Doctor, Therapist, Pharmacy, Laboratory } from "../models/healthProviders.js"
@@ -275,42 +276,45 @@ const authController = {
 
 
 
-  handlePaystackWebhook: async (req, res) => {
-    try {
-        const event = req.body;
+handlePaystackWebhook: async (req, res) => {
+  try {
+    const event = req.body;
+    const hash = crypto
+      .createHmac('sha512', process.env.PAYSTACK_SECRET_KEY)
+      .update(JSON.stringify(req.body)) // use the raw body data
+      .digest('hex');
 
-        // It's important to verify the integrity of the webhook event
-        // For simplicity, this example doesn't include signature verification
-        // Paystack sends a signature in the header that you should verify
+    const signature = req.headers['x-paystack-signature'];
 
-        if (event.event === 'charge.success') {
-            // Extract necessary information from event data
-            const email = event.data.customer.email;
-            const amount = event.data.amount / 100; // Convert from kobo to naira
-            const reference = event.data.reference;
-
-            // You might want to verify the transaction again, even though
-            // webhook indicates success, to ensure everything matches up
-            const verificationResult = await verifyTransaction(reference);
-            if (verificationResult && verificationResult.success) {
-                const creditResult = await creditWallet(email, amount);
-                if (creditResult.success) {
-                    console.log('Wallet credited successfully');
-                } else {
-                    console.error('Failed to credit wallet:', creditResult.message);
-                }
-            } else {
-                console.error('Payment verification failed');
-            }
-        }
-
-        // Respond to Paystack to acknowledge receipt of the webhook
-        res.status(200).send('Webhook received');
-    } catch (error) {
-        console.error('Error handling Paystack webhook:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
+    // Compare the signature in the header with the computed hash
+    if (signature !== hash) {
+      return res.status(401).end('Invalid signature'); // or any other error handling
     }
+
+    if (event.event === 'charge.success') {
+      const reference = event.data.reference;
+      // Re-verify transaction
+      const verificationResult = await verifyTransaction(reference);
+      if (verificationResult) { // assuming verifyTransaction returns a truthy value on success
+        const email = event.data.customer.email;
+        const amount = event.data.amount / 100; // Convert from kobo to naira
+        const creditResult = await creditWallet(email, amount);
+        if (creditResult.success) {
+          console.log('Wallet credited successfully');
+        } else {
+          console.error('Failed to credit wallet:', creditResult.message);
+        }
+      } else {
+        console.error('Payment verification failed');
+      }
+    }
+    res.status(200).send('Webhook received');
+  } catch (error) {
+    console.error('Error handling Paystack webhook:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
 }
+
 
 };
 
