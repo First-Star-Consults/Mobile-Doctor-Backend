@@ -104,8 +104,6 @@ const authController = {
       password: req.body.password
     });
 
-    
-
     req.login(user, async (err) => {
       if (err) {
         console.log(err);
@@ -117,54 +115,76 @@ const authController = {
           }
 
           if (!user) {
-            // User authentication failed
             return res.status(401).json({ message: 'Authentication failed' });
           }
 
-          // Manually log in the user
           req.logIn(user, async (err) => {
             if (err) {
               console.log(err);
               return res.status(500).json({ message: 'Internal Server Error' });
             }
 
-            // Set session token for doctor if user is a doctor
-            
+            // Generate session token if the user is a doctor
+            let sessionToken = null;
             if (user.role === 'doctor') {
               const doctor = await Doctor.findById(user._id);
-              
               if (doctor) {
-                const sessionToken = generateSessionToken();
-                
-
+                sessionToken = generateSessionToken();
                 doctor.sessionToken = sessionToken;
                 await doctor.save();
               }
             }
 
-            // Check if the user is verified
-            if (!user.isVerified) {
-              return res.status(403).json({ message: 'User not verified', redirectTo: "/auth/verify" });
-            }
-
-
-
-            res.status(201).json({
+            // Prepare the response data
+            const responseData = {
               message: 'Successfully logged in',
               user: {
-                firstName: req.user.firstName,
-                lastName: req.user.lastName,
-                id: req.user._id,
-                username: req.user.username,
-                email: req.user.email,
-                role: req.user.role,
+                profilePhoto: user.profilePhoto,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                id: user._id,
+                username: user.username,
+                email: user.email,
+                role: user.role,
+                isVerified: { status: user.isVerified, message: "Alabo, this one na for email verification o" },
               },
-            });
+            };
+
+            // Add sessionToken to the response if available
+            if (sessionToken) {
+              responseData.user.sessionToken = sessionToken;
+            }
+
+            // Include kycVerification for health providers
+            if (['doctor', 'therapist', 'pharmacy', 'laboratory'].includes(user.role)) {
+              let healthProviderInfo = null;
+              switch(user.role) {
+                case 'doctor':
+                  healthProviderInfo = await Doctor.findById(user._id);
+                  break;
+                case 'therapist':
+                  healthProviderInfo = await Therapist.findById(user._id);
+                  break;
+                case 'pharmacy':
+                  healthProviderInfo = await Pharmacy.findById(user._id);
+                  break;
+                case 'laboratory':
+                  healthProviderInfo = await Laboratory.findById(user._id);
+                  break;
+              }
+
+              if (healthProviderInfo && healthProviderInfo.kycVerification !== undefined) {
+                responseData.user.kycVerification = healthProviderInfo.kycVerification;
+              }
+            }
+
+            res.status(201).json(responseData);
           });
         })(req, res);
       }
     });
   },
+
 
   logout: async function (req, res) {
     // Check if the user is authenticated
@@ -229,16 +249,8 @@ const authController = {
 
       // Return information to populate dashboard
       return res.status(201).json({
-        message: 'Email Verified Successfully',
-        user: {
-          firstName: req.user.firstName,
-          lastName: req.user.lastName,
-          id: req.user._id,
-          username: req.user.username,
-          email: req.user.email,
-          role: req.user.role,
-          isVerified: req.user.isVerified
-        },
+        message: 'Email Verified Successfully, you can login into your account now'
+        
       });
 
     } catch (error) {

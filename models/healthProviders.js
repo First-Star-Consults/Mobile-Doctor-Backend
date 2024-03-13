@@ -40,11 +40,13 @@ const doctorSchema = new mongoose.Schema({
 // Pharmacy schema
 const pharmacySchema = new mongoose.Schema({
     name: { type: String, required: true },
+    kycVerification: { type: Boolean, default: false },
 });
 
 // Therapist schema
 const therapistSchema = new mongoose.Schema({
     name: { type: String, required: true },
+    kycVerification: { type: Boolean, default: false },
 });
 
 // Laboratory schema

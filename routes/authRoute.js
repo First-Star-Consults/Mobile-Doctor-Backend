@@ -3,8 +3,7 @@
 import passport from "passport";
 import express from "express";
 import authController from "../controllers/authController.js";
-import User from "../models/user.js";
-import { Doctor } from "../models/healthProviders.js"
+
 
 
 
@@ -28,12 +27,12 @@ router.get(
   function (req, res) {
     // Successful authentication.
     res.status(200).json({ message: "Successfully logged in with Google Auth", user: {
+      profilePhoto: req.user.profilePhoto,
       firstName: req.user.firstName,
       lastName: req.user.lastName,
       id: req.user._id,
       username: req.user.username,
       email: req.user.email,
-      profilePhoto: req.user.profilePhoto,
       role: req.user.role,
       isVerified: {status: req.user.isVerified, message: "Alabo, this one na for email verification o"}
     }, });
