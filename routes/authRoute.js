@@ -3,6 +3,8 @@
 import passport from "passport";
 import express from "express";
 import authController from "../controllers/authController.js";
+import User from "../models/user.js";
+import { Doctor } from "../models/healthProviders.js"
 
 
 
@@ -16,7 +18,7 @@ router.get("/", (req, res) => {
 // Google authentication
 router.get(
   "/google",
-  passport.authenticate("google", { scope: ["profile", "email"] }) // This requests both the profile information and email from Google
+  passport.authenticate("google", { scope: ["profile", "email"] }) 
 );
 
 
@@ -25,7 +27,14 @@ router.get(
   passport.authenticate("google", { failureRedirect: "/" }),
   function (req, res) {
     // Successful authentication.
-    res.status(200).json({ message: "Successfully logged in with Google Auth" });
+    res.status(200).json({ message: "Successfully logged in with Google Auth", user: {
+      firstName: req.user.firstName,
+      lastName: req.user.lastName,
+      id: req.user._id,
+      username: req.user.username,
+      email: req.user.email,
+      role: req.user.role,
+    }, });
   }
 );
 
