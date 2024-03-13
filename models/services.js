@@ -11,12 +11,15 @@ const consultationSchema = new mongoose.Schema({
     prescription: { type: mongoose.Schema.Types.ObjectId, ref: 'Prescription' },
   });
   
-  // Prescription schema
   const prescriptionSchema = new mongoose.Schema({
     doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
     patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    medicines: [{ name: String, dosage: String }],
+    medicines: [{
+      name: { type: String, required: true },
+      dosage: { type: String, required: true }
+    }],
   });
+  
   
   // Review schema
   const reviewSchema = new mongoose.Schema({

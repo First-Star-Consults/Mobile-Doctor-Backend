@@ -1,6 +1,8 @@
 // controllers/messageController.js
 import Message from '../models/messageModel.js';
 import Conversation from '../models/conversationModel.js';
+import {Doctor} from '../models/healthProviders.js';
+import { Prescription } from '../models/services.js';
 
 const messageController = {
     findOrCreateConversation: async (req, res) => {
@@ -73,6 +75,38 @@ const messageController = {
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }
+},
+
+// Method for creating a prescription and saving it to the database
+prescriptions: async (req, res) => {
+  const { doctorId } = req.params; // Assuming doctorId is passed as URL parameter
+  const { patientId, medicines } = req.body;
+
+  if (!patientId || !medicines || medicines.length === 0) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+
+  try {
+    // Fetch the doctor's details from the database
+    const doctor = await Doctor.findById(doctorId);
+
+    // Check if the doctor exists and if their KYC verification is true
+    if (!doctor || doctor.kycVerification !== true) {
+      return res.status(403).json({ message: 'Doctor not verified or does not exist.' });
+    }
+
+    // Proceed with creating the prescription
+    const prescription = await Prescription.create({
+      doctor: doctorId,
+      patient: patientId,
+      medicines
+    });
+    
+    res.status(201).json(prescription);
+  } catch (error) {
+    console.error('Failed to create prescription:', error);
+    res.status(500).json({ message: error.message });
+  }
 }
 
 };
