@@ -152,13 +152,16 @@ const authController = {
 
             // Add sessionToken to the response if available
             if (sessionToken) {
-              responseData.user.sessionToken = sessionToken;
+              responseData.user.sessionTokenInfo = {
+                token: sessionToken,
+                message: "I won use dis one like a logic to know doctors that are online"
+              };
             }
 
             // Include kycVerification for health providers
             if (['doctor', 'therapist', 'pharmacy', 'laboratory'].includes(user.role)) {
               let healthProviderInfo = null;
-              switch(user.role) {
+              switch (user.role) {
                 case 'doctor':
                   healthProviderInfo = await Doctor.findById(user._id);
                   break;
@@ -250,7 +253,7 @@ const authController = {
       // Return information to populate dashboard
       return res.status(201).json({
         message: 'Email Verified Successfully, you can login into your account now'
-        
+
       });
 
     } catch (error) {
@@ -259,75 +262,75 @@ const authController = {
     }
   },
 
-  
+
 
   fundWallet: async (req, res) => {
     const { amount } = req.body; // Only get amount from the request body
 
     try {
-        const userId = req.params.userId
-        const user = await User.findById(userId);
+      const userId = req.params.userId
+      const user = await User.findById(userId);
 
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
-        }
-
-        const email = user.email; // Get email from the user model
-
-        const authorizationUrl = await chargePatient(email, amount);
-        if (authorizationUrl) {
-            // Directly send the authorization URL to the client
-            res.status(200).json({ success: true, authorizationUrl });
-        } else {
-            throw new Error('Unable to initiate wallet funding');
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: error.toString() });
-    }
-},
-
-
-
-handlePaystackWebhook: async (req, res) => {
-  try {
-    const event = req.body;
-
-    // Verify Paystack webhook signature
-    const secret = process.env.PAYSTACK_SECRET_KEY;
-    const hash = crypto.createHmac('sha512', secret)
-                       .update(JSON.stringify(req.body))
-                       .digest('hex');
-    if (req.headers['x-paystack-signature'] !== hash) {
-      return res.status(401).send('Invalid signature');
-    }
-
-    if (event.event === 'charge.success') {
-      const reference = event.data.reference;
-      const verificationResult = await verifyTransaction(reference);
-
-      if (verificationResult.success) {
-        // Extract email and amount from the verified transaction
-        const email = verificationResult.data.customer.email;
-        const amount = verificationResult.data.amount / 100; // Convert from kobo to naira
-        const creditResult = await creditWallet(email, amount);
-
-        if (creditResult.success) {
-          console.log('Wallet credited successfully');
-        } else {
-          console.error('Failed to credit wallet:', creditResult.message);
-        }
-      } else {
-        console.error('Payment verification failed:', verificationResult.message);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
       }
-    }
 
-    res.status(200).send('Webhook received');
-  } catch (error) {
-    console.error('Error handling Paystack webhook:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
-  }
-},
+      const email = user.email; // Get email from the user model
+
+      const authorizationUrl = await chargePatient(email, amount);
+      if (authorizationUrl) {
+        // Directly send the authorization URL to the client
+        res.status(200).json({ success: true, authorizationUrl });
+      } else {
+        throw new Error('Unable to initiate wallet funding');
+      }
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ success: false, message: error.toString() });
+    }
+  },
+
+
+
+  handlePaystackWebhook: async (req, res) => {
+    try {
+      const event = req.body;
+
+      // Verify Paystack webhook signature
+      const secret = process.env.PAYSTACK_SECRET_KEY;
+      const hash = crypto.createHmac('sha512', secret)
+        .update(JSON.stringify(req.body))
+        .digest('hex');
+      if (req.headers['x-paystack-signature'] !== hash) {
+        return res.status(401).send('Invalid signature');
+      }
+
+      if (event.event === 'charge.success') {
+        const reference = event.data.reference;
+        const verificationResult = await verifyTransaction(reference);
+
+        if (verificationResult.success) {
+          // Extract email and amount from the verified transaction
+          const email = verificationResult.data.customer.email;
+          const amount = verificationResult.data.amount / 100; // Convert from kobo to naira
+          const creditResult = await creditWallet(email, amount);
+
+          if (creditResult.success) {
+            console.log('Wallet credited successfully');
+          } else {
+            console.error('Failed to credit wallet:', creditResult.message);
+          }
+        } else {
+          console.error('Payment verification failed:', verificationResult.message);
+        }
+      }
+
+      res.status(200).send('Webhook received');
+    } catch (error) {
+      console.error('Error handling Paystack webhook:', error);
+      res.status(500).json({ message: 'Internal Server Error' });
+    }
+  },
 
 
 };
