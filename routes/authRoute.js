@@ -33,7 +33,9 @@ router.get(
       id: req.user._id,
       username: req.user.username,
       email: req.user.email,
+      profilePhoto: req.user.profilePhoto,
       role: req.user.role,
+      isVerified: {status: req.user.isVerified, message: "Alabo, this one na for email verification o"}
     }, });
   }
 );

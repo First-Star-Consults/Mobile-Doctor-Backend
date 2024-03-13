@@ -237,6 +237,7 @@ const authController = {
           username: req.user.username,
           email: req.user.email,
           role: req.user.role,
+          isVerified: req.user.isVerified
         },
       });
 
