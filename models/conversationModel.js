@@ -4,9 +4,10 @@ const { Schema } = mongoose;
 
 const conversationSchema = new Schema({
   participants: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  // Ensure lastMessage can be null, remove default if not needed
   lastMessage: { type: Schema.Types.ObjectId, ref: 'Message', default: null },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+}, {
+  timestamps: true, // Mongoose manages createdAt and updatedAt fields automatically
 });
 
 const Conversation = mongoose.model('Conversation', conversationSchema);
