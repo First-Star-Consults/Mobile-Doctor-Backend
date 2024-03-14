@@ -34,7 +34,7 @@ router.get(
       username: req.user.username,
       email: req.user.email,
       role: req.user.role,
-      isVerified: {status: req.user.isVerified, message: "Alabo, this one na for email verification o"}
+      isVerified: {status: req.user.isVerified, message: "Email verification "}
     }, });
   }
 );
@@ -56,7 +56,7 @@ router.get("/googleAuth/getUser", (req, res) => {
       username: req.user.username,
       email: req.user.email,
       role: req.user.role,
-      isVerified: req.user.isVerified,
+      isVerified: {status: req.user.isVerified, message: "Email verification"}
     };
     res.status(200).json({ message: "User details", user });
   } catch (error) {
