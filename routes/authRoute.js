@@ -39,6 +39,33 @@ router.get(
   }
 );
 
+
+
+// Assuming express and passport are properly set up
+router.get("/googleAuth/getUser", (req, res) => {
+  if (!req.isAuthenticated() || !req.user) {
+    return res.status(401).json({ message: "User not authenticated" });
+  }
+
+  try {
+    const user = {
+      profilePhoto: req.user.profilePhoto,
+      firstName: req.user.firstName,
+      lastName: req.user.lastName,
+      id: req.user._id,
+      username: req.user.username,
+      email: req.user.email,
+      role: req.user.role,
+      isVerified: req.user.isVerified,
+    };
+    res.status(200).json({ message: "User details", user });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to retrieve user details" });
+  }
+});
+
+
 // Logout route
 router.get("/logout", authController.logout);
 
