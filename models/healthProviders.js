@@ -6,14 +6,17 @@ import mongoose from "mongoose";
 // Doctor schema
 const doctorSchema = new mongoose.Schema({
     fullName: { type: String, default: null },
-    medicalSpecialty: [{ type: String }],
     medicalOfficer: { type: Boolean, default: false },
     consultations: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Consultation' }],
     reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Reviews' }],
     approval: { type: Boolean, default: false },
     onlineStatus: { type: Boolean, default: true },
     sessionToken: String,
-    consultationFee: { type: Number, default: 0 },
+    baseConsultationFee: { type: Number, default: 1000 },
+    medicalSpecialty: [{
+      name: { type: String },
+      fee: { type: Number, default: 3000 }
+  }],
     images: {
       profilePhoto: { type: String },
       governmentIdfront: { type: String },
