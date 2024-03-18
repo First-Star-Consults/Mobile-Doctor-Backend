@@ -43,6 +43,7 @@ const userSchema = new mongoose.Schema({
   walletBalance: { type: Number, default: 0 },
   isAdmin: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
+  underInsurrance: { type: Boolean, default: false },
   verificationcode: String,
   googleId: String,
 });

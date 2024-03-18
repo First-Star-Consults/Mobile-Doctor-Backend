@@ -19,6 +19,8 @@ const healthProviderControllers = {
         address,
         gender,
         about,
+        medicalSpecialty, 
+        medicalOfficer, 
       } = req.body;
 
       const providerId = req.params.providerId;
@@ -39,6 +41,8 @@ const healthProviderControllers = {
       foundUser.address = address;
       foundUser.gender = gender;
       foundUser.about = about;
+      foundUser.medicalSpecialty = medicalSpecialty; 
+      foundUser.medicalOfficer = medicalOfficer; 
 
       // Save the updated user profile
       const updatedProvider = await foundUser.save();

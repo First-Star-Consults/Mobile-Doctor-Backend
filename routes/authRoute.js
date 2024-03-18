@@ -34,7 +34,7 @@ router.get(
       username: req.user.username,
       email: req.user.email,
       role: req.user.role,
-      isVerified: {status: req.user.isVerified, message: "Email verification "}
+      isVerified: {status: req.user.isVerified, message: "Email verification"}
     }, });
   }
 );
