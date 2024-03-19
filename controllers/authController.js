@@ -8,6 +8,7 @@ import determineRole from "../utils/determinUserRole.js";
 import { generateVerificationCode } from "../utils/verficationCodeGenerator.js";
 import { generateSessionToken } from '../models/user.js';
 import { chargePatient, verifyTransaction, creditWallet } from "../config/paymentService.js";
+import { Transaction } from "../models/services.js";
 
 //i am wondering why am getting 500 when i from heroku
 
@@ -295,8 +296,8 @@ const authController = {
   handlePaystackWebhook: async (req, res) => {
     try {
       const event = req.body;
-
-      // Verify Paystack webhook signature
+  
+      // Verify Paystack webhook signature to ensure the request is legitimate
       const secret = process.env.PAYSTACK_SECRET_KEY;
       const hash = crypto.createHmac('sha512', secret)
         .update(JSON.stringify(req.body))
@@ -304,31 +305,95 @@ const authController = {
       if (req.headers['x-paystack-signature'] !== hash) {
         return res.status(401).send('Invalid signature');
       }
-
+  
+      // Handle the successful payment event
       if (event.event === 'charge.success') {
         const reference = event.data.reference;
         const verificationResult = await verifyTransaction(reference);
-
+  
         if (verificationResult.success) {
           // Extract email and amount from the verified transaction
           const email = verificationResult.data.customer.email;
           const amount = verificationResult.data.amount / 100; // Convert from kobo to naira
-          const creditResult = await creditWallet(email, amount);
-
-          if (creditResult.success) {
-            console.log('Wallet credited successfully');
+  
+          // Find the user by email and update their wallet balance
+          const user = await User.findOne({ email: email });
+          if (user) {
+            user.walletBalance += amount; // Increase the user's wallet balance
+            await user.save();
+  
+            // Record the successful transaction
+            const transaction = new Transaction({
+              user: user._id,
+              type: 'wallet funding',
+              amount: amount,
+              status: 'success',
+              date: new Date()
+            });
+            await transaction.save();
+  
+            res.status(200).send('Wallet funded and transaction recorded successfully');
           } else {
-            console.error('Failed to credit wallet:', creditResult.message);
+            console.error('User not found for email:', email);
+            res.status(404).json({ message: 'User not found' });
           }
         } else {
           console.error('Payment verification failed:', verificationResult.message);
+          res.status(500).json({ message: 'Payment verification failed' });
         }
+      } else {
+        res.status(200).send('Webhook received but not a charge.success event');
       }
-
-      res.status(200).send('Webhook received');
     } catch (error) {
       console.error('Error handling Paystack webhook:', error);
       res.status(500).json({ message: 'Internal Server Error' });
+    }
+  },
+
+  // Add a transaction
+  addTransaction: async (userId, type, amount, status) => {
+    const transaction = new Transaction({
+      user: userId,
+      type,
+      amount,
+      status,
+    });
+
+    await transaction.save();
+  },
+
+  // Update wallet balance
+  updateWalletBalance: async (userId, amount, isCredit) => {
+    const user = await User.findById(userId);
+    if (!user) throw new Error('User not found');
+
+    user.walletBalance += isCredit ? amount : -amount;
+    await user.save();
+  },
+
+  getTransactionHistory: async (req, res) => {
+    try {
+      const { userId } = req.params; 
+  
+      const transactions = await Transaction.find({ user: userId }).sort({ date: -1 }); 
+      res.status(200).json({ success: true, transactions });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+  
+  getWalletBalance: async (req, res) => {
+    try {
+      const { userId } = req.params; // Assuming you pass userId as a URL parameter
+  
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+  
+      res.status(200).json({ success: true, walletBalance: user.walletBalance });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
     }
   },
 

@@ -68,6 +68,10 @@ router.get("/googleAuth/getUser", (req, res) => {
 
 // Logout route
 router.get("/logout", authController.logout);
+// Get transaction history
+router.get('/transaction-history/:userId', authController.getTransactionHistory);
+// Get wallet balance
+router.get('/wallet-balance/:userId', authController.getWalletBalance);
 
 
 // Registration and login routes
