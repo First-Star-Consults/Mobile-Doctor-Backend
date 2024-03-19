@@ -2,7 +2,7 @@
 import User from "../models/user.js";
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
-import upload from "../config/cloudinary.js";
+import { upload } from "../config/cloudinary.js";
 
 const userController = {
 

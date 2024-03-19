@@ -1,14 +1,25 @@
 //admin controller
 
 import { Doctor } from "../models/healthProviders.js";
+import User from "../models/user.js";
 
 const adminController = {
   
 
   updateKycVerificationStatus: async (req, res) => {
     try {
-      // Check if the user making the request is an admin
-      const isAdmin = req.user.isAdmin; // Assuming you have a middleware that sets req.user
+      const adminId = req.params.userId; // or req.user._id if you have the user ID stored in req.user
+
+    // Fetch the user from the database to check if they're an admin
+    const user = await User.findById(adminId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found.'
+      });
+    }
+
+    const isAdmin = user.isAdmin;
 
       if (!isAdmin) {
         return res.status(403).json({
@@ -46,8 +57,18 @@ const adminController = {
 
   updateConsultationFees: async (req, res) => {
     try {
-      // Check if the user making the request is an admin
-      const isAdmin = req.user.isAdmin; 
+      const userId = req.params.userId; // or req.user._id if you have the user ID stored in req.user
+
+      // Fetch the user from the database to check if they're an admin
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found.'
+        });
+      }
+  
+      const isAdmin = user.isAdmin;
   
       if (!isAdmin) {
         return res.status(403).json({
@@ -89,6 +110,64 @@ const adminController = {
       res.status(500).json({ success: false, error: 'Error updating consultation fees' });
     }
   },
+
+  setFeeForAllSpecialties: async (req, res) => {
+    try {
+      
+      const userId = req.params.userId; // or req.user._id if you have the user ID stored in req.user
+
+      // Fetch the user from the database to check if they're an admin
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found.'
+        });
+      }
+  
+      const isAdmin = user.isAdmin;
+  
+      if (!isAdmin) {
+        return res.status(403).json({
+          success: false,
+          error: 'Permission denied. Only admin can update consultation fees.',
+        });
+      }
+  
+      // Extract fee information from the request
+      const { specialtyToUpdate, newFee } = req.body;
+  
+      // Fetch all doctors with the specified specialty
+      const doctors = await Doctor.find({ 'medicalSpecialty.name': specialtyToUpdate });
+  
+      // Update each doctor's fee for the specified specialty
+      const updates = doctors.map(async (doctor) => {
+        const specialtyIndex = doctor.medicalSpecialty.findIndex(s => s.name === specialtyToUpdate);
+  
+        if (specialtyIndex > -1) {
+          // Specialty exists, update the fee
+          doctor.medicalSpecialty[specialtyIndex].fee = newFee;
+        } else {
+          // Specialty doesn't exist, add new specialty with fee
+          doctor.medicalSpecialty.push({ name: specialtyToUpdate, fee: newFee });
+        }
+  
+        return doctor.save(); // Returns a promise
+      });
+  
+      // Wait for all the update promises to resolve
+      await Promise.all(updates);
+  
+      res.status(200).json({
+        success: true,
+        message: `Consultation fees for the specialty ${specialtyToUpdate} updated successfully across all doctors.`,
+      });
+    } catch (error) {
+      console.error('Error setting fees for all specialties:', error);
+      res.status(500).json({ success: false, error: 'Error setting fees for all specialties' });
+    }
+  },
+  
   
 };
 

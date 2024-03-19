@@ -5,8 +5,9 @@ const router = express.Router();
 
 
 
-router.post('/updateKycVerificationStatus', adminController.updateKycVerificationStatus);
-router.post('/updateConsultationFees', adminController.updateConsultationFees);
+router.post('/updateKycVerificationStatus/adminId', adminController.updateKycVerificationStatus);
+router.post('/updateConsultationFees/:userId', adminController.updateConsultationFees);
+router.post('/setFeeForAllSpecialties/:userId', adminController.setFeeForAllSpecialties);
 
 
 

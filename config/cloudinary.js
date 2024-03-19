@@ -6,7 +6,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_SECRET,
 });
 
-const upload = async (file, folderName) => {
+export const upload = async (file, folderName) => {
   const options = {
     folder: folderName, // Specify the folder name (user identifier)
     public_id: `${folderName}/${Date.now()}`, // Use a unique public_id with timestamp
@@ -20,4 +20,20 @@ const upload = async (file, folderName) => {
   }
 };
 
-export default upload;
+// Function to upload a base64-encoded image to Cloudinary
+export const uploadBase64 = async (base64Data, folderName) => {
+  const options = {
+    folder: folderName,
+    public_id: `${folderName}/${Date.now()}`,
+  };
+
+  try {
+    // Cloudinary's API expects the base64 data to be prefixed by a data URI schema
+    const image = await cloudinary.uploader.upload(`data:image/png;base64,${base64Data}`, options);
+    return image;
+  } catch (error) {
+    throw error;
+  }
+};
+
+
