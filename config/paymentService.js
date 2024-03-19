@@ -74,4 +74,37 @@ export async function creditWallet(email, amount) {
       return { success: false, message: error.message };
     }
   }
+
+  export async function createTransferRecipient(name, accountNumber, bankCode) {
+    try {
+      const body = {
+        type: "nuban",
+        name: name,
+        account_number: accountNumber,
+        bank_code: bankCode,
+        currency: "NGN"
+      };
+      const response = await paystack.post('/transferrecipient', body);
+      return response.data.data; // Contains recipient_code needed for transfer
+    } catch (error) {
+      console.error('Error creating transfer recipient:', error);
+      return null;
+    }
+  }
+  
+  export async function initiateTransfer(amount, recipientCode) {
+    try {
+      const body = {
+        source: "balance", // Transfer from your Paystack balance
+        amount: amount * 100, // Convert amount to kobo
+        recipient: recipientCode,
+        reason: "Withdrawal from Wallet" // This can be any reason
+      };
+      const response = await paystack.post('/transfer', body);
+      return response.data.data; // Contains transfer details
+    } catch (error) {
+      console.error('Error initiating transfer:', error);
+      return null;
+    }
+  }
   

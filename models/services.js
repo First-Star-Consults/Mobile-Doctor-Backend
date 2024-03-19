@@ -36,6 +36,8 @@ const transactionSchema = new mongoose.Schema({
   type: { type: String, required: true }, // e.g., 'payout', 'consultation fee'
   status: { type: String, required: true }, // e.g., 'pending', 'success', 'failed'
   amount: { type: Number, required: true },
+  accountNumber: String,
+  bankName: String,
   date: { type: Date, default: Date.now },
 });
 

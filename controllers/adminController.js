@@ -167,6 +167,8 @@ const adminController = {
       res.status(500).json({ success: false, error: 'Error setting fees for all specialties' });
     }
   },
+
+  
   
   
 };

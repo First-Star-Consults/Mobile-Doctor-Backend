@@ -7,7 +7,7 @@ import determineRole from "../utils/determinUserRole.js";
 // import { sendVerificationEmail } from "../utils/nodeMailer.js";
 import { generateVerificationCode } from "../utils/verficationCodeGenerator.js";
 import { generateSessionToken } from '../models/user.js';
-import { chargePatient, verifyTransaction, creditWallet } from "../config/paymentService.js";
+import { chargePatient, verifyTransaction, initiateTransfer, createTransferRecipient } from "../config/paymentService.js";
 import { Transaction } from "../models/services.js";
 
 //i am wondering why am getting 500 when i from heroku
@@ -396,6 +396,129 @@ const authController = {
       res.status(500).json({ success: false, message: error.message });
     }
   },
+
+  // Function to create a withdrawal request
+withdraw: async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const { amount, accountNumber, bankName } = req.body;
+
+     // This is where you'd call the bank's API
+    // The specifics depend on the bank's API documentation
+//     const response = await someBankingAPI.verifyAccount({ accountNumber, bankCode });
+//     return response.isValid;
+//   } catch (error) {
+//     console.error('Error verifying bank account:', error);
+//     return false;
+//   }
+// }
+
+    // Check if the user exists and has the appropriate role
+    const user = await User.findById(userId);
+    if (!user || !['doctor', 'laboratory', 'therapist', 'pharmacist'].includes(user.role)) {
+      return res.status(403).json({ success: false, message: 'Unauthorized! You are not a health provider' });
+    }
+
+    // Check if the wallet has enough balance
+    if (user.walletBalance < amount) {
+      return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
+    }
+
+    // Create a pending transaction with account details
+    const transaction = new Transaction({
+      user: userId,
+      type: 'withdrawal',
+      status: 'pending',
+      amount: amount,
+      accountNumber: accountNumber, // Saved for when the admin processes the withdrawal
+      bankName: bankName, // Saved as additional info for admin or for withdrawal processing
+    });
+
+    await transaction.save();
+
+    // Here, you can notify the admin for approval...
+
+    res.status(200).json({ success: true, message: 'Withdrawal request created and pending approval' });
+  } catch (error) {
+    console.error('Error during withdrawal:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+},
+
+
+// Function to approve a withdrawal request by Admin
+approveWithdrawal: async (req, res) => {
+  try {
+    const adminId = req.params.adminId; 
+    const { transactionId, accountNumber, bankCode } = req.body; 
+
+    // Validate admin privileges
+    const admin = await User.findById(adminId);
+    if (!admin || !admin.isAdmin) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to perform this action' });
+    }
+
+    // Find the transaction and validate it
+    const transaction = await Transaction.findById(transactionId);
+    if (!transaction || transaction.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'Invalid or already processed transaction' });
+    }
+
+    // Find the user who requested the withdrawal
+    const user = await User.findById(transaction.user);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Create a transfer recipient
+    const recipientDetails = await createTransferRecipient(user.firstName + ' ' + user.lastName, accountNumber, bankCode);
+    if (!recipientDetails) {
+      transaction.status = 'failed';
+      await transaction.save();
+      return res.status(500).json({ success: false, message: 'Failed to create transfer recipient' });
+    }
+
+    // Initiate the transfer
+    const transferResponse = await initiateTransfer(transaction.amount, recipientDetails.recipient_code);
+    if (!transferResponse) {
+      transaction.status = 'failed';
+      await transaction.save();
+      return res.status(500).json({ success: false, message: 'Failed to initiate transfer' });
+    }
+
+    // If transfer initiation is successful, deduct the amount from user's wallet balance and mark the transaction as succeeded
+    user.walletBalance -= transaction.amount;
+    transaction.status = 'success';
+    await user.save();
+    await transaction.save();
+
+    res.status(200).json({ success: true, message: 'Withdrawal approved and processed', transferDetails: transferResponse });
+  } catch (error) {
+    console.error('Error during withdrawal approval:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+},
+
+getPendingWithdrawals: async (req, res) => {
+  try {
+    const adminId = req.params.adminId; // or req.user._id if you have the user ID stored in req.user
+
+    // Validate admin privileges
+    const admin = await User.findById(adminId);
+    if (!admin || !admin.isAdmin) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to perform this action' });
+    }
+
+    // Retrieve all pending withdrawal transactions
+    const pendingWithdrawals = await Transaction.find({ status: 'pending', type: 'withdrawal' }).populate('user', 'firstName lastName email');
+
+    res.status(200).json({ success: true, pendingWithdrawals });
+  } catch (error) {
+    console.error('Error fetching pending withdrawals:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+},
+
 
 
 };
