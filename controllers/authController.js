@@ -520,6 +520,166 @@ getPendingWithdrawals: async (req, res) => {
 },
 
 
+startConsultation: async (req, res) => {
+  try {
+    const { patientId, doctorId, specialty } = req.body; 
+
+    const patient = await User.findById(patientId);
+    const doctor = await Doctor.findById(doctorId);
+
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor not found' });
+    }
+
+    // Determine consultation fee
+    let consultationFee = doctor.baseConsultationFee; // Default fee
+
+    if (specialty) {
+      // If a specific specialty is requested, find the matching specialty fee
+      const specialtyInfo = doctor.medicalSpecialty.find(s => s.name === specialty);
+      if (specialtyInfo && specialtyInfo.fee) {
+        consultationFee = specialtyInfo.fee; // Override with specific specialty fee if available
+      }
+    }
+
+    // Check if patient's wallet has enough balance
+    if (patient.walletBalance < consultationFee) {
+      return res.status(400).json({ message: 'Insufficient wallet balance for this consultation' });
+    }
+
+    // Deduct the consultation fee from the patient's wallet and hold in escrow
+    patient.walletBalance -= consultationFee; // Deduct fee
+    await patient.save(); // Save the patient's new wallet balance
+
+    // Record this transaction as held in escrow
+    const transaction = new Transaction({
+      user: patientId,
+      doctor: doctorId, // Record the doctor involved in the transaction
+      type: 'consultation fee',
+      status: 'success',
+      escrowStatus: 'held',
+      amount: consultationFee,
+    });
+    await transaction.save();
+
+    // Optionally, create a new consultation session
+    const newSession = new ConsultationSession({
+      doctor: doctorId,
+      patient: patientId,
+      status: 'scheduled',
+      escrowTransaction: transaction._id,
+    });
+    await newSession.save();
+
+    res.status(200).json({ 
+      message: 'Consultation fee held in escrow and session started', 
+      transaction,
+      session: newSession 
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to start consultation', error: error.message });
+  }
+},
+
+
+
+completeConsultation: async (req, res) => {
+  const { sessionId } = req.body; // Assume the front end sends the ID of the session to be completed
+
+  const session = await ConsultationSession.findById(sessionId);
+  if (!session) {
+    return res.status(404).json({ message: 'Consultation session not found' });
+  }
+
+  // Mark session as completed
+  session.status = 'completed';
+  session.endTime = new Date(); // Mark the end time
+  await session.save();
+
+  // Now release the escrow to the doctor
+  const transaction = await Transaction.findById(session.escrowTransaction);
+  if (transaction && transaction.escrowStatus === 'held') {
+    const doctor = await User.findById(session.doctor);
+    doctor.walletBalance += transaction.amount; // Release funds to the doctor
+    await doctor.save();
+
+    transaction.escrowStatus = 'released'; // Update transaction status
+    await transaction.save();
+  }
+
+  res.status(200).json({ message: 'Consultation completed, funds released to doctor' });
+},
+
+cancelConsultation: async (req, res) => {
+  const { sessionId } = req.body; // Assume the front end sends the ID of the session to cancel
+
+  const session = await ConsultationSession.findById(sessionId).populate('escrowTransaction');
+  if (!session) {
+    return res.status(404).json({ message: 'Consultation session not found' });
+  }
+
+  // Optional: Add logic to ensure only the appropriate parties (e.g., the patient, doctor, or admin) can cancel the session
+
+  // Update session status to 'cancelled'
+  session.status = 'cancelled';
+  await session.save();
+
+  // Refund logic
+  const transaction = session.escrowTransaction;
+  if (transaction && transaction.escrowStatus === 'held') {
+    const patient = await User.findById(session.patient);
+    if (patient) {
+      // Refund process: crediting the funds back to the patient's wallet
+      patient.walletBalance += transaction.amount;
+      await patient.save();
+
+      // Update transaction to reflect the refund
+      transaction.escrowStatus = 'refunded';
+      await transaction.save();
+
+      res.status(200).json({ message: 'Consultation cancelled and fee refunded to patient' });
+    } else {
+      // Handle case where patient not found (though this should theoretically never happen if session exists)
+      return res.status(404).json({ message: 'Patient not found for refund' });
+    }
+  } else {
+    // If no escrow transaction is found or if it's not in 'held' status, handle accordingly
+    return res.status(400).json({ message: 'No escrow transaction found or not eligible for refund' });
+  }
+},
+
+
+getActiveSession: async (req, res) => {
+  try {
+    const { patientId, doctorId } = req.params;
+    const session = await ConsultationSession.findOne({
+      patient: patientId,
+      doctor: doctorId,
+      status: { $in: ['scheduled', 'in-progress'] } // Adjust based on your status design
+    })
+    .populate('patient', 'firstName lastName') // Populate to get patient's first and last name
+    .select('_id'); // Adjust selection as needed
+
+    if (!session) {
+      return res.status(404).json({ message: 'Active session not found.' });
+    }
+
+    // Assuming session object structure is preserved after population
+    res.status(200).json({
+      sessionId: session._id,
+      patientFirstName: session.patient.firstName,
+      patientLastName: session.patient.lastName
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve active session.' });
+  }
+},
+
+
 
 };
 

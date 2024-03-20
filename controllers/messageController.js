@@ -3,6 +3,7 @@ import Message from '../models/messageModel.js';
 import Conversation from '../models/conversationModel.js';
 import {Doctor} from '../models/healthProviders.js';
 import { Prescription } from '../models/services.js';
+import ConsultationSession from '../models/consultationModel.js';
 
 const messageController = {
     findOrCreateConversation: async (req, res) => {
@@ -29,25 +30,38 @@ const messageController = {
 
       sendMessage: async (req, res) => {
         try {
-            const { conversationId, sender, receiver, content } = req.body;
-            const newMessage = await Message.create({
-                conversationId,
-                sender,
-                receiver,
-                content
-            });
-    
-            // Update the conversation's lastMessage field
-            await Conversation.findByIdAndUpdate(conversationId, {
-                $set: { lastMessage: newMessage._id },
-                $currentDate: { updatedAt: true } // Update the updatedAt field to current date
-            });
-    
-            return res.status(201).json(newMessage);
+          const { conversationId, sender, receiver, content } = req.body;
+      
+          // Find an active consultation session between the sender and receiver
+          const activeSession = await ConsultationSession.findOne({
+            $or: [{ doctor: sender, patient: receiver }, { doctor: receiver, patient: sender }],
+            status: { $in: ['scheduled', 'in-progress'] }
+          });
+      
+          if (!activeSession) {
+            return res.status(403).json({ message: 'No active consultation session found between the users.' });
+          }
+      
+          // Proceed with creating the message if an active session is found
+          const newMessage = await Message.create({
+            conversationId,
+            sender,
+            receiver,
+            content
+          });
+      
+          // Update the conversation's lastMessage field
+          await Conversation.findByIdAndUpdate(conversationId, {
+            $set: { lastMessage: newMessage._id },
+            $currentDate: { updatedAt: true } // Update the updatedAt field to current date
+          });
+      
+          return res.status(201).json(newMessage);
         } catch (error) {
-            return res.status(500).json({ error: error.message });
+          return res.status(500).json({ error: error.message });
         }
-    },
+      },
+      
     
 
   getMessages: async (req, res) => {

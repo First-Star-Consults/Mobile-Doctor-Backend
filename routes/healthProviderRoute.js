@@ -11,6 +11,9 @@ providerRouter.post('/:doctorId/reviews', healthProviderControllers.addReview);
 
 // Route to get top-rated doctors
 providerRouter.get('/top-rated-doctors', healthProviderControllers.getTopRatedDoctors);
+providerRouter.get('/therapists', healthProviderControllers.getAllTherapists);
+providerRouter.get('/pharmacies', healthProviderControllers.getAllPharmacies);
+providerRouter.get('/laboratories', healthProviderControllers.getAllLaboratories);
 
 
 

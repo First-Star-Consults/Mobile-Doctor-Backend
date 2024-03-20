@@ -1,6 +1,6 @@
 //health Provider controller
 
-import { Doctor } from "../models/healthProviders.js";
+import { Doctor, Pharmacy, Therapist, Laboratory } from "../models/healthProviders.js";
 import { Reviews } from "../models/services.js";
 import { uploadBase64 } from "../config/cloudinary.js";
 
@@ -241,6 +241,33 @@ const healthProviderControllers = {
     } catch (error) {
       console.error("Error fetching top rated doctors:", error);
       res.status(500).json({ success: false, message: "Error fetching top rated doctors" });
+    }
+  },
+
+  getAllLaboratories: async (req, res) => {
+    try {
+      const laboratories = await Laboratory.find({}); // Retrieves all laboratories
+      res.status(200).json({ success: true, laboratories });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Error fetching laboratories', error });
+    }
+  },
+
+  getAllPharmacies: async (req, res) => {
+    try {
+      const pharmacies = await Pharmacy.find({}); // Retrieves all pharmacies
+      res.status(200).json({ success: true, pharmacies });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Error fetching pharmacies', error });
+    }
+  },
+
+  getAllTherapists: async (req, res) => {
+    try {
+      const therapists = await Therapist.find({}); // Retrieves all therapists
+      res.status(200).json({ success: true, therapists });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Error fetching therapists', error });
     }
   },
 

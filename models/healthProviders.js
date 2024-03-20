@@ -1,6 +1,22 @@
 // healthProviders.js
 import mongoose from "mongoose";
 
+const locationSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    default: "Point",
+    enum: ["Point"] // 'location.type' must be 'Point'
+  },
+  coordinates: {
+    type: [Number], // Array of numbers for longitude and latitude
+    index: "2dsphere"
+  }
+});
+
+
+
+
+
 
 
 // Doctor schema
@@ -46,17 +62,20 @@ const doctorSchema = new mongoose.Schema({
 const pharmacySchema = new mongoose.Schema({
     name: { type: String, required: true },
     kycVerification: { type: Boolean, default: false },
+    location: locationSchema,
 });
 
 // Therapist schema
 const therapistSchema = new mongoose.Schema({
     name: { type: String, required: true },
     kycVerification: { type: Boolean, default: false },
+    location: locationSchema,
 });
 
 // Laboratory schema
 const laboratorySchema = new mongoose.Schema({
     name: { type: String, required: true },
+    location: locationSchema,
 });
 
 const Doctor = mongoose.model("Doctor", doctorSchema);

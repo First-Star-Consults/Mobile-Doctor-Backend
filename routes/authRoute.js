@@ -74,6 +74,8 @@ router.get('/transaction-history/:userId', authController.getTransactionHistory)
 router.get('/wallet-balance/:userId', authController.getWalletBalance);
 // Endpoint for admin to view all pending withdrawal requests
 router.get('/pending-withdrawals', authController.getPendingWithdrawals); 
+//get active consultation session
+router.get('/get-active-session', authController.getActiveSession);
 
 
 // Registration and login routes
@@ -90,6 +92,14 @@ router.post('/approve-withdrawal/:adminId', authController.approveWithdrawal); /
 
 router.post('/paystack/webhook', express.json(), authController.handlePaystackWebhook);
 
+// Start consultation and handle escrow
+router.post('/start-consultation', authController.startConsultation);
+
+//cancel consultation
+router.post('/cancelConsultation', authController.cancelConsultation);
+
+// Release funds from escrow
+router.post('/completeConsultation', authController.completeConsultation);
 
 
 
