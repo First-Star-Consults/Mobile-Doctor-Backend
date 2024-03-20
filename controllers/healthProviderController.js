@@ -212,6 +212,38 @@ const healthProviderControllers = {
     }
   },
 
+  // Add this function within the healthProviderControllers object
+
+getDoctorReviews: async (req, res) => {
+  try {
+      const doctorId = req.params.doctorId;
+      
+      // Ensure the doctor exists
+      const doctorExists = await Doctor.findById(doctorId);
+      if (!doctorExists) {
+          return res.status(404).json({ success: false, message: "Doctor not found" });
+      }
+
+      // Fetch reviews for the doctor and include patient's name
+      const reviews = await Reviews.find({ doctor: doctorId })
+                                   .populate({
+                                      path: 'patient',
+                                      select: 'firstName lastName -_id' // Adjust the fields as needed
+                                   })
+                                   .exec();
+
+      if (reviews.length === 0) {
+          return res.status(404).json({ success: false, message: "No reviews found for this doctor." });
+      }
+
+      res.status(200).json({ success: true, reviews });
+  } catch (error) {
+      console.error("Error fetching doctor reviews:", error);
+      res.status(500).json({ success: false, message: "Error fetching reviews", error: error.message });
+  }
+},
+
+
 
   // Function to get top-rated doctors
   getTopRatedDoctors: async (req, res) => {
