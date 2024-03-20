@@ -303,6 +303,15 @@ getDoctorReviews: async (req, res) => {
     }
   },
 
+  getAllDoctors: async (req, res) => {
+    try {
+      const doctors = await Doctor.find({}); // Retrieves all therapists
+      res.status(200).json({ success: true, doctors });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Error fetching doctors', error });
+    }
+  },
+
 
 
 

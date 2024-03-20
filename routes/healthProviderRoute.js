@@ -18,6 +18,7 @@ router.get('/top-rated-doctors', healthProviderControllers.getTopRatedDoctors);
 router.get('/therapists', healthProviderControllers.getAllTherapists);
 router.get('/pharmacies', healthProviderControllers.getAllPharmacies);
 router.get('/laboratories', healthProviderControllers.getAllLaboratories);
+router.get('/all-doctors', healthProviderControllers.getAllDoctors);
 
 
 
