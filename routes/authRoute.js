@@ -74,8 +74,9 @@ router.get('/transaction-history/:userId', authController.getTransactionHistory)
 router.get('/wallet-balance/:userId', authController.getWalletBalance);
 // Endpoint for admin to view all pending withdrawal requests
 router.get('/pending-withdrawals', authController.getPendingWithdrawals); 
-//get active consultation session
-router.get('/get-active-session', authController.getActiveSession);
+// Endpoint to get the active consultation session for a specific patient and doctor
+router.get('/get-active-session/:patientId/:doctorId', authController.getActiveSession);
+
 
 
 // Registration and login routes
@@ -85,10 +86,10 @@ router.post("/verify", authController.verify);
 
 router.post('/fund-wallet/:userId', authController.fundWallet);
 // Endpoint for users to initiate a withdrawal request
-router.post('/withdraw/:userId', authController.withdraw); // Assuming this method is defined in authController
+router.post('/withdraw/:userId', authController.withdraw); 
 
 // Endpoint for admin to approve a withdrawal request
-router.post('/approve-withdrawal/:adminId', authController.approveWithdrawal); // Assuming this method is defined in authController
+router.post('/approve-withdrawal/:adminId', authController.approveWithdrawal); 
 
 router.post('/paystack/webhook', express.json(), authController.handlePaystackWebhook);
 
