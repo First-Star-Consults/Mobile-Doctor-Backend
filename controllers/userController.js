@@ -9,10 +9,10 @@ const userController = {
   // To get user profile
   getProfile: async (req, res) => {
     try {
-      const userId = req.params.userId
+      const userRole = req.params.role; 
 
-      // Check if the user exists
-      const existingUser = await User.findById(userId);
+    // Query the database for users with the specified role
+    const existingUser = await User.find({ role: userRole });
 
       if (!existingUser) {
         return res.status(404).json({ message: 'User not found' });
@@ -71,7 +71,7 @@ const userController = {
 
       const { image } = req.files;
       const fileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-      const imageSize = 10024;
+      const imageSize = 1024;
 
       if (!req.files || !req.files.image) {
         return res.status(400).json({ success: false, error: 'Please upload an image' });

@@ -13,7 +13,7 @@ router.get("/", (req, res) => {
 
 
 //get users profile
-router.get("/getProfile/:userId", userController.getProfile);
+router.get("/getUsers/role/:role", userController.getProfile);
 // Update user profile route
 router.put("/updateProfile/:userId",  userController.upDateprofile);
 
