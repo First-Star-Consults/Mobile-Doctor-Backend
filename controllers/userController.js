@@ -71,7 +71,7 @@ const userController = {
 
       const { image } = req.files;
       const fileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-      const imageSize = 1024;
+      const imageSize = 10024;
 
       if (!req.files || !req.files.image) {
         return res.status(400).json({ success: false, error: 'Please upload an image' });
