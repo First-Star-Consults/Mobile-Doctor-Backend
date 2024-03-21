@@ -67,13 +67,15 @@ const userController = {
       // Save the updated user profile
       await existingUser.save();
 
-      if (!req.files || !req.files.image) {
-        return res.status(400).json({ success: false, error: 'Please upload an image' });
-      }
+     
 
       const { image } = req.files;
       const fileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
       const imageSize = 1024;
+
+      if (!req.files || !req.files.image) {
+        return res.status(400).json({ success: false, error: 'Please upload an image' });
+      }
 
       if (!fileTypes.includes(image.mimetype)) return res.send('Image formats supported: JPG, PNG, JPEG');
 
@@ -95,10 +97,51 @@ const userController = {
   },
 
 
+  //To update user profile
 
 
+//   upDateprofile: async (req, res) => {
+//   try {
+//     const userId = req.params.userId;
 
- 
+//     // Check if the user exists
+//     const existingUser = await User.findById(userId);
+
+//     if (!existingUser) {
+//       return res.status(404).json({ message: 'User not found' });
+//     }
+
+//     // Update user profile information
+//     existingUser.firstName = req.body.firstName || existingUser.firstName;
+//     existingUser.lastName = req.body.lastName || existingUser.lastName;
+//     existingUser.phone = req.body.phone || existingUser.phone;
+//     existingUser.gender = req.body.gender || existingUser.gender;
+//     existingUser.country = req.body.country || existingUser.country;
+//     existingUser.state = req.body.state || existingUser.state;
+//     existingUser.address = req.body.address || existingUser.address;
+
+//     // Check for base64 image in the request body
+//     if (req.body.profilePhotoBase64) {
+//       try {
+//         // Upload image to Cloudinary
+//         const cloudFile = await uploadBase64(req.body.profilePhotoBase64, `user/${userId}`);
+//         // Update user model with the Cloudinary URL for the profile photo
+//         existingUser.profilePhoto = cloudFile.url;
+//       } catch (error) {
+//         console.error('Error uploading image to Cloudinary:', error);
+//         return res.status(500).json({ message: 'Error uploading image' });
+//       }
+//     }
+
+//     // Save the updated user profile
+//     await existingUser.save();
+
+//     return res.status(200).json({ message: 'Profile information updated successfully', user: existingUser });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({ message: 'Unexpected error during profile update' });
+//   }
+// },
 
 
   resetPassword: async (req, res) => {
