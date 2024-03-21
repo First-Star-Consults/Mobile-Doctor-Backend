@@ -55,13 +55,13 @@ const healthProviderControllers = {
       for (const key in req.files) {
         const image = req.files[key];
         const fileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-        const imageSize = 1024;
+        const imageSize = 1000024;
 
         if (!fileTypes.includes(image.mimetype)) {
           return res.status(400).json({ success: false, error: 'Image formats supported: JPG, PNG, JPEG' });
         }
 
-        if (image.size / 1024 > imageSize) {
+        if (image.size / 1000024 > imageSize) {
           return res.status(400).json({ success: false, error: `Image size should be less than ${imageSize}kb` });
         }
 
