@@ -10,38 +10,38 @@ const userController = {
   getProfile: async (req, res) => {
     try {
       const userRole = req.params.role; 
-
-    // Query the database for users with the specified role
-    const existingUser = await User.find({ role: userRole });
-
-      if (!existingUser) {
-        return res.status(404).json({ message: 'User not found' });
+  
+      // Query the database for users with the specified role
+      const users = await User.find({ role: userRole });
+  
+      if (!users || users.length === 0) {
+        return res.status(404).json({ message: 'No users found with the specified role.' });
       }
-
-      // Extract relevant profile information
-      const userProfile = {
-        profilePhoto: existingUser.profilePicture,
-        firstName: existingUser.firstName,
-        lastName: existingUser.lastName,
-        role: existingUser.role,
-        subRole: existingUser.subRole,
-        phone: existingUser.phone,
-        email: existingUser.email,
-        gender: existingUser.gender,
-        age: existingUser.age,
-        rating: existingUser.rating,
-        country: existingUser.country,
-        state: existingUser.state,
-        emailVerification: existingUser.isVerified
-      };
-
-      return res.status(200).json({ message: 'User profile retrieved successfully', user: userProfile });
+  
+      // Map over the array of users to create a new array of user profiles
+      const userProfiles = users.map(user => ({
+        profilePhoto: user.profilePhoto,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        subRole: user.subRole,
+        phone: user.phone,
+        email: user.email,
+        gender: user.gender,
+        age: user.age,
+        rating: user.rating,
+        country: user.country,
+        state: user.state,
+        emailVerification: user.isVerified
+      }));
+  
+      return res.status(200).json({ message: 'User profiles retrieved successfully', users: userProfiles });
     } catch (error) {
       console.error(error);
       return res.status(500).json({ message: 'Unexpected error during profile retrieval' });
     }
   },
-
+  
 
   //To update user profile
   upDateprofile: async (req, res) => {
