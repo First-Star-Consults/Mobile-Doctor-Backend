@@ -1,6 +1,5 @@
 // userController.js
 import User from "../models/user.js";
-import crypto from 'crypto';
 // import nodemailer from 'nodemailer';
 import { upload } from "../config/cloudinary.js";
 
@@ -233,7 +232,53 @@ const userController = {
       console.error(error);
       res.status(500).json({ message: 'Unexpected error during the password reset process' });
     }
+  },
+
+  // To update online status
+updateOnlineStatus: async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const isOnline = req.body.isOnline;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.isOnline = isOnline;
+    await user.save();
+
+    res.status(200).json({ message: 'Online status updated successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Unexpected error updating online status' });
   }
+},
+
+// Assuming this is in a controller file where User model is imported
+
+getOnlineUsers: async (req, res) => {
+  const { role } = req.params; // Get the role from the request parameters
+
+  try {
+    const onlineUsers = await User.find({
+      role: role,
+      isOnline: true
+    }).select('-password'); // Exclude sensitive information like passwords from the result
+
+    if (onlineUsers.length === 0) {
+      return res.status(404).json({ message: 'No online users found for this role' });
+    }
+
+    res.status(200).json(onlineUsers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'An error occurred while fetching online users' });
+  }
+},
+
+
   
 
    

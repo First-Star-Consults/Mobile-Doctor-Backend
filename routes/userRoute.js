@@ -14,11 +14,14 @@ router.get("/", (req, res) => {
 
 //get users profile
 router.get("/getUsers/role/:role", userController.getProfile);
+//get online users
+router.get('/online-users/:role', userController.getOnlineUsers)
 // Update user profile route
 router.put("/updateProfile/:userId",  userController.upDateprofile);
 
 router.post("/reset-password/:userId", userController.resetPassword);
-// In your routes file (e.g., userRouter.js)
+//update Online Status
+router.post('/updateOnlineStatus/:userId', userController.updateOnlineStatus)
 
 router.post('/forgot-password', userController.forgotPassword);
 router.post('/reset-password-with-token', userController.resetPasswordWithToken);

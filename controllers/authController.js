@@ -126,16 +126,6 @@ const authController = {
               return res.status(500).json({ message: 'Internal Server Error' });
             }
 
-            // Generate session token if the user is a doctor
-            let sessionToken = null;
-            if (user.role === 'doctor') {
-              const doctor = await Doctor.findById(user._id);
-              if (doctor) {
-                sessionToken = generateSessionToken();
-                doctor.sessionToken = sessionToken;
-                await doctor.save();
-              }
-            }
 
             // Prepare the response data
             const responseData = {
@@ -198,15 +188,6 @@ const authController = {
     }
 
     try {
-      // Clear session token for doctor if user is a doctor
-      if (req.user.role === 'doctor') {
-        const doctor = await Doctor.findById(req.user._id);
-        if (doctor) {
-          doctor.sessionToken = null;
-          await doctor.save();
-        }
-      }
-
       // Logout the user
       req.logout((err) => {
         if (err) {

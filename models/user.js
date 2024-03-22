@@ -22,9 +22,12 @@ export const generateSessionToken = () => {
 // User schema (patient, doctor, therapist, etc.)
 const userSchema = new mongoose.Schema({
   profilePhoto: { type: String, default: null },
-  role:{ type: String, required: false },
+  role: { type: String, required: false },
   appropriate: { type: String, default: null },
   username: { type: String, required: true },
+  // Add to your userSchema in the user.js file
+  isOnline: { type: Boolean, default: false },
+  lastActive: { type: Date, default: Date.now },
   password: String,
   resetPasswordToken: String,
   resetPasswordExpires: Date,
@@ -49,11 +52,11 @@ const userSchema = new mongoose.Schema({
 });
 
 // methods for password verification and password change
-userSchema.methods.setPassword = function(oldPassword, newPassword, callback) {
+userSchema.methods.setPassword = function (oldPassword, newPassword, callback) {
   this.setPassword(oldPassword, newPassword, callback);
 };
 
-userSchema.methods.comparePassword = function(password, callback) {
+userSchema.methods.comparePassword = function (password, callback) {
   this.authenticate(password, callback);
 };
 
@@ -90,33 +93,33 @@ passport.use(new GoogleStrategy({
   callbackURL: "https://shielded-beach-02064-bf50e65a75d1.herokuapp.com/api/auth/google/user",
   userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
 },
-async (accessToken, refreshToken, profile, done) => {
-  try {
-    // Try to find the user based on their googleId
-    let user = await User.findOne({ googleId: profile.id });
+  async (accessToken, refreshToken, profile, done) => {
+    try {
+      // Try to find the user based on their googleId
+      let user = await User.findOne({ googleId: profile.id });
 
-    // If the user doesn't exist, create a new user with the profile information
-    if (!user) {
-      user = new User({
-        googleId: profile.id,
-        email: profile._json.email, // Using directly from profile JSON
-        username: profile._json.email, // Assuming username is the email
-        firstName: profile._json.given_name,
-        lastName: profile._json.family_name,
-        role: 'patient', // default role
-        isVerified: true, // default isVerified
-        verificationcode: null, //default value
-        profilePhoto: profile._json.picture // Optional: saving user's Google profile photo
-      });
+      // If the user doesn't exist, create a new user with the profile information
+      if (!user) {
+        user = new User({
+          googleId: profile.id,
+          email: profile._json.email, // Using directly from profile JSON
+          username: profile._json.email, // Assuming username is the email
+          firstName: profile._json.given_name,
+          lastName: profile._json.family_name,
+          role: 'patient', // default role
+          isVerified: true, // default isVerified
+          verificationcode: null, //default value
+          profilePhoto: profile._json.picture // Optional: saving user's Google profile photo
+        });
 
-      await user.save();
+        await user.save();
+      }
+
+      return done(null, user);
+    } catch (error) {
+      return done(error);
     }
-    
-    return done(null, user);
-  } catch (error) {
-    return done(error);
-  }
-}));
+  }));
 
 export default User
 
