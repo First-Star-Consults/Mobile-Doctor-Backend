@@ -9,7 +9,7 @@ const healthProviderControllers = {
   setCredentials: async (req, res) => {
     try {
       const providerId = req.params.providerId;
-      // Extract profile information from request body
+      
       const {
         fullName,
         registrationNumber,
@@ -19,7 +19,7 @@ const healthProviderControllers = {
         address,
         gender,
         about,
-        medicalSpecialty // This should be an object
+        medicalSpecialty 
       } = req.body;
   
       // Find the user by ID
@@ -29,10 +29,16 @@ const healthProviderControllers = {
         return res.status(404).json({ success: false, error: 'User not found' });
       }
   
-      // If medicalSpecialty is provided, convert its name to lowercase
-      if (medicalSpecialty && typeof medicalSpecialty === 'object' && medicalSpecialty.name) {
-        medicalSpecialty.name = medicalSpecialty.name.toLowerCase();
-      }
+      // Convert medicalSpecialty to object if it's a string
+    let medicalSpecialtyObj = medicalSpecialty;
+    if (typeof medicalSpecialty === 'string') {
+      medicalSpecialtyObj = {
+        name: medicalSpecialty.toLowerCase(), // Convert name to lowercase
+        fee: 1000 // Default fee, adjust as needed
+      };
+    } else if (medicalSpecialty && typeof medicalSpecialty === 'object' && medicalSpecialty.name) {
+      medicalSpecialtyObj.name = medicalSpecialty.name.toLowerCase();
+    }
   
       // Update the doctor's profile with the new information
       foundUser.fullName = fullName || foundUser.fullName;
@@ -43,36 +49,13 @@ const healthProviderControllers = {
       foundUser.address = address || foundUser.address;
       foundUser.gender = gender || foundUser.gender;
       foundUser.about = about || foundUser.about;
-      if (medicalSpecialty) {
-        foundUser.medicalSpecialty = medicalSpecialty; // Assigning directly if it exists
+      if (medicalSpecialtyObj) {
+        foundUser.medicalSpecialty = medicalSpecialtyObj; // Assign the object
       }
   
       // Save the updated user profile
-      const updatedDoctor = await foundUser.save(); // Saving the updates and storing in variable
-  
-      res.status(201).json({
-        success: true,
-        message: 'Profile updated successfully',
-        updatedDoctor: updatedDoctor // Sending the updated doctor information
-      });
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      // It's useful to log the actual error message to understand what went wrong
-      res.status(500).json({ success: false, error: 'Error updating profile', errorMessage: error.message });
-    }
-  },
-  
+       await foundUser.save(); // Saving the updates and storing in variable
 
-  uploadCredentialsImages: async (req, res) => {
-    try {
-      const providerId = req.params.providerId;
-      // Find the doctor by ID
-      const foundUser = await Doctor.findById(providerId);
-    
-      if (!foundUser) {
-        return res.status(404).json({ success: false, error: 'Doctor not found' });
-      }
-  
       // Handle file uploads to Cloudinary
       const updateQueries = {};
       const uploadedImages = [];
@@ -100,17 +83,68 @@ const healthProviderControllers = {
       // Update user model with the Cloudinary URLs for all images
       const updatedDoctor = await Doctor.findByIdAndUpdate(providerId, { $set: updateQueries }, { new: true });
   
-      res.status(200).json({
+      res.status(201).json({
         success: true,
-        message: 'Images updated successfully',
+        message: 'Profile and image updated successfully',
+        updatedDoctor: updatedDoctor, // Sending the updated doctor information
         imageUrls: uploadedImages,
-        updatedDoctor
       });
     } catch (error) {
-      console.error('Error updating images:', error);
-      res.status(500).json({ success: false, error: 'Error updating images' });
+      console.error('Error updating profile:', error);
+      // It's useful to log the actual error message to understand what went wrong
+      res.status(500).json({ success: false, error: 'Error updating profile', errorMessage: error.message });
     }
   },
+  
+
+  // uploadCredentialsImages: async (req, res) => {
+  //   try {
+  //     const providerId = req.params.providerId;
+  //     // Find the doctor by ID
+  //     const foundUser = await Doctor.findById(providerId);
+    
+  //     if (!foundUser) {
+  //       return res.status(404).json({ success: false, error: 'Doctor not found' });
+  //     }
+  
+  //     // Handle file uploads to Cloudinary
+  //     const updateQueries = {};
+  //     const uploadedImages = [];
+  
+  //     // Iterate over each file and upload to Cloudinary
+  //     for (const key in req.files) {
+  //       const image = req.files[key];
+  //       const fileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+  //       const imageSize = 1024; // assuming you want to use 1 MB = 1024 KB
+  
+  //       if (!fileTypes.includes(image.mimetype)) {
+  //         return res.status(400).json({ success: false, error: 'Image formats supported: JPG, PNG, JPEG' });
+  //       }
+  
+  //       if (image.size / 1024 > imageSize) { // assuming size is in bytes, you need to convert to KB
+  //         return res.status(400).json({ success: false, error: `Image size should be less than ${imageSize}kb` });
+  //       }
+  
+  //       // Upload to Cloudinary
+  //       const cloudFile = await upload(image.tempFilePath, providerId);
+  //       uploadedImages.push({ [key]: cloudFile.url });
+  //       updateQueries[`images.${key}`] = cloudFile.url;
+  //     }
+  
+  //     // Update user model with the Cloudinary URLs for all images
+  //     const updatedDoctor = await Doctor.findByIdAndUpdate(providerId, { $set: updateQueries }, { new: true });
+  
+  //     res.status(200).json({
+  //       success: true,
+  //       message: 'Images updated successfully',
+  //       imageUrls: uploadedImages,
+  //       updatedDoctor
+  //     });
+  //   } catch (error) {
+  //     console.error('Error updating images:', error);
+  //     res.status(500).json({ success: false, error: 'Error updating images' });
+  //   }
+  // },
   
   
 
