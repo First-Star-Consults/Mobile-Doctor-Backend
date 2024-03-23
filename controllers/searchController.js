@@ -62,7 +62,7 @@ const SearchControllers = {
      
       const doctorsBySpecialty = await Doctor.find({
         medicalSpecialty: { $elemMatch: { name: { $regex: new RegExp(specialty, 'i') } } },
-        // kycVerification: true, 
+        kycVerification: true, 
       });
   
       if (!doctorsBySpecialty.length) {

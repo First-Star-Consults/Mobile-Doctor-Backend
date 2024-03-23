@@ -24,7 +24,6 @@ const doctorSchema = new mongoose.Schema({
     fullName: { type: String, default: null },
     reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Reviews' }],
     approval: { type: Boolean, default: false },
-    onlineStatus: { type: Boolean, default: true },
     medicalSpecialty: {
       name: { type: String },
       fee: { type: Number, default: 1000 }

@@ -355,34 +355,40 @@ getDoctorReviews: async (req, res) => {
 
   // Function to get top-rated doctors
   getTopRatedDoctors: async (req, res) => {
-    try {
-      const topRatedDoctors = await Doctor.aggregate([
-        {
-          $lookup: {
-            from: "reviews", // Assuming your reviews collection is named "reviews"
-            localField: "_id",
-            foreignField: "doctor",
-            as: "reviews"
-          }
-        },
-        {
-          $addFields: {
-            averageRating: { $avg: "$reviews.rating" }
-          }
-        },
-        { $sort: { averageRating: -1 } }, // Sort by averageRating in descending order
-        { $limit: 10 } // You can adjust the limit as per your requirement
-      ]);
+  try {
+    const topRatedDoctors = await Doctor.aggregate([
+      {
+        $match: {
+          kycVerification: true // Only include doctors whose kycVerification is true
+        }
+      },
+      {
+        $lookup: {
+          from: "reviews", // Assuming your reviews collection is named "reviews"
+          localField: "_id",
+          foreignField: "doctor",
+          as: "reviews"
+        }
+      },
+      {
+        $addFields: {
+          averageRating: { $avg: "$reviews.rating" }
+        }
+      },
+      { $sort: { averageRating: -1 } }, // Sort by averageRating in descending order
+      { $limit: 10 } // You can adjust the limit as per your requirement
+    ]);
 
-      res.status(200).json({
-        success: true,
-        data: topRatedDoctors
-      });
-    } catch (error) {
-      console.error("Error fetching top rated doctors:", error);
-      res.status(500).json({ success: false, message: "Error fetching top rated doctors" });
-    }
-  },
+    res.status(200).json({
+      success: true,
+      data: topRatedDoctors
+    });
+  } catch (error) {
+    console.error("Error fetching top rated doctors:", error);
+    res.status(500).json({ success: false, message: "Error fetching top rated doctors" });
+  }
+},
+
 
   getAllLaboratories: async (req, res) => {
     try {
@@ -413,12 +419,22 @@ getDoctorReviews: async (req, res) => {
 
   getAllDoctors: async (req, res) => {
     try {
-      const doctors = await Doctor.find({}); // Retrieves all therapists
+      const doctors = await Doctor.aggregate([
+        {
+          $match: {
+            kycVerification: true // Only include doctors whose kycVerification is true
+          }
+        }
+      ]);
+      
+      // Send the response outside the aggregation pipeline
       res.status(200).json({ success: true, doctors });
     } catch (error) {
+      console.error("Error fetching doctors:", error); // Added console.error for better error tracking
       res.status(500).json({ success: false, message: 'Error fetching doctors', error });
     }
   },
+  
 
 
 
