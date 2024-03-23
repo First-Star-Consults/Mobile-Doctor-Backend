@@ -6,9 +6,9 @@ import { upload } from "../config/cloudinary.js";
 
 const healthProviderControllers = {
 
-
   setCredentials: async (req, res) => {
     try {
+      const providerId = req.params.providerId;
       // Extract profile information from request body
       const {
         fullName,
@@ -19,76 +19,184 @@ const healthProviderControllers = {
         address,
         gender,
         about,
-        medicalSpecialty, 
-        medicalOfficer, 
+        medicalSpecialty // This should be an object
       } = req.body;
-
-      const providerId = req.params.providerId;
-
+  
       // Find the user by ID
       const foundUser = await Doctor.findById(providerId);
-
+  
       if (!foundUser) {
         return res.status(404).json({ success: false, error: 'User not found' });
       }
-
-      // Update the user's profile
-      foundUser.fullName = fullName;
-      foundUser.registrationNumber = registrationNumber;
-      foundUser.registrationYear = registrationYear;
-      foundUser.registrationCouncil = registrationCouncil;
-      foundUser.country = country;
-      foundUser.address = address;
-      foundUser.gender = gender;
-      foundUser.about = about;
-      foundUser.medicalSpecialty = medicalSpecialty; 
-      foundUser.medicalOfficer = medicalOfficer; 
-
+  
+      // If medicalSpecialty is provided, convert its name to lowercase
+      if (medicalSpecialty && typeof medicalSpecialty === 'object' && medicalSpecialty.name) {
+        medicalSpecialty.name = medicalSpecialty.name.toLowerCase();
+      }
+  
+      // Update the doctor's profile with the new information
+      foundUser.fullName = fullName || foundUser.fullName;
+      foundUser.registrationNumber = registrationNumber || foundUser.registrationNumber;
+      foundUser.registrationYear = registrationYear || foundUser.registrationYear;
+      foundUser.registrationCouncil = registrationCouncil || foundUser.registrationCouncil;
+      foundUser.country = country || foundUser.country;
+      foundUser.address = address || foundUser.address;
+      foundUser.gender = gender || foundUser.gender;
+      foundUser.about = about || foundUser.about;
+      if (medicalSpecialty) {
+        foundUser.medicalSpecialty = medicalSpecialty; // Assigning directly if it exists
+      }
+  
       // Save the updated user profile
-      const updatedProvider = await foundUser.save();
+      const updatedDoctor = await foundUser.save(); // Saving the updates and storing in variable
+  
+      res.status(201).json({
+        success: true,
+        message: 'Profile updated successfully',
+        updatedDoctor: updatedDoctor // Sending the updated doctor information
+      });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      // It's useful to log the actual error message to understand what went wrong
+      res.status(500).json({ success: false, error: 'Error updating profile', errorMessage: error.message });
+    }
+  },
+  
 
+  uploadCredentialsImages: async (req, res) => {
+    try {
+      const providerId = req.params.providerId;
+      // Find the doctor by ID
+      const foundUser = await Doctor.findById(providerId);
+    
+      if (!foundUser) {
+        return res.status(404).json({ success: false, error: 'Doctor not found' });
+      }
+  
       // Handle file uploads to Cloudinary
       const updateQueries = {};
       const uploadedImages = [];
-
+  
       // Iterate over each file and upload to Cloudinary
       for (const key in req.files) {
         const image = req.files[key];
         const fileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-        const imageSize = 1000024;
-
+        const imageSize = 1024; // assuming you want to use 1 MB = 1024 KB
+  
         if (!fileTypes.includes(image.mimetype)) {
           return res.status(400).json({ success: false, error: 'Image formats supported: JPG, PNG, JPEG' });
         }
-
-        if (image.size / 1000024 > imageSize) {
+  
+        if (image.size / 1024 > imageSize) { // assuming size is in bytes, you need to convert to KB
           return res.status(400).json({ success: false, error: `Image size should be less than ${imageSize}kb` });
         }
-
-        // Pass providerId as the folder name
+  
+        // Upload to Cloudinary
         const cloudFile = await upload(image.tempFilePath, providerId);
-
-        // Store the Cloudinary URL and construct update query for each image
         uploadedImages.push({ [key]: cloudFile.url });
         updateQueries[`images.${key}`] = cloudFile.url;
       }
-
+  
       // Update user model with the Cloudinary URLs for all images
-      const updateQuery = { $set: updateQueries };
-      const updatedDoctor = await Doctor.findByIdAndUpdate(providerId, updateQuery, { new: true });
-
-      res.status(201).json({
+      const updatedDoctor = await Doctor.findByIdAndUpdate(providerId, { $set: updateQueries }, { new: true });
+  
+      res.status(200).json({
         success: true,
-        message: 'Profile information and images updated successfully',
-        updatedProvider,
+        message: 'Images updated successfully',
         imageUrls: uploadedImages,
-        updatedDoctor,
+        updatedDoctor
       });
     } catch (error) {
-      console.error('Error updating profile and images:', error);
-      res.status(500).json({ success: false, error: 'Error updating profile and images' });
+      console.error('Error updating images:', error);
+      res.status(500).json({ success: false, error: 'Error updating images' });
     }
   },
+  
+  
+
+
+  // setCredentials: async (req, res) => {
+  //   try {
+  //     // Extract profile information from request body
+  //     const {
+  //       fullName,
+  //       registrationNumber,
+  //       registrationYear,
+  //       registrationCouncil,
+  //       country,
+  //       address,
+  //       gender,
+  //       about,
+  //       medicalSpecialty, 
+  //       medicalOfficer, 
+  //     } = req.body;
+
+  //     const providerId = req.params.providerId;
+
+  //     // Find the user by ID
+  //     const foundUser = await Doctor.findById(providerId);
+
+  //     if (!foundUser) {
+  //       return res.status(404).json({ success: false, error: 'User not found' });
+  //     }
+
+  //     // Update the user's profile
+  //     foundUser.fullName = fullName;
+  //     foundUser.registrationNumber = registrationNumber;
+  //     foundUser.registrationYear = registrationYear;
+  //     foundUser.registrationCouncil = registrationCouncil;
+  //     foundUser.country = country;
+  //     foundUser.address = address;
+  //     foundUser.gender = gender;
+  //     foundUser.about = about;
+  //     foundUser.medicalSpecialty = medicalSpecialty; 
+  //     foundUser.medicalOfficer = medicalOfficer;
+
+  //     // Save the updated user profile
+  //     const updatedProvider = await foundUser.save();
+
+  //     // Handle file uploads to Cloudinary
+  //     const updateQueries = {};
+  //     const uploadedImages = [];
+
+  //     // Iterate over each file and upload to Cloudinary
+  //     for (const key in req.files) {
+  //       const image = req.files[key];
+  //       const fileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+  //       const imageSize = 1000024;
+
+  //       if (!fileTypes.includes(image.mimetype)) {
+  //         return res.status(400).json({ success: false, error: 'Image formats supported: JPG, PNG, JPEG' });
+  //       }
+
+  //       if (image.size / 1000024 > imageSize) {
+  //         return res.status(400).json({ success: false, error: `Image size should be less than ${imageSize}kb` });
+  //       }
+
+  //       // Pass providerId as the folder name
+  //       const cloudFile = await upload(image.tempFilePath, providerId);
+
+  //       // Store the Cloudinary URL and construct update query for each image
+  //       uploadedImages.push({ [key]: cloudFile.url });
+  //       updateQueries[`images.${key}`] = cloudFile.url;
+  //     }
+
+  //     // Update user model with the Cloudinary URLs for all images
+  //     const updateQuery = { $set: updateQueries };
+  //     const updatedDoctor = await Doctor.findByIdAndUpdate(providerId, updateQuery, { new: true });
+
+  //     res.status(201).json({
+  //       success: true,
+  //       message: 'Profile information and images updated successfully',
+  //       updatedProvider,
+  //       imageUrls: uploadedImages,
+  //       updatedDoctor,
+  //     });
+  //   } catch (error) {
+  //     console.error('Error updating profile and images:', error);
+  //     res.status(500).json({ success: false, error: 'Error updating profile and images' });
+  //   }
+  // },
 
   
 
@@ -311,8 +419,6 @@ getDoctorReviews: async (req, res) => {
       res.status(500).json({ success: false, message: 'Error fetching doctors', error });
     }
   },
-
-  
 
 
 

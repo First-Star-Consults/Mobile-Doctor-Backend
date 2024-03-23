@@ -5,7 +5,8 @@ const router = express.Router();
 
 
 
-router.post('/credentials/:providerId', healthProviderControllers.setCredentials);
+router.post('/credentialsDetails/:providerId', healthProviderControllers.setCredentials);
+router.post('/uploadCredentialsImages/:providerId', healthProviderControllers.uploadCredentialsImages);
 // Route to add a review for a doctor
 router.post('/:doctorId/reviews', healthProviderControllers.addReview);
 

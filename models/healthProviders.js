@@ -22,21 +22,18 @@ const locationSchema = new mongoose.Schema({
 // Doctor schema
 const doctorSchema = new mongoose.Schema({
     fullName: { type: String, default: null },
-    medicalOfficer: { type: Boolean, default: false },
     reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Reviews' }],
     approval: { type: Boolean, default: false },
     onlineStatus: { type: Boolean, default: true },
-    baseConsultationFee: { type: Number, default: 1000 },
-    medicalSpecialty: [{
+    medicalSpecialty: {
       name: { type: String },
-      fee: { type: Number, default: 3000 }
-  }],
+      fee: { type: Number, default: 1000 }
+  },
     images: {
-      profilePhoto: { type: String },
       governmentIdfront: { type: String },
       governmentIdback: { type: String },
-      workLicense: { type: String },
-      qualificationCert: { type: String },
+      license: { type: String },
+      certificate: { type: String },
       educationQualification: { type: String },
     },
     registrationNumber: String,

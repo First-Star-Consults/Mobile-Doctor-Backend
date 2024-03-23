@@ -527,13 +527,21 @@ startConsultation: async (req, res) => {
       return res.status(404).json({ message: 'Patient or Doctor not found' });
     }
 
-    let consultationFee = doctor.baseConsultationFee;
+    // Initialize consultationFee with a default value
+    let consultationFee = 1000; // Default fee if no specialty matches
+
+    // Log the specialties for debugging
+    console.log("Doctor's Specialties:", doctor.medicalSpecialty);
+
+    // Override consultationFee if a matching specialty is found
     if (specialty) {
-      const specialtyInfo = doctor.medicalSpecialty.find(s => s.name === specialty);
+      const specialtyInfo = doctor.medicalSpecialty.find(s => s.name.toLowerCase() === specialty.toLowerCase());
       if (specialtyInfo) {
         consultationFee = specialtyInfo.fee;
+      } else {
+        console.log("Specified specialty not found in doctor's specialties. Using default fee.");
       }
-    }
+    };
 
     if (patient.walletBalance < consultationFee) {
       return res.status(400).json({ message: 'Insufficient wallet balance for this consultation.' });
