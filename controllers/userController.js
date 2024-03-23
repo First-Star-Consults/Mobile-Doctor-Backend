@@ -5,41 +5,89 @@ import { upload } from "../config/cloudinary.js";
 
 const userController = {
 
-  // To get user profile
-  getProfile: async (req, res) => {
-    try {
-      const userRole = req.params.role; 
-  
-      // Query the database for users with the specified role
-      const users = await User.find({ role: userRole });
-  
-      if (!users || users.length === 0) {
-        return res.status(404).json({ message: 'No users found with the specified role.' });
-      }
-  
-      // Map over the array of users to create a new array of user profiles
-      const userProfiles = users.map(user => ({
-        profilePhoto: user.profilePhoto,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        subRole: user.subRole,
-        phone: user.phone,
-        email: user.email,
-        gender: user.gender,
-        age: user.age,
-        rating: user.rating,
-        country: user.country,
-        state: user.state,
-        emailVerification: user.isVerified
-      }));
-  
-      return res.status(200).json({ message: 'User profiles retrieved successfully', users: userProfiles });
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ message: 'Unexpected error during profile retrieval' });
+
+ // To get user profile by userId
+getProfile: async (req, res) => {
+  try {
+    const userId = req.params.userId; // Assuming you're passing userId as a route parameter
+
+    // Query the database for the user with the specified userId
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
     }
-  },
+
+    // Base user profile information
+    let userProfile = {
+      profilePhoto: user.profilePhoto,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      phone: user.phone,
+      email: user.email,
+      gender: user.gender,
+      country: user.country,
+      state: user.state,
+      emailVerification: user.isVerified
+    };
+
+    // Fetch additional details based on user's role
+    switch (user.role) {
+      case 'doctor':
+        const doctorDetails = await Doctor.findById(user.doctor).lean();
+        if (doctorDetails) {
+          userProfile.doctorDetails = {
+            fullName: doctorDetails.fullName,
+            approval: doctorDetails.approval,
+            medicalSpecialty: doctorDetails.medicalSpecialty,
+            kycVerification: doctorDetails.kycVerification,
+            // Add other doctor-specific details as needed
+          };
+        }
+        break;
+      case 'therapist':
+        const therapistDetails = await Therapist.findById(user.therapist).lean();
+        if (therapistDetails) {
+          userProfile.therapistDetails = {
+            name: therapistDetails.name,
+            kycVerification: therapistDetails.kycVerification,
+            location: therapistDetails.location,
+            // Add other therapist-specific details as needed
+          };
+        }
+        break;
+      case 'pharmacy':
+        const pharmacyDetails = await Pharmacy.findById(user.pharmacy).lean();
+        if (pharmacyDetails) {
+          userProfile.pharmacyDetails = {
+            name: pharmacyDetails.name,
+            kycVerification: pharmacyDetails.kycVerification,
+            location: pharmacyDetails.location,
+            // Add other pharmacy-specific details as needed
+          };
+        }
+        break;
+      case 'laboratory':
+        const laboratoryDetails = await Laboratory.findById(user.laboratory).lean();
+        if (laboratoryDetails) {
+          userProfile.laboratoryDetails = {
+            name: laboratoryDetails.name,
+            location: laboratoryDetails.location,
+            // Add other laboratory-specific details as needed
+          };
+        }
+        break;
+    }
+
+    return res.status(200).json({ message: 'User profile retrieved successfully', userProfile });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Unexpected error during profile retrieval' });
+  }
+},
+
+
   
 
   //To update user profile

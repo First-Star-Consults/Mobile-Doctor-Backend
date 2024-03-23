@@ -13,7 +13,7 @@ router.get("/", (req, res) => {
 
 
 //get users profile
-router.get("/getUsers/role/:role", userController.getProfile);
+router.get("/profile/:userId", userController.getProfile);
 //get online users
 router.get('/online-users/:role', userController.getOnlineUsers)
 // Update user profile route
