@@ -142,13 +142,7 @@ const authController = {
               },
             };
 
-            // Add sessionToken to the response if available
-            if (sessionToken) {
-              responseData.user.sessionTokenInfo = {
-                token: sessionToken,
-                message: "I won use dis one like a logic to know doctors that are online"
-              };
-            }
+            
 
             // Include kycVerification for health providers
             if (['doctor', 'therapist', 'pharmacy', 'laboratory'].includes(user.role)) {
