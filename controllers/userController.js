@@ -1,5 +1,6 @@
 // userController.js
 import User from "../models/user.js";
+import {Doctor, Pharmacy, Laboratory, Therapist} from "../models/healthProviders.js";
 // import nodemailer from 'nodemailer';
 import { upload } from "../config/cloudinary.js";
 
@@ -7,18 +8,17 @@ const userController = {
 
 
  // To get user profile by userId
-getProfile: async (req, res) => {
+ 
+ getProfile: async (req, res) => {
   try {
-    const userId = req.params.userId; // Assuming you're passing userId as a route parameter
-
-    // Query the database for the user with the specified userId
+    const userId = req.params.userId; // Assuming userId is passed as a route parameter
     const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    // Base user profile information
+    // Base user profile
     let userProfile = {
       profilePhoto: user.profilePhoto,
       firstName: user.firstName,
@@ -32,52 +32,26 @@ getProfile: async (req, res) => {
       emailVerification: user.isVerified
     };
 
-    // Fetch additional details based on user's role
+    // Attempt to fetch additional details based on the user's role
+    let providerDetails = null;
     switch (user.role) {
       case 'doctor':
-        const doctorDetails = await Doctor.findById(user.doctor).lean();
-        if (doctorDetails) {
-          userProfile.doctorDetails = {
-            fullName: doctorDetails.fullName,
-            approval: doctorDetails.approval,
-            medicalSpecialty: doctorDetails.medicalSpecialty,
-            kycVerification: doctorDetails.kycVerification,
-            // Add other doctor-specific details as needed
-          };
-        }
+        providerDetails = await Doctor.findById(userId).select('fullName approval medicalSpecialty kycVerification about').lean();
         break;
       case 'therapist':
-        const therapistDetails = await Therapist.findById(user.therapist).lean();
-        if (therapistDetails) {
-          userProfile.therapistDetails = {
-            name: therapistDetails.name,
-            kycVerification: therapistDetails.kycVerification,
-            location: therapistDetails.location,
-            // Add other therapist-specific details as needed
-          };
-        }
+        providerDetails = await Therapist.findById(userId).select('name kycVerification location').lean();
         break;
       case 'pharmacy':
-        const pharmacyDetails = await Pharmacy.findById(user.pharmacy).lean();
-        if (pharmacyDetails) {
-          userProfile.pharmacyDetails = {
-            name: pharmacyDetails.name,
-            kycVerification: pharmacyDetails.kycVerification,
-            location: pharmacyDetails.location,
-            // Add other pharmacy-specific details as needed
-          };
-        }
+        providerDetails = await Pharmacy.findById(userId).select('name kycVerification location').lean();
         break;
       case 'laboratory':
-        const laboratoryDetails = await Laboratory.findById(user.laboratory).lean();
-        if (laboratoryDetails) {
-          userProfile.laboratoryDetails = {
-            name: laboratoryDetails.name,
-            location: laboratoryDetails.location,
-            // Add other laboratory-specific details as needed
-          };
-        }
+        providerDetails = await Laboratory.findById(userId).select('name location').lean();
         break;
+    }
+
+    // Append the fetched details to the userProfile object
+    if (providerDetails) {
+      userProfile[`${user.role}Details`] = providerDetails;
     }
 
     return res.status(200).json({ message: 'User profile retrieved successfully', userProfile });
@@ -86,6 +60,11 @@ getProfile: async (req, res) => {
     return res.status(500).json({ message: 'Unexpected error during profile retrieval' });
   }
 },
+
+
+
+
+
 
 
   
