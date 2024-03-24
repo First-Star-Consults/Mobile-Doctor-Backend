@@ -168,6 +168,66 @@ const adminController = {
     }
   },
 
+  recommendDoctor: async (req, res) => {
+    try {
+        const { id } = req.params; // ID from the route parameters
+
+        // First, confirm the user with this ID has a role of 'doctor'
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        if (user.role !== 'doctor') {
+            return res.status(404).json({ message: "This user is not a doctor." });
+        }
+
+        // Since the User is a doctor, proceed to update the Doctor document using the same ID
+        // Assuming the Doctor schema is separate but uses the same ID as the User schema for doctor roles
+        const updatedDoctor = await Doctor.findByIdAndUpdate(
+            id, // Use the ID directly since Doctor and User share the same ID
+            { $set: { isRecommended: true } },
+            { new: true }
+        );
+
+        if (!updatedDoctor) {
+            return res.status(404).json({ message: "Doctor profile could not be updated." });
+        }
+
+        return res.status(200).json({
+            message: "Doctor recommended successfully.",
+            doctor: updatedDoctor
+        });
+    } catch (error) {
+        console.error("Error recommending doctor:", error);
+        res.status(500).json({ message: "Error recommending doctor", error: error.message });
+    }
+},
+
+  
+  
+  
+  
+
+
+  getRecommendedDoctors: async (req, res) => {
+    try {
+      // Find all doctors that are recommended
+      const recommendedDoctors = await Doctor.find({ isRecommended: true })
+        .select('fullName images.profilePhoto medicalSpecialty')
+        .lean(); // Add .lean() for performance if you don't need Mongoose documents
+  
+      res.status(200).json({
+        message: "Recommended doctors retrieved successfully.",
+        recommendedDoctors
+      });
+    } catch (error) {
+      console.error("Error retrieving recommended doctors:", error);
+      res.status(500).json({ message: "Error retrieving recommended doctors", error: error.message });
+    }
+  },
+  
+
   
   
   

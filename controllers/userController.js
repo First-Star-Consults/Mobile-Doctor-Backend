@@ -36,7 +36,17 @@ const userController = {
     let providerDetails = null;
     switch (user.role) {
       case 'doctor':
-        providerDetails = await Doctor.findById(userId).select('fullName approval medicalSpecialty kycVerification about').lean();
+        const doctorDetails = await Doctor.findById(userId).select('approval medicalSpecialty kycVerification about images').lean();
+        if (doctorDetails) {
+          userProfile = {
+            ...userProfile, // Spread the existing userProfile fields
+            approval: doctorDetails.approval,
+            medicalSpecialty: doctorDetails.medicalSpecialty,
+            kycVerification: doctorDetails.kycVerification,
+            about: doctorDetails.about,
+            profilePhoto: doctorDetails.images.profilePhoto // Get the profile photo from the images object
+          };
+        }
         break;
       case 'therapist':
         providerDetails = await Therapist.findById(userId).select('name kycVerification location').lean();

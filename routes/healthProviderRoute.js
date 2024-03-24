@@ -29,4 +29,7 @@ router.get('/all-doctors', healthProviderControllers.getAllDoctors);
 
 
 
+
+
+
 export default router;

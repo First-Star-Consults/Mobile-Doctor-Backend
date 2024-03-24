@@ -9,6 +9,10 @@ router.post('/updateKycVerificationStatus/adminId', adminController.updateKycVer
 router.post('/updateConsultationFees/:userId', adminController.updateConsultationFees);
 router.post('/setFeeForAllSpecialties/:userId', adminController.setFeeForAllSpecialties);
 
+// In your routes file
+router.post('/recommend-doctor/:id', adminController.recommendDoctor);
+router.get('/recommended', adminController.getRecommendedDoctors);
+
 
 
 
