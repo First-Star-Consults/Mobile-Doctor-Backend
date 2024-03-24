@@ -680,6 +680,16 @@ getActiveSession: async (req, res) => {
   const { patientId, doctorId } = req.params;
 
   try {
+    // First, find the conversation ID for the patient and doctor
+    const conversation = await Conversation.findOne({
+      participants: { $all: [patientId, doctorId] }
+    }).select('_id');
+
+    if (!conversation) {
+      return res.status(404).json({ message: 'Conversation not found.' });
+    }
+
+    // Then, find the active session
     const activeSession = await ConsultationSession.findOne({
       patient: patientId,
       doctor: doctorId,
@@ -695,12 +705,14 @@ getActiveSession: async (req, res) => {
     // Fetch the Doctor document to access the profilePhoto within the images object
     const doctorInfo = await Doctor.findById(doctorId).select('images.profilePhoto -_id');
 
+    // Return the session info including the conversation ID
     res.status(200).json({
       sessionId: activeSession._id,
+      conversationId: conversation._id, // This is the new line to include the conversation ID
       patientFirstName: activeSession.patient.firstName,
       patientLastName: activeSession.patient.lastName,
       patientProfilePhoto: activeSession.patient.profilePhoto,
-      doctorProfilePhoto: doctorInfo ? doctorInfo.images.profilePhoto : null, // Accessing nested profilePhoto
+      doctorProfilePhoto: doctorInfo ? doctorInfo.images.profilePhoto : null,
       startTime: activeSession.startTime,
     });
   } catch (error) {
@@ -708,6 +720,7 @@ getActiveSession: async (req, res) => {
     res.status(500).json({ message: 'Failed to retrieve active session.', error: error.message });
   }
 },
+
 
 
 
