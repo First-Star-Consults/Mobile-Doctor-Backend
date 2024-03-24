@@ -6,14 +6,15 @@ import { Doctor, Therapist, Pharmacy, Laboratory } from "../models/healthProvide
 import determineRole from "../utils/determinUserRole.js";
 // import { sendVerificationEmail } from "../utils/nodeMailer.js";
 import { generateVerificationCode } from "../utils/verficationCodeGenerator.js";
-import { generateSessionToken } from '../models/user.js';
+// import { generateSessionToken } from '../models/user.js';
 import { chargePatient, verifyTransaction, initiateTransfer, createTransferRecipient } from "../config/paymentService.js";
 import { Transaction } from "../models/services.js";
 import ConsultationSession from '../models/consultationModel.js';
+import Conversation from '../models/conversationModel.js';
 
 //i am wondering why am getting 500 when i from heroku
 
-const verificationcode = generateVerificationCode()
+const verificationcode = generateVerificationCode();
 
 
 const authController = {
@@ -496,82 +497,173 @@ getPendingWithdrawals: async (req, res) => {
 },
 
 
+// startConsultation: async (req, res) => {
+//   const { patientId, doctorId, specialty } = req.body;
+
+//   try {
+//     // First, check if there is an existing active session for this patient and doctor
+//     const existingSession = await ConsultationSession.findOne({
+//       patient: patientId,
+//       doctor: doctorId,
+//       status: { $in: ['scheduled', 'in-progress'] }
+//     });
+
+//     // If an existing active session is found, return a message indicating so
+//     if (existingSession) {
+//       return res.status(400).json({
+//         message: "An active session already exists for this patient and doctor. Please complete or cancel the existing session before starting a new one."
+//       });
+//     }
+
+//     const patient = await User.findById(patientId);
+//     const doctor = await Doctor.findById(doctorId);
+
+//     if (!patient || !doctor) {
+//       return res.status(404).json({ message: 'Patient or Doctor not found' });
+//     }
+
+//     // Initialize consultationFee with a default value
+//     let consultationFee = 1000; // Default fee if no specialty matches
+
+//     // Log the specialties for debugging
+//     console.log("Doctor's Specialties:", doctor.medicalSpecialty);
+
+//     // Override consultationFee if a matching specialty is found
+//     if (specialty) {
+//       const specialtyInfo = doctor.medicalSpecialty.find(s => s.name.toLowerCase() === specialty.toLowerCase());
+//       if (specialtyInfo) {
+//         consultationFee = specialtyInfo.fee;
+//       } else {
+//         console.log("Specified specialty not found in doctor's specialties. Using default fee.");
+//       }
+//     };
+
+//     if (patient.walletBalance < consultationFee) {
+//       return res.status(400).json({ message: 'Insufficient wallet balance for this consultation.' });
+//     }
+
+//     // Proceed to deduct consultation fee from patient's wallet and update wallet balance
+//     patient.walletBalance -= consultationFee;
+//     await patient.save();
+
+//     // Record the transaction as held in escrow
+// const transaction = new Transaction({
+//   user: patientId,
+//   doctor: doctorId,
+//   type: 'consultation fee',
+//   status: 'success',
+//   escrowStatus: 'held', // Make sure this is set correctly
+//   amount: consultationFee,
+// });
+// await transaction.save();
+
+
+//     // Create and save the new consultation session
+//     const newSession = await new ConsultationSession({
+//       doctor: doctorId,
+//       patient: patientId,
+//       status: 'scheduled',
+//       escrowTransaction: transaction._id,
+//       startTime: new Date(),
+//       // Include additional session details as necessary
+//     }).save();
+
+//     // Return success response with session and transaction details
+//     res.status(200).json({
+//       message: 'New consultation session started successfully.',
+//       session: newSession,
+//       transaction: transaction
+//     });
+//   } catch (error) {
+//     console.error('Failed to start consultation:', error);
+//     res.status(500).json({ message: 'Error starting consultation', error: error.toString() });
+//   }
+// },
+
 startConsultation: async (req, res) => {
   const { patientId, doctorId, specialty } = req.body;
 
   try {
-    // First, check if there is an existing active session for this patient and doctor
+    // Check if there is an existing active session for this patient and doctor
     const existingSession = await ConsultationSession.findOne({
       patient: patientId,
       doctor: doctorId,
       status: { $in: ['scheduled', 'in-progress'] }
     });
 
-    // If an existing active session is found, return a message indicating so
+    // If an existing active session is found, indicate that a new session can't be started
     if (existingSession) {
       return res.status(400).json({
         message: "An active session already exists for this patient and doctor. Please complete or cancel the existing session before starting a new one."
       });
     }
 
+    // Ensure both patient and doctor exist
     const patient = await User.findById(patientId);
     const doctor = await Doctor.findById(doctorId);
-
     if (!patient || !doctor) {
       return res.status(404).json({ message: 'Patient or Doctor not found' });
     }
 
-    // Initialize consultationFee with a default value
-    let consultationFee = 1000; // Default fee if no specialty matches
+     // Initialize consultationFee with the default value from doctor.medicalSpecialty
+     let consultationFee = doctor.medicalSpecialty.fee; // Use the default fee
+     // Convert consultationFee to a Number to ensure correct data type
+      consultationFee = Number(consultationFee);
 
-    // Log the specialties for debugging
-    console.log("Doctor's Specialties:", doctor.medicalSpecialty);
-
-    // Override consultationFee if a matching specialty is found
-    if (specialty) {
-      const specialtyInfo = doctor.medicalSpecialty.find(s => s.name.toLowerCase() === specialty.toLowerCase());
-      if (specialtyInfo) {
-        consultationFee = specialtyInfo.fee;
-      } else {
-        console.log("Specified specialty not found in doctor's specialties. Using default fee.");
+      if (isNaN(consultationFee)) {
+        return res.status(400).json({ message: 'Invalid consultation fee.' });
       }
-    };
+      
+     console.log(consultationFee);
+ 
 
+    // Check patient's wallet balance
     if (patient.walletBalance < consultationFee) {
       return res.status(400).json({ message: 'Insufficient wallet balance for this consultation.' });
     }
 
-    // Proceed to deduct consultation fee from patient's wallet and update wallet balance
+    // Deduct consultation fee from patient's wallet
     patient.walletBalance -= consultationFee;
     await patient.save();
 
     // Record the transaction as held in escrow
-const transaction = new Transaction({
-  user: patientId,
-  doctor: doctorId,
-  type: 'consultation fee',
-  status: 'success',
-  escrowStatus: 'held', // Make sure this is set correctly
-  amount: consultationFee,
-});
-await transaction.save();
+    const transaction = new Transaction({
+      user: patientId,
+      doctor: doctorId,
+      type: 'consultation fee',
+      status: 'success',
+      escrowStatus: 'held',
+      amount: consultationFee,
+    });
+    await transaction.save();
 
+    // Find or create a conversation between patient and doctor
+    let conversation = await Conversation.findOne({
+      participants: { $all: [patientId, doctorId] }
+    });
+    if (!conversation) {
+      conversation = new Conversation({
+        participants: [patientId, doctorId]
+      });
+      await conversation.save();
+    }
 
-    // Create and save the new consultation session
-    const newSession = await new ConsultationSession({
+    // Create the consultation session
+    const newSession = new ConsultationSession({
       doctor: doctorId,
       patient: patientId,
       status: 'scheduled',
       escrowTransaction: transaction._id,
       startTime: new Date(),
-      // Include additional session details as necessary
-    }).save();
+      // You can add more details to the session here
+    });
+    await newSession.save();
 
-    // Return success response with session and transaction details
+    // Return success response with session details and conversation ID
     res.status(200).json({
       message: 'New consultation session started successfully.',
       session: newSession,
-      transaction: transaction
+      conversationId: conversation._id, // Include the conversation ID in the response
     });
   } catch (error) {
     console.error('Failed to start consultation:', error);
@@ -581,36 +673,42 @@ await transaction.save();
 
 
 
+
 getActiveSession: async (req, res) => {
   const { patientId, doctorId } = req.params;
 
   try {
-    // Find the most recent active session for the specified patient and doctor
     const activeSession = await ConsultationSession.findOne({
       patient: patientId,
       doctor: doctorId,
       status: { $in: ['scheduled', 'in-progress'] }
     })
-    .sort({ createdAt: -1 }) // Sort by creation date to get the most recent session
-    .populate('patient', 'firstName lastName')
-    .populate('doctor', 'fullName'); // Assuming you want to include doctor's name
+    .sort({ createdAt: -1 })
+    .populate('patient', 'firstName lastName profilePhoto');
 
     if (!activeSession) {
       return res.status(404).json({ message: 'Active session not found.' });
     }
 
+    // Fetch the Doctor document to access the profilePhoto within the images object
+    const doctorInfo = await Doctor.findById(doctorId).select('images.profilePhoto -_id');
+
     res.status(200).json({
-      sessionId: activeSession._id, // This is the correct sessionId directly from the database
+      sessionId: activeSession._id,
       patientFirstName: activeSession.patient.firstName,
       patientLastName: activeSession.patient.lastName,
-      doctorName: activeSession.doctor.fullName, // Included doctor's name in response
-      startTime: activeSession.startTime
+      patientProfilePhoto: activeSession.patient.profilePhoto,
+      doctorProfilePhoto: doctorInfo ? doctorInfo.images.profilePhoto : null, // Accessing nested profilePhoto
+      startTime: activeSession.startTime,
     });
   } catch (error) {
     console.error('Error retrieving active session:', error);
     res.status(500).json({ message: 'Failed to retrieve active session.', error: error.message });
   }
 },
+
+
+
 
 
 
@@ -666,31 +764,54 @@ cancelConsultation: async (req, res) => {
 
 
 completeConsultation: async (req, res) => {
-  const { sessionId } = req.body; 
+  const { sessionId } = req.body;
+  let consultationComplete = false; // Initialize the flag as false
 
-  const session = await ConsultationSession.findById(sessionId);
-  if (!session) {
-    return res.status(404).json({ message: 'Consultation session not found' });
+  try {
+    const session = await ConsultationSession.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ message: 'Consultation session not found' });
+    }
+
+    // Check if the session is already completed to avoid repeated completions
+    if (session.status === 'completed') {
+      return res.status(400).json({ message: 'Consultation session is already marked as completed.' });
+    }
+
+    // Mark session as completed
+    session.status = 'completed';
+    session.endTime = new Date(); // Mark the end time
+    await session.save();
+
+    // Now release the escrow to the doctor
+    const transaction = await Transaction.findById(session.escrowTransaction);
+    if (transaction && transaction.escrowStatus === 'held') {
+      const doctor = await User.findById(session.doctor);
+      if (doctor) {
+        doctor.walletBalance += transaction.amount; // Release funds to the doctor
+        await doctor.save();
+
+        transaction.escrowStatus = 'released'; // Update transaction status
+        await transaction.save();
+        consultationComplete = true; // Set the flag to true since all steps are completed successfully
+      }
+    }
+
+    res.status(200).json({ 
+      message: 'Consultation completed, funds released to doctor', 
+      consultationComplete: consultationComplete 
+    });
+  } catch (error) {
+    console.error('Error during consultation completion:', error);
+    // In case of any error, the consultationComplete remains false
+    res.status(500).json({ 
+      message: 'Error completing consultation', 
+      error: error.toString(), 
+      consultationComplete: consultationComplete 
+    });
   }
-
-  // Mark session as completed
-  session.status = 'completed';
-  session.endTime = new Date(); // Mark the end time
-  await session.save();
-
-  // Now release the escrow to the doctor
-  const transaction = await Transaction.findById(session.escrowTransaction);
-  if (transaction && transaction.escrowStatus === 'held') {
-    const doctor = await User.findById(session.doctor);
-    doctor.walletBalance += transaction.amount; // Release funds to the doctor
-    await doctor.save();
-
-    transaction.escrowStatus = 'released'; // Update transaction status
-    await transaction.save();
-  }
-
-  res.status(200).json({ message: 'Consultation completed, funds released to doctor' });
 },
+
 
 
 

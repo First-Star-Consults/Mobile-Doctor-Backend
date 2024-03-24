@@ -6,27 +6,7 @@ import { Prescription } from '../models/services.js';
 import ConsultationSession from '../models/consultationModel.js';
 
 const messageController = {
-    findOrCreateConversation: async (req, res) => {
-        const { patientId, providersId } = req.body; // IDs of the users attempting to chat
-      
-        try {
-          let conversation = await Conversation.findOne({
-            participants: { $all: [patientId, providersId] }
-          });
-      
-          if (!conversation) {
-            // If no conversation exists, create a new one
-            conversation = await Conversation.create({
-              participants: [patientId, providersId]
-            });
-          }
-      
-          return res.status(200).json(conversation);
-        } catch (error) {
-          return res.status(500).json({ error: error.message });
-        }
-      },
-      
+   
 
       sendMessage: async (req, res) => {
         try {

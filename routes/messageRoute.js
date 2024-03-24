@@ -4,7 +4,7 @@ import messageController from '../controllers/messageController.js'
 
 const router = express.Router();
 
-router.post('/findOrCreate', messageController.findOrCreateConversation);
+
 router.post('/send', messageController.sendMessage);
 // Route for creating a prescription
 router.post('/createPrescription/:doctorId', messageController.prescriptions );

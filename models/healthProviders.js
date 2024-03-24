@@ -29,6 +29,7 @@ const doctorSchema = new mongoose.Schema({
       fee: { type: Number, default: 1000 }
   },
     images: {
+      profilePhoto: { type: String, default: null },
       governmentIdfront: { type: String },
       governmentIdback: { type: String },
       license: { type: String },
