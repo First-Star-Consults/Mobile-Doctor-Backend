@@ -76,6 +76,8 @@ router.get('/wallet-balance/:userId', authController.getWalletBalance);
 router.get('/pending-withdrawals', authController.getPendingWithdrawals); 
 // Endpoint to get the active consultation session for a specific patient and doctor
 router.get('/get-active-session/:patientId/:doctorId', authController.getActiveSession);
+//get most recent active session
+router.get('/mostRecentActiveSession/:userId', authController.getMostRecentActiveSession);
 
 
 

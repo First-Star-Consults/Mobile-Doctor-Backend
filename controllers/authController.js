@@ -722,6 +722,47 @@ getActiveSession: async (req, res) => {
 },
 
 
+getMostRecentActiveSession: async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    // Find the most recent active session for the user as either doctor or patient
+    const mostRecentActiveSession = await ConsultationSession.findOne({
+      $or: [{ patient: userId }, { doctor: userId }],
+      status: { $in: ['scheduled', 'in-progress'] }
+    })
+    .sort({ startTime: -1 }) // Sort by startTime in descending order to get the most recent session
+    .populate('doctor patient', 'firstName lastName profilePhoto');
+
+    if (mostRecentActiveSession) {
+      res.status(200).json({
+        success: true,
+        message: 'Most recent active session retrieved successfully.',
+        session: {
+          sessionId: mostRecentActiveSession._id,
+          doctor: mostRecentActiveSession.doctor,
+          patient: mostRecentActiveSession.patient,
+          startTime: mostRecentActiveSession.startTime,
+          // Include any other details needed for the session
+        }
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: 'No active session found for this user.'
+      });
+    }
+  } catch (error) {
+    console.error('Error retrieving the most recent active session:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve the most recent active session.',
+      error: error.message
+    });
+  }
+},
+
+
 
 
 
