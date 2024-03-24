@@ -1,4 +1,5 @@
 // controllers/messageController.js
+import moment from 'moment';
 import Message from '../models/messageModel.js';
 import Conversation from '../models/conversationModel.js';
 import {Doctor} from '../models/healthProviders.js';
@@ -74,9 +75,9 @@ const messageController = {
 // Method for creating a prescription and saving it to the database
 prescriptions: async (req, res) => {
   const { doctorId } = req.params; // Assuming doctorId is passed as URL parameter
-  const { patientId, medicines } = req.body;
+  const { userId, medicines } = req.body;
 
-  if (!patientId || !medicines || medicines.length === 0) {
+  if (!userId || !medicines || medicines.length === 0) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
@@ -92,7 +93,7 @@ prescriptions: async (req, res) => {
     // Proceed with creating the prescription
     const prescription = await Prescription.create({
       doctor: doctorId,
-      patient: patientId,
+      patient: userId,
       medicines
     });
     
@@ -101,7 +102,52 @@ prescriptions: async (req, res) => {
     console.error('Failed to create prescription:', error);
     res.status(500).json({ message: error.message });
   }
-}
+},
+
+
+// Endpoint to retrieve recent chats for a user (either patient or doctor)
+getRecentChats: async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    // Retrieve all conversations where the user is a participant
+    const recentChats = await Conversation.find({ participants: userId })
+      .populate({
+        path: 'lastMessage',
+        select: 'content timestamp -_id', // Select the 'content' and 'timestamp' fields from the last message
+        options: { sort: { 'timestamp': -1 } } // Sort by the message timestamp
+      })
+      .populate({
+        path: 'participants',
+        match: { _id: { $ne: userId } }, // Exclude the current user from the participants array
+        select: 'firstName lastName profilePhoto role -_id'
+      })
+      .sort({ 'updatedAt': -1 }) // Sort conversations by the last updated time
+      .limit(10); // Limit the number of results
+
+    // Transform the data into a more friendly structure
+    const transformedChats = recentChats.map(chat => {
+      // Check if there is a last message and format the timestamp
+      const lastMessageContent = chat.lastMessage ? chat.lastMessage.content : '';
+      const lastMessageTime = chat.lastMessage ? moment(chat.lastMessage.timestamp).format('h:mm') : '';
+
+      return {
+        conversationId: chat._id,
+        lastMessage: lastMessageContent,
+        lastMessageTime: lastMessageTime,
+        otherParticipant: chat.participants[0] // Assuming there's always one other participant
+      };
+    });
+
+    res.status(200).json({ success: true, recentChats: transformedChats });
+  } catch (error) {
+    console.error('Error retrieving recent chats:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error', error: error.toString() });
+  }
+},
+
+
+
 
 };
 
