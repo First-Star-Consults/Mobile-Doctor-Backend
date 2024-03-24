@@ -708,7 +708,7 @@ getActiveSession: async (req, res) => {
     // Return the session info including the conversation ID
     res.status(200).json({
       sessionId: activeSession._id,
-      conversationId: conversation._id, // This is the new line to include the conversation ID
+      conversationId: conversation._id, 
       patientFirstName: activeSession.patient.firstName,
       patientLastName: activeSession.patient.lastName,
       patientProfilePhoto: activeSession.patient.profilePhoto,

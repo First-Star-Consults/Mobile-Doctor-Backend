@@ -110,34 +110,48 @@ getRecentChats: async (req, res) => {
   const { userId } = req.params;
 
   try {
-    // Retrieve all conversations where the user is a participant
     const recentChats = await Conversation.find({ participants: userId })
       .populate({
         path: 'lastMessage',
-        select: 'content timestamp -_id', // Select the 'content' and 'timestamp' fields from the last message
-        options: { sort: { 'timestamp': -1 } } // Sort by the message timestamp
+        select: 'content timestamp -_id',
+        options: { sort: { 'timestamp': -1 } }
       })
       .populate({
         path: 'participants',
-        match: { _id: { $ne: userId } }, // Exclude the current user from the participants array
+        match: { _id: { $ne: userId } },
         select: 'firstName lastName profilePhoto role -_id'
       })
-      .sort({ 'updatedAt': -1 }) // Sort conversations by the last updated time
-      .limit(10); // Limit the number of results
+      .sort({ 'updatedAt': -1 })
+      .limit(10);
 
     // Transform the data into a more friendly structure
-    const transformedChats = recentChats.map(chat => {
-      // Check if there is a last message and format the timestamp
+    const transformedChats = [];
+
+    for (const chat of recentChats) {
       const lastMessageContent = chat.lastMessage ? chat.lastMessage.content : '';
       const lastMessageTime = chat.lastMessage ? moment(chat.lastMessage.timestamp).format('h:mm') : '';
+      
+      let sessionId = null;
+      
+      // Find the active session for each chat
+      if (chat.participants.length > 0) {
+        const otherParticipantId = chat.participants[0]._id;
+        const activeSession = await ConsultationSession.findOne({
+          $or: [{ doctor: userId, patient: otherParticipantId }, { doctor: otherParticipantId, patient: userId }],
+          status: { $in: ['scheduled', 'in-progress'] }
+        }).sort({ createdAt: -1 });
 
-      return {
+        sessionId = activeSession ? activeSession._id : null;
+      }
+      
+      transformedChats.push({
+        sessionId,
         conversationId: chat._id,
         lastMessage: lastMessageContent,
         lastMessageTime: lastMessageTime,
         otherParticipant: chat.participants[0] // Assuming there's always one other participant
-      };
-    });
+      });
+    }
 
     res.status(200).json({ success: true, recentChats: transformedChats });
   } catch (error) {
@@ -145,6 +159,10 @@ getRecentChats: async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal Server Error', error: error.toString() });
   }
 },
+
+
+
+
 
 
 
