@@ -36,6 +36,7 @@ const authController = {
         role: role,
         phone,
         verificationcode,
+        profilePhoto: "http://res.cloudinary.com/ditdm55co/image/upload/v1711405225/65f819a7b85308ae12b8bcd7/65f819a7b85308ae12b8bcd7/1711405225600.jpg",
       });
 
       // Choose the appropriate model based on userType
@@ -726,32 +727,46 @@ getMostRecentActiveSession: async (req, res) => {
   const userId = req.params.userId;
 
   try {
-    // Find the most recent active session for the user as either doctor or patient
+    // First, identify the role of the user making the request
+    const userMakingRequest = await User.findById(userId);
+    if (!userMakingRequest) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    // Determine whether the user is a doctor or a patient
+    const isDoctor = userMakingRequest.role === 'doctor'; // Adjust this condition based on your role logic
+
     const mostRecentActiveSession = await ConsultationSession.findOne({
       $or: [{ patient: userId }, { doctor: userId }],
       status: { $in: ['scheduled', 'in-progress'] }
     })
-    .sort({ startTime: -1 }) // Sort by startTime in descending order to get the most recent session
-    .populate('doctor patient', 'firstName lastName profilePhoto');
+    .sort({ startTime: -1 }) // Get the most recent session
+    .populate({
+      path: isDoctor ? 'patient' : 'doctor',
+      model: 'User', // Specify the model to use for population
+      select: 'firstName lastName profilePhoto' // Specify fields to include
+    });
 
-    if (mostRecentActiveSession) {
-      res.status(200).json({
-        success: true,
-        message: 'Most recent active session retrieved successfully.',
-        session: {
-          sessionId: mostRecentActiveSession._id,
-          doctor: mostRecentActiveSession.doctor,
-          patient: mostRecentActiveSession.patient,
-          startTime: mostRecentActiveSession.startTime,
-          // Include any other details needed for the session
-        }
-      });
-    } else {
-      res.status(404).json({
+    if (!mostRecentActiveSession) {
+      return res.status(404).json({
         success: false,
         message: 'No active session found for this user.'
       });
     }
+
+    // Prepare the response object with dynamic doctor/patient details
+    const otherParty = isDoctor ? 'patient' : 'doctor';
+    const responseObj = {
+      success: true,
+      message: 'Most recent active session retrieved successfully.',
+      session: {
+        sessionId: mostRecentActiveSession._id,
+        startTime: mostRecentActiveSession.startTime,
+        [otherParty]: mostRecentActiveSession[otherParty] // Dynamic key based on the role
+      }
+    };
+
+    res.status(200).json(responseObj);
   } catch (error) {
     console.error('Error retrieving the most recent active session:', error);
     res.status(500).json({
@@ -761,6 +776,9 @@ getMostRecentActiveSession: async (req, res) => {
     });
   }
 },
+
+
+
 
 
 

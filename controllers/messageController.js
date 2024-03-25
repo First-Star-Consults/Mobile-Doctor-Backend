@@ -1,10 +1,30 @@
 // controllers/messageController.js
+import mongoose from 'mongoose';
 import moment from 'moment';
 import Message from '../models/messageModel.js';
 import Conversation from '../models/conversationModel.js';
 import {Doctor} from '../models/healthProviders.js';
 import { Prescription } from '../models/services.js';
 import ConsultationSession from '../models/consultationModel.js';
+
+
+// Custom function to populate participants from various collections
+const populateParticipants = async (conversations) => {
+  const models = { User, Doctor, Pharmacy, Therapist, Laboratory }; // Mapping of participant types to their models
+  
+  for (let conversation of conversations) {
+    await Promise.all(conversation.participants.map(async (participant) => {
+      const model = models[participant.participantType];
+      if (model) {
+        participant.info = await model.findById(participant.participantId)
+          .select('fullName profilePhoto medicalSpecialty.name -_id') // Customize this select to your needs
+          .lean();
+      }
+    }));
+  }
+  
+  return conversations;
+};
 
 const messageController = {
    
