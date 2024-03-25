@@ -120,8 +120,8 @@ getRecentChats: async (req, res) => {
       .populate({
         path: 'participants',
         match: { _id: { $ne: userId } }, // Exclude the current user from the participants array
-        select: 'firstName lastName profilePhoto role -_id'
-      })
+        select: 'firstName lastName profilePhoto role _id' // Include the '_id' field
+      })      
       .sort({ 'updatedAt': -1 }) // Sort conversations by the last updated time
       .limit(10); // Limit the number of results
 
