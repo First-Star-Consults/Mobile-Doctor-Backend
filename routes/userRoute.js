@@ -24,7 +24,7 @@ router.post("/reset-password/:userId", userController.resetPassword);
 router.post('/updateOnlineStatus/:userId', userController.updateOnlineStatus)
 
 router.post('/forgot-password', userController.forgotPassword);
-router.post('/reset-password-with-token', userController.resetPasswordWithToken);
+router.post('/reset-password', userController.resetPasswordWithToken);
 
 
 

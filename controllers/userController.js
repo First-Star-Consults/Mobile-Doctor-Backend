@@ -1,8 +1,10 @@
 // userController.js
+import crypto from 'crypto';
 import User from "../models/user.js";
 import {Doctor, Pharmacy, Laboratory, Therapist} from "../models/healthProviders.js";
 // import nodemailer from 'nodemailer';
 import { upload } from "../config/cloudinary.js";
+import { sendVerificationEmail } from "../utils/nodeMailer.js";
 
 const userController = {
 
@@ -231,7 +233,7 @@ const userController = {
       await user.save();
   
       // Prepare reset link
-      const resetLink = `http://${req.headers.host}/reset-password/${token}`; // Make sure this URL matches your frontend route for resetting passwords
+      const resetLink = `http://${req.headers.host}/api/user/reset-password/${token}`; 
   
       // Use your sendVerificationEmail function
       await sendVerificationEmail(user.email, `Please click on the following link, or paste this into your browser to complete the process: ${resetLink}`);
