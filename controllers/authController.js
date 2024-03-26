@@ -733,19 +733,13 @@ getMostRecentActiveSession: async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
-    // Determine whether the user is a doctor or a patient
-    const isDoctor = userMakingRequest.role === 'doctor'; // Adjust this condition based on your role logic
-
+    // Find the most recent active session for the user
     const mostRecentActiveSession = await ConsultationSession.findOne({
       $or: [{ patient: userId }, { doctor: userId }],
       status: { $in: ['scheduled', 'in-progress'] }
     })
     .sort({ startTime: -1 }) // Get the most recent session
-    .populate({
-      path: isDoctor ? 'patient' : 'doctor',
-      model: 'User', // Specify the model to use for population
-      select: 'firstName lastName profilePhoto' // Specify fields to include
-    });
+    .lean(); // Use lean() for faster execution as we just need the object
 
     if (!mostRecentActiveSession) {
       return res.status(404).json({
@@ -754,15 +748,29 @@ getMostRecentActiveSession: async (req, res) => {
       });
     }
 
-    // Prepare the response object with dynamic doctor/patient details
-    const otherParty = isDoctor ? 'patient' : 'doctor';
+    // Now find the conversation related to the session
+    const conversation = await Conversation.findOne({
+      participants: { $all: [mostRecentActiveSession.patient, mostRecentActiveSession.doctor] }
+    })
+    .select('_id')
+    .lean();
+
+    // Attach conversationId to the session object if found
+    mostRecentActiveSession.conversationId = conversation ? conversation._id : null;
+
+    // Attach patient or doctor details based on the role of the requester
+    const otherParticipantId = userMakingRequest.role === 'doctor' ? mostRecentActiveSession.patient : mostRecentActiveSession.doctor;
+    const otherParticipantDetails = await User.findById(otherParticipantId, 'firstName lastName profilePhoto _id').lean();
+
+    // Prepare the response object
     const responseObj = {
       success: true,
       message: 'Most recent active session retrieved successfully.',
       session: {
         sessionId: mostRecentActiveSession._id,
         startTime: mostRecentActiveSession.startTime,
-        [otherParty]: mostRecentActiveSession[otherParty] // Dynamic key based on the role
+        conversationId: mostRecentActiveSession.conversationId,
+        otherParticipant: otherParticipantDetails
       }
     };
 
@@ -776,6 +784,7 @@ getMostRecentActiveSession: async (req, res) => {
     });
   }
 },
+
 
 
 
