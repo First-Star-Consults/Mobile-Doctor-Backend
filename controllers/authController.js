@@ -23,7 +23,7 @@ const authController = {
 
   register: async (req, res) => {
     try {
-      const { userType, email, password, phone, firstName, lastName } = req.body;
+      const { userType, email, password, phone, firstName, lastName, appropriate } = req.body;
 
       const role = determineRole(userType);
 
@@ -35,6 +35,7 @@ const authController = {
         lastName,
         role: role,
         phone,
+        appropriate: role === 'doctor' ? appropriate : null,
         verificationcode,
         profilePhoto: "http://res.cloudinary.com/ditdm55co/image/upload/v1711405225/65f819a7b85308ae12b8bcd7/65f819a7b85308ae12b8bcd7/1711405225600.jpg",
       });
