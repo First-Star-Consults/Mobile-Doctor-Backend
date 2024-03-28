@@ -82,6 +82,10 @@ const healthProviderControllers = {
   
       // Update user model with the Cloudinary URLs for all images
       const updatedDoctor = await Doctor.findByIdAndUpdate(providerId, { $set: updateQueries }, { new: true });
+
+       // Set kycVerification to true after successful profile and image updates
+       foundUser.kycVerification = true;
+       await foundUser.save(); 
   
       res.status(201).json({
         success: true,
