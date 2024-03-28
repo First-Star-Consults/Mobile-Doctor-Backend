@@ -3,13 +3,16 @@ import 'dotenv/config.js';
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-    host: 'server122.web-hosting.com',
-    port: 465,  
-    auth: {
-      user: 'verificationcode@mobiledoctor.firststarconsults.online',
-      pass: process.env.VERIFICATION_EMAIL_PASSWORD,
-    },
-  });
+  host: 'server122.web-hosting.com',
+  port: 465,  
+  auth: {
+    user: 'verificationcode@mobiledoctor.firststarconsults.online',
+    pass: 'mobiledoctor$1', // Password set directly here
+  },
+});
+
+
+
 
   // Verify SMTP configuration
 transporter.verify(function(error, success) {
