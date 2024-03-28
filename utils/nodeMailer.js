@@ -11,6 +11,16 @@ const transporter = nodemailer.createTransport({
     },
   });
 
+  // Verify SMTP configuration
+transporter.verify(function(error, success) {
+  if (error) {
+    console.error('SMTP configuration error:');
+    console.error(error);
+  } else {
+    console.log("SMTP configuration is correct. Server is ready to take our messages.");
+  }
+});
+
 export const sendVerificationEmail = async (to, code) => {
   const mailOptions = {
     from: 'verificationcode@mobiledoctor.firststarconsults.online',
