@@ -1,5 +1,5 @@
 //utils/nodeMailer.js
-
+import 'dotenv/config.js';
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
