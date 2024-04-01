@@ -19,6 +19,19 @@ export const generateSessionToken = () => {
   }
 };
 
+//geographical location schema
+const userLocationSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    default: "Point",
+    enum: ["Point"]
+  },
+  coordinates: {
+    type: [Number],
+    index: "2dsphere"
+  }
+});
+
 // User schema (patient, doctor, therapist, etc.)
 const userSchema = new mongoose.Schema({
   profilePhoto: { type: String, default: null },
@@ -39,6 +52,7 @@ const userSchema = new mongoose.Schema({
   state: { type: String, default: null },
   gender: { type: String, default: null },
   country: { type: String, default: null },
+  location: userLocationSchema,
   doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor', default: null },
   pharmacy: { type: mongoose.Schema.Types.ObjectId, ref: 'Pharmacy', default: null },
   therapist: { type: mongoose.Schema.Types.ObjectId, ref: 'Therapist', default: null },
@@ -50,6 +64,24 @@ const userSchema = new mongoose.Schema({
   verificationcode: String,
   googleId: String,
 });
+
+
+// Add method to find nearby providers
+userSchema.methods.findNearbyProviders = async function(modelName, distance) {
+  const Model = mongoose.model(modelName); // Use the model name to access the model
+  
+  return await Model.find({
+    location: {
+      $near: {
+        $geometry: {
+          type: "Point",
+          coordinates: this.location.coordinates
+        },
+        $maxDistance: distance
+      }
+    }
+  });
+};
 
 // methods for password verification and password change
 userSchema.methods.setPassword = function (oldPassword, newPassword, callback) {

@@ -16,6 +16,8 @@ router.get("/", (req, res) => {
 router.get("/profile/:userId", userController.getProfile);
 //get online users
 router.get('/online-users/:role', userController.getOnlineUsers)
+// Route to find nearby health providers
+router.get('/find-nearby/:userId', userController.findNearby);
 // Update user profile route
 router.put("/updateProfile/:userId",  userController.upDateprofile);
 

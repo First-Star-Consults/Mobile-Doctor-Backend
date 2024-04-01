@@ -318,6 +318,25 @@ getOnlineUsers: async (req, res) => {
 },
 
 
+findNearby: async (req, res) => {
+  try {
+    const { userId } = req.params; // or however you get the user's ID from the request
+    const { distance, type } = req.query; // expects 'distance' in meters and 'type' as model name (Doctor, Pharmacy, etc.)
+
+    const user = await User.findById(userId);
+    if (!user || !user.location) {
+      return res.status(404).json({ message: "User not found or location not set" });
+    }
+
+    const providers = await user.findNearbyProviders(type, Number(distance));
+    res.status(200).json(providers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+},
+
+
   
 
    
