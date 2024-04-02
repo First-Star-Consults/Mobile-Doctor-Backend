@@ -66,6 +66,24 @@ app.get("/", (req, res) => {
 io.on('connection', (socket) => {
   console.log('A user connected', socket.id);
 
+  // Join a conversation room
+  socket.on('joinRoom', (roomId) => {
+    socket.join(roomId);
+    console.log(`User ${socket.id} joined room ${roomId}`);
+  });
+
+  // Listen for typing started
+  socket.on('typingStarted', (roomId) => {
+    socket.to(roomId).emit('typing', { userId: socket.id, typing: true });
+    console.log(`User ${socket.id} is typing in room ${roomId}`);
+  });
+
+  // Listen for typing stopped
+  socket.on('typingStopped', (roomId) => {
+    socket.to(roomId).emit('typing', { userId: socket.id, typing: false });
+    console.log(`User ${socket.id} stopped typing in room ${roomId}`);
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected', socket.id);
   });
