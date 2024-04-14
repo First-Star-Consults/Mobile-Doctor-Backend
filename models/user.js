@@ -32,6 +32,9 @@ const userLocationSchema = new mongoose.Schema({
   }
 });
 
+// Ensure to set the index for the geospatial query to work
+userLocationSchema.index({ coordinates: '2dsphere' });
+
 // User schema (patient, doctor, therapist, etc.)
 const userSchema = new mongoose.Schema({
   profilePhoto: { type: String, default: null },
@@ -67,21 +70,21 @@ const userSchema = new mongoose.Schema({
 
 
 // Add method to find nearby providers
-userSchema.methods.findNearbyProviders = async function(modelName, distance) {
-  const Model = mongoose.model(modelName); // Use the model name to access the model
-  
-  return await Model.find({
+userSchema.methods.findNearbyProvidersByRole = async function(role, distance) {
+  return await User.find({
+    role: role, // Filter by role
     location: {
       $near: {
         $geometry: {
           type: "Point",
-          coordinates: this.location.coordinates
+          coordinates: this.location.coordinates,
         },
-        $maxDistance: distance
-      }
-    }
+        $maxDistance: distance,
+      },
+    },
   });
 };
+
 
 // methods for password verification and password change
 userSchema.methods.setPassword = function (oldPassword, newPassword, callback) {
@@ -152,6 +155,8 @@ passport.use(new GoogleStrategy({
       return done(error);
     }
   }));
+
+  userSchema.index({ "location.coordinates": "2dsphere" });
 
 export default User
 

@@ -1,6 +1,4 @@
 // controllers/messageController.js
-import mongoose from 'mongoose';
-import moment from 'moment';
 import Message from '../models/messageModel.js';
 import Conversation from '../models/conversationModel.js';
 import {Doctor} from '../models/healthProviders.js';
@@ -147,7 +145,7 @@ getRecentChats: async (req, res) => {
     // Transform the data to include the most recent consultation session status
     const transformedChats = await Promise.all(recentChats.map(async chat => {
       const lastMessageContent = chat.lastMessage ? chat.lastMessage.content : '';
-      const lastMessageTime = chat.lastMessage ? moment(chat.lastMessage.timestamp).format('h:mm') : '';
+      const lastMessageTime = chat.lastMessage ? chat.lastMessage.timestamp : '';
 
       // Determine the other participant's ID
       const otherParticipantId = chat.participants[0]._id;

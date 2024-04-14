@@ -16,9 +16,15 @@ router.get("/", (req, res) => {
 router.get("/profile/:userId", userController.getProfile);
 //get online users
 router.get('/online-users/:role', userController.getOnlineUsers)
+
 // Route to find nearby health providers
-router.get('/find-nearby/:userId', userController.findNearby);
+router.get('/map/find-nearby/:userId', userController.findNearby);
+//for doctor to use and get nearby HealthProvider
+router.get('/map/find-nearby-providers/:userId', userController.getNearbyProvider )
+//update user location
+router.post('/map/patient/update-location', userController.updateLocation)
 // Update user profile route
+
 router.put("/updateProfile/:userId",  userController.upDateprofile);
 
 router.post("/reset-password/:userId", userController.resetPassword);

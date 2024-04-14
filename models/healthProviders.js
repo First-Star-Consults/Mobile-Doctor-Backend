@@ -79,4 +79,7 @@ const Pharmacy = mongoose.model("Pharmacy", pharmacySchema);
 const Therapist = mongoose.model("Therapist", therapistSchema);
 const Laboratory = mongoose.model("Laboratory", laboratorySchema);
 
+
+
+
 export { Doctor, Pharmacy, Therapist, Laboratory };
