@@ -325,7 +325,7 @@ const healthProviderControllers = {
 
   addReview: async (req, res) => {
     try {
-      const email = req.params.email;
+      const doctorId = req.params.doctorId;
       const { patientId, rating, comment } = req.body;
 
       // Ensure rating is within the 1-5 range
@@ -334,14 +334,14 @@ const healthProviderControllers = {
       }
 
       // Find the doctor by ID
-      const doctor = await Doctor.findById(email);
+      const doctor = await Doctor.findById(doctorId);
       if (!doctor) {
         return res.status(404).json({ success: false, message: "Doctor not found" });
       }
 
       // Create a new review
       const review = await Reviews.create({
-        doctor: email,
+        doctor: doctorId,
         patient: patientId,
         rating,
         comment,
@@ -362,16 +362,16 @@ const healthProviderControllers = {
 
 getDoctorReviews: async (req, res) => {
   try {
-      const email = req.params.email;
+      const doctorId = req.params.doctorId;
       
       // Ensure the doctor exists
-      const doctorExists = await Doctor.findById(email);
+      const doctorExists = await Doctor.findById(doctorId);
       if (!doctorExists) {
           return res.status(404).json({ success: false, message: "Doctor not found" });
       }
 
       // Fetch reviews for the doctor and include patient's name
-      const reviews = await Reviews.find({ doctor: email })
+      const reviews = await Reviews.find({ doctor: doctorId })
                                    .populate({
                                       path: 'patient',
                                       select: 'firstName lastName -_id' // Adjust the fields as needed
