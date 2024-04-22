@@ -4,6 +4,7 @@ import Conversation from '../models/conversationModel.js';
 import {Doctor} from '../models/healthProviders.js';
 import { Prescription } from '../models/services.js';
 import ConsultationSession from '../models/consultationModel.js';
+import { io } from '../server.js'; 
 
 
 // Custom function to populate participants from various collections
@@ -48,6 +49,9 @@ const messageController = {
             receiver,
             content
           });
+
+          // Emit newMessage event to the conversation room
+      io.to(conversationId).emit('newMessage', newMessage);
       
           // Update the conversation's lastMessage field
           await Conversation.findByIdAndUpdate(conversationId, {

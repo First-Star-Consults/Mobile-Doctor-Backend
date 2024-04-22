@@ -51,7 +51,7 @@ app.use("/api/user", userRouter);
 app.use("/api/provider", providerRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/admin", adminRouter);
-app.use('/api/messages', messageRoute);
+
 
 app.get("/api", (req, res) => {
     res.json({ message: "Welcome to /api" });
@@ -89,6 +89,8 @@ io.on('connection', (socket) => {
   });
 });
 
+app.use('/api/messages', messageRoute);
+
 
 server.listen(process.env.PORT || 3000, () => {
     console.log("Server is running on port 3000");
@@ -96,3 +98,5 @@ server.listen(process.env.PORT || 3000, () => {
 
 
 //Set-ExecutionPolicy Bypass -Scope Process
+
+export { io };
