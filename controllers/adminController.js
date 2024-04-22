@@ -226,6 +226,59 @@ const adminController = {
       res.status(500).json({ message: "Error retrieving recommended doctors", error: error.message });
     }
   },
+
+
+
+ // Controller function to update the sponsored status of a doctor
+updateSponsoredStatus: async (req, res) => {
+  try {
+    const adminId = req.body.adminId; // Extract admin ID from the request body
+
+    // Fetch the user from the database to check if they're an admin
+    const user = await User.findById(adminId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found.'
+      });
+    }
+
+    const isAdmin = user.isAdmin;
+
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: 'Permission denied. Only admin can update sponsored status.',
+      });
+    }
+
+    // Extract necessary information from the request
+    const { doctorId, isOnlineStatus } = req.body;
+
+    // Find the doctor by ID
+    const foundDoctor = await Doctor.findById(doctorId);
+
+    if (!foundDoctor) {
+      return res.status(404).json({ success: false, error: 'Doctor not found' });
+    }
+
+    // Update the sponsored status
+    foundDoctor.sponsored = isOnlineStatus;
+
+    // Save the updated doctor
+    const updatedDoctor = await foundDoctor.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Sponsored status updated successfully',
+      updatedDoctor,
+    });
+  } catch (error) {
+    console.error('Error updating sponsored status:', error);
+    res.status(500).json({ success: false, error: 'Error updating sponsored status' });
+  }
+},
+
   
 
   

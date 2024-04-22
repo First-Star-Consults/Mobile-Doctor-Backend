@@ -7,11 +7,21 @@ const router = express.Router();
 
 router.post('/credentialsDetails/:providerId', healthProviderControllers.setCredentials);
 // router.post('/uploadCredentialsImages/:providerId', healthProviderControllers.uploadCredentialsImages);
+
 // Route to add a review for a doctor
 router.post('/:doctorId/reviews', healthProviderControllers.addReview);
 
+// Route to update the isOnline status of a doctor
+router.put('/:doctorId/update-isOnline', healthProviderControllers.updateIsOnlineStatus);
+
+// Route to get online and sponsored doctors
+router.get('/online-sponsored-doctors', healthProviderControllers.getOnlineSponsoredDoctors);
+
 
 router.get('/:doctorId/reviews', healthProviderControllers.getDoctorReviews);
+
+// Route to check the online status of a health provider
+router.get('/:providerId/isOnline', healthProviderControllers.checkOnlineStatus);
 
 
 // Route to get top-rated doctors

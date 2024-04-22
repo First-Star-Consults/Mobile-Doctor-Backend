@@ -473,6 +473,67 @@ getDoctorReviews: async (req, res) => {
     }
   },
 
+
+  // Controller function to check the online status of a health provider
+  checkOnlineStatus: async (req, res) => {
+    try {
+      const providerId = req.params.providerId;
+
+      // Find the health provider by ID
+      const provider = await Doctor.findById(providerId);
+
+      if (!provider) {
+        return res.status(404).json({ success: false, message: 'Health provider not found' });
+      }
+
+      // Respond with the online status of the health provider
+      res.status(200).json({ success: true, isOnline: provider.isOnline });
+    } catch (error) {
+      console.error('Error checking online status:', error);
+      res.status(500).json({ success: false, error: 'Error checking online status' });
+    }
+  },
+
+   // Controller function to get online and sponsored doctors
+   getOnlineSponsoredDoctors: async (req, res) => {
+    try {
+      // Query the database for doctors with isOnline and sponsored set to true
+      const doctors = await Doctor.find({ isOnline: true, sponsored: true });
+
+      // Respond with the list of doctors
+      res.status(200).json({ success: true, doctors });
+    } catch (error) {
+      console.error('Error fetching online and sponsored doctors:', error);
+      res.status(500).json({ success: false, error: 'Error fetching online and sponsored doctors' });
+    }
+  },
+
+  // Controller function to update the isOnline status of a doctor
+  updateIsOnlineStatus: async (req, res) => {
+    try {
+      const { doctorId } = req.params;
+      const { isOnline } = req.body;
+
+      // Find the doctor by ID
+      const doctor = await Doctor.findById(doctorId);
+
+      if (!doctor) {
+        return res.status(404).json({ success: false, message: 'Doctor not found' });
+      }
+
+      // Update the isOnline status
+      doctor.isOnline = isOnline;
+      await doctor.save();
+
+      // Respond with the updated doctor
+      res.status(200).json({ success: true, doctor });
+    } catch (error) {
+      console.error('Error updating isOnline status:', error);
+      res.status(500).json({ success: false, error: 'Error updating isOnline status' });
+    }
+  },
+
+
   
   
   
