@@ -47,6 +47,11 @@ const userSchema = new mongoose.Schema({
   password: String,
   resetPasswordToken: String,
   resetPasswordExpires: Date,
+  notifications: [{
+    type: { type: String, required: true },
+    message: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now }
+  }],  
   email: { type: String, required: false },
   firstName: { type: String, required: false },
   lastName: { type: String, required: false },
@@ -56,11 +61,6 @@ const userSchema = new mongoose.Schema({
   gender: { type: String, default: null },
   country: { type: String, default: null },
   location: userLocationSchema,
-  notifications: [{
-    type: { type: String, required: true },
-    message: { type: String, required: true },
-    timestamp: { type: Date, default: Date.now }
-  }], 
   doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor', default: null },
   pharmacy: { type: mongoose.Schema.Types.ObjectId, ref: 'Pharmacy', default: null },
   therapist: { type: mongoose.Schema.Types.ObjectId, ref: 'Therapist', default: null },

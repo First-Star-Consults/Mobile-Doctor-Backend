@@ -312,6 +312,24 @@ const authController = {
               date: new Date()
             });
             await transaction.save();
+
+            // Create notification for the user that funded the wallet
+            const notification = {
+              type: 'funded Successfully',
+              message: `Your account has been successfully funded with ${amount}. Your new wallet balance is ${user.walletBalance}.`,
+              timestamp: new Date()
+            };
+
+            // Push the notification to the user's notifications array if available
+            if (user.notifications) {
+              user.notifications.push(notification);
+            } else {
+              // If notifications array is not initialized, initialize it with the new notification
+              user.notifications = [notification];
+            }
+
+            // Save the updated user object with the new notification
+            await user.save();
   
             res.status(200).send('Wallet funded and transaction recorded successfully');
           } else {
@@ -816,6 +834,8 @@ cancelConsultation: async (req, res) => {
 
     // Retrieve the patient for the session
     const patient = await User.findById(session.patient);
+    const doctor = await User.findById(session.doctor);
+
     if (!patient) {
       return res.status(404).json({ message: 'Patient not found for refund' });
     }
@@ -831,6 +851,31 @@ cancelConsultation: async (req, res) => {
     // Update the session status to 'cancelled'
     session.status = 'cancelled';
     await session.save();
+
+
+    // Create notification for the patient
+    const notification = {
+      type: 'Consultation Canceled',
+      message: `Your consultation with ${doctor.firstName} ${doctor.lastName}  has been canceled.`,
+      timestamp: new Date()
+    };
+
+    // Push the notification to the patient's notifications array
+    patient.notifications.push(notification);
+    await patient.save();
+
+    // Create notification for the doctor
+    const doctorNotification = {
+      type: 'Consultation Canceled',
+      message: `Consultation with ${patient.firstName} ${patient.lastName} has been canceled.`,
+      timestamp: new Date()
+    };
+
+    // Push the notification to the doctor's notifications array
+    if (doctor.notifications) {
+      doctor.notifications.push(doctorNotification);
+      await doctor.save();
+    }
 
     return res.status(200).json({ message: 'Consultation cancelled and fee refunded to patient' });
   } catch (error) {
@@ -880,6 +925,30 @@ completeConsultation: async (req, res) => {
         consultationComplete = true; // Set the flag to true since all steps are completed successfully
       }
     }
+
+
+    // Create notification for patient
+
+    const patient = session.patient; // Retrieve the patient from the session
+      const doctor = await User.findById(session.doctor);
+
+      const notification = {
+        type: 'Consultation Completed',
+        message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} is completed.`,
+        timestamp: new Date()
+      };
+
+      patient.notifications.push(notification); // Push the notification to the patient's notifications array
+      await patient.save(); // Save the patient object
+
+      // Create notification for the doctor
+      const doctorNotification = {
+        type: 'Consultation Completed',
+        message: `The consultation with ${session.patient.firstName} ${session.patient.lastName} is completed.`,
+        timestamp: new Date()
+      };
+      doctor.notifications.push(doctorNotification);
+      await doctor.save();
 
     res.status(200).json({ 
       message: 'Consultation completed, funds released to doctor', 

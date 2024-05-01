@@ -400,6 +400,7 @@ const userController = {
       res.status(500).json({ message: 'Error fetching notifications', error: error.toString() });
     }
 }
+
   
 
 

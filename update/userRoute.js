@@ -16,13 +16,13 @@ router.get("/", (req, res) => {
 router.get("/profile/:userId", userController.getProfile);
 //get online users
 router.get('/online-users/:role', userController.getOnlineUsers)
+// get notification
+router.get('/get-notifications/:userId', userController.getNotifications);
 
 // Route to find nearby health providers
 router.get('/map/find-nearby/:userId', userController.findNearby);
 //for doctor to use and get nearby HealthProvider
 router.get('/map/find-nearby-providers/:userId', userController.getNearbyProvider )
-// get notification
-router.get('/get-notifications/:userId', userController.getNotifications);
 //update user location
 router.post('/map/patient/update-location', userController.updateLocation)
 // Update user profile route
