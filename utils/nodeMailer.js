@@ -28,9 +28,10 @@ export const sendVerificationEmail = async (to, code) => {
   const mailOptions = {
     from: 'verificationcode@mobiledoctor.firststarconsults.online',
     to,
-    subject: 'Verification Code',
-    text: `Your verification code is: ${code}`,
+    subject: 'Mobile-Doctor Verify Code',
+    text: `Dear Mobile Doctor User,\n\nYour verification code is: ${code}\n\nThank you for choosing Mobile Doctor.\n\nBest regards,\nMobile Doctor Team`,
   };
 
   return transporter.sendMail(mailOptions);
 };
+

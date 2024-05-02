@@ -135,51 +135,7 @@ const userController = {
   },
 
 
-  //To update user profile
 
-
-  //   upDateprofile: async (req, res) => {
-  //   try {
-  //     const userId = req.params.userId;
-
-  //     // Check if the user exists
-  //     const existingUser = await User.findById(userId);
-
-  //     if (!existingUser) {
-  //       return res.status(404).json({ message: 'User not found' });
-  //     }
-
-  //     // Update user profile information
-  //     existingUser.firstName = req.body.firstName || existingUser.firstName;
-  //     existingUser.lastName = req.body.lastName || existingUser.lastName;
-  //     existingUser.phone = req.body.phone || existingUser.phone;
-  //     existingUser.gender = req.body.gender || existingUser.gender;
-  //     existingUser.country = req.body.country || existingUser.country;
-  //     existingUser.state = req.body.state || existingUser.state;
-  //     existingUser.address = req.body.address || existingUser.address;
-
-  //     // Check for base64 image in the request body
-  //     if (req.body.profilePhotoBase64) {
-  //       try {
-  //         // Upload image to Cloudinary
-  //         const cloudFile = await uploadBase64(req.body.profilePhotoBase64, `user/${userId}`);
-  //         // Update user model with the Cloudinary URL for the profile photo
-  //         existingUser.profilePhoto = cloudFile.url;
-  //       } catch (error) {
-  //         console.error('Error uploading image to Cloudinary:', error);
-  //         return res.status(500).json({ message: 'Error uploading image' });
-  //       }
-  //     }
-
-  //     // Save the updated user profile
-  //     await existingUser.save();
-
-  //     return res.status(200).json({ message: 'Profile information updated successfully', user: existingUser });
-  //   } catch (error) {
-  //     console.error(error);
-  //     return res.status(500).json({ message: 'Unexpected error during profile update' });
-  //   }
-  // },
 
 
   resetPassword: async (req, res) => {
@@ -368,11 +324,11 @@ const userController = {
   getNearbyProvider: async (req, res) => {
     const { userId } = req.params;
     const { role, distance } = req.query; // Expect 'role' to be 'therapist', 'pharmacist', etc.
-  
+    
     try {
       const user = await User.findById(userId);
       if (!user) return res.status(404).json({ message: "User not found" });
-  
+    
       const providers = await user.findNearbyProvidersByRole(role, Number(distance));
       res.status(200).json(providers);
     } catch (error) {
@@ -380,7 +336,6 @@ const userController = {
       res.status(500).json({ message: "Internal server error", error: error.message });
     }
   },
-
 
   getNotifications: async (req, res) => {
     const userId = req.params.userId;
