@@ -4,7 +4,8 @@ import crypto from 'crypto';
 
 import passport from "passport";
 import User from "../models/user.js";
-import { Doctor, Therapist, Pharmacy, Laboratory } from "../models/healthProviders.js"
+import { Doctor, Therapist, Pharmacy, Laboratory } from "../models/healthProviders.js";
+import MedicalRecord from '../models/medicalRecordModel.js';
 import determineRole from "../utils/determinUserRole.js";
 import { sendVerificationEmail } from "../utils/nodeMailer.js";
 import { generateVerificationCode } from "../utils/verficationCodeGenerator.js";
@@ -42,9 +43,13 @@ const authController = {
 
       // Choose the appropriate model based on userType
       let healthProviderModel;
+      let medicalReportModel;
       switch (userType) {
         case 'doctor':
           healthProviderModel = Doctor;
+          break;
+        case 'patient':
+          medicalReportModel = MedicalRecord;
           break;
         case 'pharmacy':
           healthProviderModel = Pharmacy;
@@ -63,12 +68,26 @@ const authController = {
 
       // Create a new health provider instance if userType is one of the specified types
       let healthProvider;
+      let medicalRecord;
       if (healthProviderModel) {
         healthProvider = new healthProviderModel({
           // Add fields specific to health providers
           name: role, // Example field; replace with actual fields
         });
-      }
+      };
+
+      if (medicalReportModel) {
+        medicalRecord = new MedicalRecord({
+          genotype: null,
+          bloodGroup: null,
+          maritalStatus: null,
+          allergies: [],
+          weight: null,
+          testResults: [],
+          others: null,
+      });
+
+      };
 
       await User.register(newUser, password, async (err, user) => {
         if (err) {
@@ -86,6 +105,13 @@ const authController = {
             healthProvider._id = user._id; // Set the health provider's _id to match the user's _id
             user.healthProvider = healthProvider._id;
             await healthProvider.save();
+          }
+
+          // If a medical record was created, associate it with the user
+          if (medicalRecord) {
+            medicalRecord._id = user._id; // Set the health provider's _id to match the user's _id
+            user.medicalRecord = medicalRecord._id;
+            await medicalRecord.save();
           }
 
           // Send verification code via email
