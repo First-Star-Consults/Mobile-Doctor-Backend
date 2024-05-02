@@ -41,7 +41,7 @@ export const sendForgetPasswordEmail = async (to, token) => {
     from: 'noreply@mobiledoctor.firststarconsults.online',
     to,
     subject: 'Mobile-Doctor- Password Reset',
-    text: `Dear Mobile Doctor User,\n\nYour password temporal reset token is: ${token}\n\nPlease copy and use to reset your password on the app\n\nThank you for choosing Mobile Doctor.\n\nBest regards,\nMobile Doctor Team`,
+    text: `Dear Mobile Doctor User,\n\nYour password temporal password reset token is: ${token}\n\nPlease copy and use to reset your password on the app\n\nThank you for choosing Mobile Doctor.\n\nBest regards,\nMobile Doctor Team`,
   };
 
   return transporter.sendMail(mailOptions);

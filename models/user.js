@@ -65,6 +65,7 @@ const userSchema = new mongoose.Schema({
   pharmacy: { type: mongoose.Schema.Types.ObjectId, ref: 'Pharmacy', default: null },
   therapist: { type: mongoose.Schema.Types.ObjectId, ref: 'Therapist', default: null },
   laboratory: { type: mongoose.Schema.Types.ObjectId, ref: 'Laboratory', default: null },
+  medicalRecord: { type: mongoose.Schema.Types.ObjectId, ref: 'MedicalRecord', default: null },
   walletBalance: { type: Number, default: 0 },
   isAdmin: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },

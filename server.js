@@ -12,6 +12,7 @@ import providerRouter from './routes/healthProviderRoute.js';
 import searchRouter from './routes/searchRoute.js';
 import adminRouter from './routes/adminRoute.js';
 import messageRoute from './routes/messageRoute.js';
+import medicalReportRoute from './routes/medicalReportRoute.js'
 import http from 'http'; 
 import { Server as SocketIOServer } from 'socket.io'; 
 
@@ -51,6 +52,7 @@ app.use("/api/user", userRouter);
 app.use("/api/provider", providerRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/medical-report", medicalReportRoute);
 
 
 app.get("/api", (req, res) => {
