@@ -2,7 +2,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 
 cloudinary.config({
-  cloud_name: "mobile-doctor",
+  cloud_name: "dqc2vy030",
   api_key: "586729314615645",
   api_secret: "v4dWdfe8UuJ6uxMEeISkzgS9gVY",
 });

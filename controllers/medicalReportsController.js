@@ -51,7 +51,6 @@ export const getMedicalReport = async (req, res) => {
 export const uploadTestResult = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { folderName } = req.body;
     const files = req.files; // Assuming files are uploaded as an array of files
 
     // Find the medical record by user ID
@@ -61,7 +60,6 @@ export const uploadTestResult = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Medical record not found for the specified user' });
     }
 
-    const updateQueries = {};
     const uploadedFiles = [];
 
     // Iterate over each file and upload to Cloudinary
@@ -79,17 +77,13 @@ export const uploadTestResult = async (req, res) => {
       }
 
       // Upload file to Cloudinary
-      const cloudFile = await upload(file.tempFilePath, folderName);
-      uploadedFiles.push({ [key]: cloudFile.url });
-      updateQueries[`testResults.${key}`] = cloudFile.url;
+      const cloudFile = await upload(file.tempFilePath, userId);
+      uploadedFiles.push(cloudFile.url);
     }
 
     // Update medical record model with the Cloudinary URLs for all uploaded files
-    const updatedMedicalRecord = await MedicalRecord.findByIdAndUpdate(
-      medicalRecord._id,
-      { $set: updateQueries },
-      { new: true }
-    );
+    medicalRecord.testResults.push(...uploadedFiles);
+    const updatedMedicalRecord = await medicalRecord.save();
 
     res.status(201).json({
       success: true,
@@ -102,6 +96,7 @@ export const uploadTestResult = async (req, res) => {
     res.status(500).json({ success: false, error: 'Error uploading test results', errorMessage: error.message });
   }
 };
+
 
 
 
