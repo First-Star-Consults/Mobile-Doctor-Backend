@@ -4,7 +4,7 @@ import User from "../models/user.js";
 import { Doctor, Pharmacy, Laboratory, Therapist } from "../models/healthProviders.js";
 // import nodemailer from 'nodemailer';
 import { upload } from "../config/cloudinary.js";
-import { sendVerificationEmail } from "../utils/nodeMailer.js";
+import { sendForgetPasswordEmail } from "../utils/nodeMailer.js";
 
 const userController = {
 
@@ -192,7 +192,7 @@ const userController = {
       const resetLink = `http://${req.headers.host}/api/user/reset-password/${token}`;
 
       // Use your sendVerificationEmail function
-      await sendVerificationEmail(user.email, `Please click on the following link, or paste this into your browser to complete the process: ${resetLink}`);
+      await sendForgetPasswordEmail(user.email, `Please click on the following link, or paste this into your browser to complete the process: ${resetLink}`);
 
       res.status(200).json({ message: 'An e-mail has been sent to ' + user.email + ' with further instructions.' });
     } catch (error) {
