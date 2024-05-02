@@ -106,21 +106,18 @@ export const uploadTestResult = async (req, res) => {
 
 
 export const getTestResult = async (req, res) => {
-    try {
-      const { userId } = req.params; // Assuming userId is sent as a parameter in the request
-  
-      // Fetch medical records for the specified user and populate the 'user' field to get the username
-      const medicalRecords = await MedicalRecord.find({ user: userId }).populate('user', 'username');
-  
-      // Extract testResults for the user
-      const userTestResults = medicalRecords.map(record => ({
-        username: record.user.username,
-        testResults: record.testResults,
-      }));
-  
-      res.json(userTestResults);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+  try {
+    const { userId } = req.params; // Assuming userId is sent as a parameter in the request
+
+    // Find the medical record by user ID
+    const medicalRecord = await MedicalRecord.findById(userId);
+
+    if (!medicalRecord) {
+      return res.status(404).json({ message: 'Medical record not found for the specified user' });
     }
-  };
-  
+
+    res.json({ testResults: medicalRecord.testResults });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

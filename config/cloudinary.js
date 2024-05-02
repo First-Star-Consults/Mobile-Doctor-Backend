@@ -2,9 +2,9 @@
 import { v2 as cloudinary } from 'cloudinary';
 
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_NAME,
-  api_key: process.env.CLOUDINARY_APIKEY,
-  api_secret: process.env.CLOUDINARY_SECRET,
+  cloud_name: "mobile-doctor",
+  api_key: "586729314615645",
+  api_secret: "v4dWdfe8UuJ6uxMEeISkzgS9gVY",
 });
 
 export const upload = async (file, folderName) => {
