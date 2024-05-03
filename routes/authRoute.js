@@ -17,6 +17,14 @@ router.get("/", (req, res) => {
 // Google authentication
 router.get(
   "/google",
+  (req, res, next) => {
+    // Extract the role from the request query parameters
+    const role = req.query.role || 'patient'; // default role if not provided
+
+    // Attach the role to the request object
+    req.role = role;
+    next();
+  },
   passport.authenticate("google", { scope: ["profile", "email"] }) 
 );
 
