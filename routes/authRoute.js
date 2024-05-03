@@ -1,7 +1,7 @@
 //authRoute.js
 
 import passport from "passport";
-import express from "express";
+import express, { query } from "express";
 import authController from "../controllers/authController.js";
 
 
@@ -16,10 +16,11 @@ router.get("/", (req, res) => {
 
 // Google authentication
 router.get(
-  "/google/:role", // Define the endpoint to accept role as a route parameter
+  "/google", // Define the endpoint to accept role as a route parameter
   (req, res, next) => {
     // Attach the role to the request object
-    req.role = req.params.role || 'patient'; // default role if not provided
+    req.role = req.query.role; 
+
     next();
   },
   passport.authenticate("google", { scope: ["profile", "email"] }) 

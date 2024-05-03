@@ -132,7 +132,8 @@ passport.use(new GoogleStrategy({
   clientID: '933532240172-pjp4aik911eb393c8hmuoiu1ndvvknp1.apps.googleusercontent.com',
   clientSecret: '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',
   callbackURL: "https://shielded-beach-02064-bf50e65a75d1.herokuapp.com/api/auth/google/user",
-  userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
+  userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
+  passReqToCallback: true,
 },
   async (req, accessToken, refreshToken, profile, done) => {
     try {
