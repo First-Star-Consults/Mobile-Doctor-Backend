@@ -134,10 +134,10 @@ passport.use(new GoogleStrategy({
   callbackURL: "https://shielded-beach-02064-bf50e65a75d1.herokuapp.com/api/auth/google/user",
   userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
 },
-  async (accessToken, refreshToken, profile, done) => {
+  async (req, accessToken, refreshToken, profile, done) => {
     try {
       // Extract role from the request or set a default role
-      const role = req.query.role || 'patient';
+      const role = req.role;
 
       // Try to find the user based on their googleId
       let user = await User.findOne({ googleId: profile.id });
