@@ -129,17 +129,13 @@ passport.deserializeUser(function (id, done) {
 });
 
 passport.use(new GoogleStrategy({
-  clientID: '933532240172-pjp4aik911eb393c8hmuoiu1ndvvknp1.apps.googleusercontent.com',
-  clientSecret: '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',
+  clientID: process.env.CLIENT_ID,
+  clientSecret: process.env.CLIENT_SECRET,
   callbackURL: "https://shielded-beach-02064-bf50e65a75d1.herokuapp.com/api/auth/google/user",
-  userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
-  passReqToCallback: true,
+  userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
 },
-  async (req, accessToken, refreshToken, profile, done) => {
+  async (accessToken, refreshToken, profile, done) => {
     try {
-      // Extract role from the request or set a default role
-      const role = req.role;
-
       // Try to find the user based on their googleId
       let user = await User.findOne({ googleId: profile.id });
 
@@ -151,7 +147,7 @@ passport.use(new GoogleStrategy({
           username: profile._json.email, // Assuming username is the email
           firstName: profile._json.given_name,
           lastName: profile._json.family_name,
-          role: role, // Set the role dynamically
+          role: 'patient', // default role
           isVerified: true, // default isVerified
           verificationcode: null, //default value
           profilePhoto: profile._json.picture // Optional: saving user's Google profile photo
@@ -164,9 +160,7 @@ passport.use(new GoogleStrategy({
     } catch (error) {
       return done(error);
     }
-  }
-));
-
+  }));
 
   userSchema.index({ "location.coordinates": "2dsphere" });
 
