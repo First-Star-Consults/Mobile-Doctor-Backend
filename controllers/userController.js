@@ -294,23 +294,23 @@ const userController = {
 
   // POST /api/patient/update-location
   updateLocation: async (req, res) => {
-    const { patientId, latitude, longitude } = req.body;
+    const { userId, latitude, longitude } = req.body;
 
     try {
-      const patient = await User.findById(patientId);
-      if (patient) {
+      const user = await User.findById(userId);
+      if (user) {
         // If location does not exist, initialize it
-        if (!patient.location) {
-          patient.location = { type: 'Point', coordinates: [] };
+        if (!user.location) {
+          user.location = { type: 'Point', coordinates: [] };
         }
 
         // Update patient's location coordinates
-        patient.location.coordinates = [longitude, latitude];
-        await patient.save();
+        user.location.coordinates = [longitude, latitude];
+        await user.save();
 
         res.status(200).json({ message: 'Location updated successfully' });
       } else {
-        res.status(404).json({ message: 'Patient not found' });
+        res.status(404).json({ message: 'user not found' });
       }
     } catch (error) {
       console.error("Update location error:", error);
@@ -323,12 +323,22 @@ const userController = {
   // GET /api/doctor/find-nearby-providers/:patientId
   getNearbyProvider: async (req, res) => {
     const { userId } = req.params;
-    const { role, distance } = req.query; // Expect 'role' to be 'therapist', 'pharmacist', etc.
-    
+    const { role, distance } = req.query;
+  
+    // Validate inputs
+    if (!userId) return res.status(400).json({ message: "User ID is required" });
+    if (!role) return res.status(400).json({ message: "Provider role is required" });
+    if (!distance) return res.status(400).json({ message: "Distance is required" });
+  
     try {
       const user = await User.findById(userId);
       if (!user) return res.status(404).json({ message: "User not found" });
-    
+  
+      // Check if user has location coordinates
+      if (!user.location || !user.location.coordinates) {
+        return res.status(400).json({ message: "User location is not set" });
+      }
+  
       const providers = await user.findNearbyProvidersByRole(role, Number(distance));
       res.status(200).json(providers);
     } catch (error) {

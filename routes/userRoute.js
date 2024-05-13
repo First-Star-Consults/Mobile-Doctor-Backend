@@ -18,9 +18,9 @@ router.get("/profile/:userId", userController.getProfile);
 router.get('/online-users/:role', userController.getOnlineUsers)
 
 // Route to find nearby health providers
-router.get('/map/find-nearby/:userId', userController.findNearby);
+router.post('/update-location', userController.updateLocation);
 //for doctor to use and get nearby HealthProvider
-router.get('/map/find-nearby-providers/:userId', userController.getNearbyProvider )
+router.get('/find-nearby-providers/:userId', userController.getNearbyProvider )
 // get notification
 router.get('/get-notifications/:userId', userController.getNotifications);
 //update user location
