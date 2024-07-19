@@ -1,0 +1,3 @@
+SESSION_SECRET='temperal word'
+CLIENT_ID='933532240172-pjp4aik911eb393c8hmuoiu1ndvvknp1.apps.googleusercontent.com'
+clientSecret='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'
