@@ -237,7 +237,8 @@ getProviderPrescriptions: async (req, res) => {
       return {
         ...prescription.prescription.toObject(),
         patientAddress: prescription.prescription.patientAddress,
-        diagnosis: prescription.prescription.diagnosis // Include diagnosis
+        diagnosis: prescription.prescription.diagnosis,
+        createdAt: prescription.prescription.createdAt
       };
     });
 
