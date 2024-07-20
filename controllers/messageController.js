@@ -1,6 +1,7 @@
 // controllers/messageController.js
 import Message from '../models/messageModel.js';
 import Conversation from '../models/conversationModel.js';
+import User from '../models/user.js';
 import {Doctor, Pharmacy, Laboratory, Therapist} from '../models/healthProviders.js';
 import { Prescription } from '../models/services.js';
 import ConsultationSession from '../models/consultationModel.js';
@@ -137,14 +138,25 @@ sharePrescription: async (req, res) => {
 
   try {
     const prescription = await Prescription.findById(prescriptionId);
+
     if (!prescription) {
       return res.status(404).json({ message: 'Prescription not found' });
     }
 
+    const patient = await User.findById(patientId);
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    // Add patient's address to the prescription
+    prescription.patientAddress = patient.address;
+    await prescription.save();
+
     const sharedPrescription = {
-      prescription: prescriptionId,
+      prescription: prescription._id,
       deliveryOption,
       patient: patientId,
+      patientAddress: prescription.patientAddress // Include patientAddress here
     };
 
     let ProviderModel;
@@ -174,7 +186,11 @@ sharePrescription: async (req, res) => {
     provider.prescriptions.push(sharedPrescription);
     await provider.save();
 
-    res.status(200).json({ message: 'Prescription shared successfully', prescriptions: provider.prescriptions });
+    res.status(200).json({
+      message: 'Prescription shared successfully',
+      prescriptions: provider.prescriptions,
+      patientAddress: prescription.patientAddress // Add patientAddress in the response
+    });
   } catch (error) {
     console.error('Failed to share prescription:', error);
     res.status(500).json({ message: error.message });
@@ -184,7 +200,7 @@ sharePrescription: async (req, res) => {
 // for provider to get presction
 getProviderPrescriptions: async (req, res) => {
   const providerId = req.params.providerId;
-  const providerType = req.body.providerType
+  const providerType = req.body.providerType;
 
   try {
     let ProviderModel;
@@ -211,7 +227,15 @@ getProviderPrescriptions: async (req, res) => {
       return res.status(404).json({ message: 'Provider not found' });
     }
 
-    res.status(200).json(provider.prescriptions);
+    // Include patientAddress in each prescription
+    const prescriptionsWithAddress = provider.prescriptions.map(prescription => {
+      return {
+        ...prescription.prescription.toObject(),
+        patientAddress: prescription.prescription.patientAddress
+      };
+    });
+
+    res.status(200).json(prescriptionsWithAddress);
   } catch (error) {
     console.error('Failed to get prescriptions:', error);
     res.status(500).json({ message: error.message });
