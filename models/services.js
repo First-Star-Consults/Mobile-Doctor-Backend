@@ -21,6 +21,7 @@ const prescriptionSchema = new mongoose.Schema({
     dosage: { type: String, required: true }
   }],
   labTests: [{ type: String }],
+  deliveryOption: { type: String, required: false },
   createdAt: { type: Date, default: Date.now } 
 });
 

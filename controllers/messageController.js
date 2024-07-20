@@ -149,19 +149,22 @@ sharePrescription: async (req, res) => {
       return res.status(404).json({ message: 'Patient not found' });
     }
 
-    // Add patient's address to the prescription
+    // Add patient's address and delivery option to the prescription
     prescription.patientAddress = patient.address;
+    prescription.deliveryOption = deliveryOption;
     await prescription.save();
 
     const sharedPrescription = {
       prescription: prescription._id,
       deliveryOption,
       patient: patientId,
-      patientAddress: prescription.patientAddress, // Include patientAddress here
-      diagnosis: prescription.diagnosis // Include diagnosis here
+      patientAddress: prescription.patientAddress, 
+      diagnosis: prescription.diagnosis,
+      deliveryOption: prescription.deliveryOption, 
+      createdAt: prescription.createdAt
     };
 
-    console.log(prescription.diagnosis);
+    
 
     let ProviderModel;
 
@@ -194,7 +197,9 @@ sharePrescription: async (req, res) => {
       message: 'Prescription shared successfully',
       prescriptions: provider.prescriptions,
       patientAddress: prescription.patientAddress, // Add patientAddress in the response
-      diagnosis: prescription.diagnosis
+      diagnosis: prescription.diagnosis,
+      deliveryOption: prescription.deliveryOption, // Include deliveryOption in the response
+      createdAt: prescription.createdAt
     });
   } catch (error) {
     console.error('Failed to share prescription:', error);
