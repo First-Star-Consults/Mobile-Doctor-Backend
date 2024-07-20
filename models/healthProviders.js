@@ -14,7 +14,11 @@ const locationSchema = new mongoose.Schema({
 });
 
 
-
+const sharedPrescriptionSchema = new mongoose.Schema({
+  prescription: { type: mongoose.Schema.Types.ObjectId, ref: 'Prescription' },
+  deliveryOption: { type: String, enum: ['home', 'inshop'] },
+  patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+});
 
 
 
@@ -60,6 +64,7 @@ recommendations: [
   },
 ],
 
+prescriptions: [sharedPrescriptionSchema],
 });
 
 
@@ -98,7 +103,8 @@ const pharmacySchema = new mongoose.Schema({
     patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     comment: String,
     rating: { type: Number, min: 1, max: 5 }
-}]
+}],
+prescriptions: [sharedPrescriptionSchema],
 });
 
 // Therapist schema
@@ -136,7 +142,8 @@ const therapistSchema = new mongoose.Schema({
     patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     comment: String,
     rating: { type: Number, min: 1, max: 5 }
-}]
+}],
+prescriptions: [sharedPrescriptionSchema],
 });
 
 // Laboratory schema
@@ -173,7 +180,8 @@ const laboratorySchema = new mongoose.Schema({
     patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     comment: String,
     rating: { type: Number, min: 1, max: 5 }
-}]
+}],
+prescriptions: [sharedPrescriptionSchema],
 });
 
 const Doctor = mongoose.model("Doctor", doctorSchema);

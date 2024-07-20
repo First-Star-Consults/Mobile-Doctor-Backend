@@ -1,10 +1,7 @@
 // userController.js
 import crypto from 'crypto';
 import User from "../models/user.js";
-<<<<<<< HEAD
 import Configuration from '../models/configModel.js';
-=======
->>>>>>> 74061c393c12cc1814545266738642829b628c83
 import { Doctor, Pharmacy, Laboratory, Therapist } from "../models/healthProviders.js";
 // import nodemailer from 'nodemailer';
 import { upload } from "../config/cloudinary.js";
@@ -327,27 +324,17 @@ const userController = {
   // GET /api/doctor/find-nearby-providers/:patientId
   getNearbyProvider: async (req, res) => {
     const { userId } = req.params;
-<<<<<<< HEAD
     const { role } = req.query;
 
     const getConfigValue = async (key) => {
       const config = await Configuration.findOne({ key });
       return config ? config.value : null;
     };
-=======
-    const { role, distance } = req.query;
-  
-    // Validate inputs
-    if (!userId) return res.status(400).json({ message: "User ID is required" });
-    if (!role) return res.status(400).json({ message: "Provider role is required" });
-    if (!distance) return res.status(400).json({ message: "Distance is required" });
->>>>>>> 74061c393c12cc1814545266738642829b628c83
   
     try {
       const user = await User.findById(userId);
       if (!user) return res.status(404).json({ message: "User not found" });
   
-<<<<<<< HEAD
       const distanceConfig = await getConfigValue('distance');
       if (distanceConfig === null) return res.status(500).json({ message: "Distance configuration not found" });
   
@@ -355,17 +342,6 @@ const userController = {
       res.status(200).json(providers);
     } catch (error) {
       console.error('Error fetching nearby providers:', error);
-=======
-      // Check if user has location coordinates
-      if (!user.location || !user.location.coordinates) {
-        return res.status(400).json({ message: "User location is not set" });
-      }
-  
-      const providers = await user.findNearbyProvidersByRole(role, Number(distance));
-      res.status(200).json(providers);
-    } catch (error) {
-      console.error(error);
->>>>>>> 74061c393c12cc1814545266738642829b628c83
       res.status(500).json({ message: "Internal server error", error: error.message });
     }
   },

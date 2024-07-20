@@ -18,6 +18,7 @@ const prescriptionSchema = new mongoose.Schema({
     name: { type: String, required: true },
     dosage: { type: String, required: true }
   }],
+  labTests: [{ type: String }]
 });
 
 

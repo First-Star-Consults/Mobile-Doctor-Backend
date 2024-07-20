@@ -1,7 +1,7 @@
 // controllers/messageController.js
 import Message from '../models/messageModel.js';
 import Conversation from '../models/conversationModel.js';
-import {Doctor} from '../models/healthProviders.js';
+import {Doctor, Pharmacy, Laboratory, Therapist} from '../models/healthProviders.js';
 import { Prescription } from '../models/services.js';
 import ConsultationSession from '../models/consultationModel.js';
 import { io } from '../server.js'; 
@@ -96,8 +96,10 @@ const messageController = {
 
 // Method for creating a prescription and saving it to the database
 prescriptions: async (req, res) => {
-  const { doctorId } = req.params; // Assuming doctorId is passed as URL parameter
-  const { userId, medicines } = req.body;
+  const { doctorId } = req.params; 
+  const { userId, medicines, labTests } = req.body;
+
+  
 
   if (!userId || !medicines || medicines.length === 0) {
     return res.status(400).json({ message: 'Missing required fields' });
@@ -116,7 +118,8 @@ prescriptions: async (req, res) => {
     const prescription = await Prescription.create({
       doctor: doctorId,
       patient: userId,
-      medicines
+      medicines,
+      labTests
     });
     
     res.status(201).json(prescription);
@@ -125,6 +128,97 @@ prescriptions: async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 },
+
+
+
+sharePrescription: async (req, res) => {
+  const { prescriptionId, providerId, providerType, deliveryOption } = req.body;
+  const patientId = req.params.patientId;  
+
+  try {
+    const prescription = await Prescription.findById(prescriptionId);
+    if (!prescription) {
+      return res.status(404).json({ message: 'Prescription not found' });
+    }
+
+    const sharedPrescription = {
+      prescription: prescriptionId,
+      deliveryOption,
+      patient: patientId,
+    };
+
+    let ProviderModel;
+
+    switch (providerType.toLowerCase()) {
+      case 'doctor':
+        ProviderModel = Doctor;
+        break;
+      case 'pharmacy':
+        ProviderModel = Pharmacy;
+        break;
+      case 'therapist':
+        ProviderModel = Therapist;
+        break;
+      case 'laboratory':
+        ProviderModel = Laboratory;
+        break;
+      default:
+        return res.status(400).json({ message: 'Invalid provider type' });
+    }
+
+    const provider = await ProviderModel.findById(providerId);
+    if (!provider) {
+      return res.status(404).json({ message: 'Provider not found' });
+    }
+
+    provider.prescriptions.push(sharedPrescription);
+    await provider.save();
+
+    res.status(200).json({ message: 'Prescription shared successfully', prescriptions: provider.prescriptions });
+  } catch (error) {
+    console.error('Failed to share prescription:', error);
+    res.status(500).json({ message: error.message });
+  }
+},
+
+// for provider to get presction
+getProviderPrescriptions: async (req, res) => {
+  const providerId = req.params.providerId;
+  const providerType = req.body.providerType
+
+  try {
+    let ProviderModel;
+
+    switch (providerType.toLowerCase()) {
+      case 'doctor':
+        ProviderModel = Doctor;
+        break;
+      case 'pharmacy':
+        ProviderModel = Pharmacy;
+        break;
+      case 'therapist':
+        ProviderModel = Therapist;
+        break;
+      case 'laboratory':
+        ProviderModel = Laboratory;
+        break;
+      default:
+        return res.status(400).json({ message: 'Invalid provider type' });
+    }
+
+    const provider = await ProviderModel.findById(providerId).populate('prescriptions.prescription');
+    if (!provider) {
+      return res.status(404).json({ message: 'Provider not found' });
+    }
+
+    res.status(200).json(provider.prescriptions);
+  } catch (error) {
+    console.error('Failed to get prescriptions:', error);
+    res.status(500).json({ message: error.message });
+  }
+},
+
+
 
 
 // Endpoint to retrieve recent chats for a user (either patient or doctor)

@@ -12,13 +12,10 @@ import providerRouter from './routes/healthProviderRoute.js';
 import searchRouter from './routes/searchRoute.js';
 import adminRouter from './routes/adminRoute.js';
 import messageRoute from './routes/messageRoute.js';
-<<<<<<< HEAD
 import configRoute from './routes/configRoute.js'
-=======
->>>>>>> 74061c393c12cc1814545266738642829b628c83
 import medicalReportRoute from './routes/medicalReportRoute.js'
 import http from 'http'; 
-import { Server as SocketIOServer } from 'socket.io'; 
+import { Server as SocketIOServer } from 'socket.io';
 
 const app = express();
 const server = http.createServer(app); // Wrap the express app with http server
@@ -57,10 +54,7 @@ app.use("/api/provider", providerRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/medical-report", medicalReportRoute);
-<<<<<<< HEAD
 app.use("/api/config", configRoute)
-=======
->>>>>>> 74061c393c12cc1814545266738642829b628c83
 
 
 app.get("/api", (req, res) => {
