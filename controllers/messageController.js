@@ -96,9 +96,9 @@ const messageController = {
 },
 
 // Method for creating a prescription and saving it to the database
-prescriptions: async (req, res) => {
+makePrescriptions: async (req, res) => {
   const { doctorId } = req.params; 
-  const { userId, medicines, labTests } = req.body;
+  const { userId, medicines, labTests, diagnosis } = req.body;
 
   
 
@@ -120,7 +120,8 @@ prescriptions: async (req, res) => {
       doctor: doctorId,
       patient: userId,
       medicines,
-      labTests
+      labTests,
+      diagnosis
     });
     
     res.status(201).json(prescription);
@@ -156,8 +157,11 @@ sharePrescription: async (req, res) => {
       prescription: prescription._id,
       deliveryOption,
       patient: patientId,
-      patientAddress: prescription.patientAddress // Include patientAddress here
+      patientAddress: prescription.patientAddress, // Include patientAddress here
+      diagnosis: prescription.diagnosis // Include diagnosis here
     };
+
+    console.log(prescription.diagnosis);
 
     let ProviderModel;
 
@@ -189,13 +193,15 @@ sharePrescription: async (req, res) => {
     res.status(200).json({
       message: 'Prescription shared successfully',
       prescriptions: provider.prescriptions,
-      patientAddress: prescription.patientAddress // Add patientAddress in the response
+      patientAddress: prescription.patientAddress, // Add patientAddress in the response
+      diagnosis: prescription.diagnosis
     });
   } catch (error) {
     console.error('Failed to share prescription:', error);
     res.status(500).json({ message: error.message });
   }
 },
+
 
 // for provider to get presction
 getProviderPrescriptions: async (req, res) => {
@@ -227,20 +233,22 @@ getProviderPrescriptions: async (req, res) => {
       return res.status(404).json({ message: 'Provider not found' });
     }
 
-    // Include patientAddress in each prescription
-    const prescriptionsWithAddress = provider.prescriptions.map(prescription => {
+    const prescriptionsWithDetails = provider.prescriptions.map(prescription => {
       return {
         ...prescription.prescription.toObject(),
-        patientAddress: prescription.prescription.patientAddress
+        patientAddress: prescription.prescription.patientAddress,
+        diagnosis: prescription.prescription.diagnosis // Include diagnosis
       };
     });
 
-    res.status(200).json(prescriptionsWithAddress);
+    res.status(200).json(prescriptionsWithDetails);
   } catch (error) {
     console.error('Failed to get prescriptions:', error);
     res.status(500).json({ message: error.message });
   }
 },
+
+
 
 
 
