@@ -18,7 +18,8 @@ const prescriptionSchema = new mongoose.Schema({
   diagnosis: { type: String, required: false }, // Add diagnosis field
   medicines: [{
     name: { type: String, required: true },
-    dosage: { type: String, required: true }
+    dosage: { type: String, required: true },
+    daysOfTreatment: String
   }],
   labTests: [{ type: String }],
   deliveryOption: { type: String, required: false },

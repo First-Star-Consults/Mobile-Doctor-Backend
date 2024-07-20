@@ -98,11 +98,11 @@ const messageController = {
 // Method for creating a prescription and saving it to the database
 makePrescriptions: async (req, res) => {
   const { doctorId } = req.params; 
-  const { userId, medicines, labTests, diagnosis } = req.body;
+  const { patientId, medicines, labTests, diagnosis } = req.body;
 
   
 
-  if (!userId || !medicines || medicines.length === 0) {
+  if (!patientId || !medicines || medicines.length === 0) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
@@ -118,7 +118,7 @@ makePrescriptions: async (req, res) => {
     // Proceed with creating the prescription
     const prescription = await Prescription.create({
       doctor: doctorId,
-      patient: userId,
+      patient: patientId,
       medicines,
       labTests,
       diagnosis
@@ -161,6 +161,7 @@ sharePrescription: async (req, res) => {
       patientAddress: prescription.patientAddress, 
       diagnosis: prescription.diagnosis,
       deliveryOption: prescription.deliveryOption, 
+      medicines: prescription.medicines,
       createdAt: prescription.createdAt
     };
 
@@ -199,6 +200,7 @@ sharePrescription: async (req, res) => {
       patientAddress: prescription.patientAddress, // Add patientAddress in the response
       diagnosis: prescription.diagnosis,
       deliveryOption: prescription.deliveryOption, // Include deliveryOption in the response
+      medicines: prescription.medicines,
       createdAt: prescription.createdAt
     });
   } catch (error) {
@@ -206,6 +208,36 @@ sharePrescription: async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 },
+
+
+getPatientPrescriptions: async (req, res) => {
+  const patientId = req.params.patientId;
+
+  try {
+    const prescriptions = await Prescription.find({ patient: patientId })
+      .populate('doctor', 'fullName profilePhoto medicalSpecialty.name')
+      .sort({ createdAt: -1 });
+
+    if (!prescriptions.length) {
+      return res.status(404).json({ message: 'No prescriptions found for this patient' });
+    }
+
+    const prescriptionsWithDetails = prescriptions.map(prescription => ({
+      ...prescription.toObject(),
+      doctor: prescription.doctor,
+      diagnosis: prescription.diagnosis,
+      medicines: prescription.medicines, // Include medicines with daysOfTreatment
+      labTests: prescription.labTests,
+      createdAt: prescription.createdAt
+    }));
+
+    res.status(200).json(prescriptionsWithDetails);
+  } catch (error) {
+    console.error('Failed to fetch prescriptions:', error);
+    res.status(500).json({ message: error.message });
+  }
+},
+
 
 
 // for provider to get presction
@@ -243,6 +275,7 @@ getProviderPrescriptions: async (req, res) => {
         ...prescription.prescription.toObject(),
         patientAddress: prescription.prescription.patientAddress,
         diagnosis: prescription.prescription.diagnosis,
+        medicines: prescription.prescription.medicines,
         createdAt: prescription.prescription.createdAt
       };
     });
