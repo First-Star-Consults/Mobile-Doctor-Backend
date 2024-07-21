@@ -14,6 +14,7 @@ import adminRouter from './routes/adminRoute.js';
 import messageRoute from './routes/messageRoute.js';
 import configRoute from './routes/configRoute.js'
 import medicalReportRoute from './routes/medicalReportRoute.js'
+import prescriptionRoute from './routes/prescriptionRoute.js'
 import http from 'http'; 
 import { Server as SocketIOServer } from 'socket.io';
 
@@ -54,6 +55,7 @@ app.use("/api/provider", providerRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/medical-report", medicalReportRoute);
+app.use("/api/prescription", prescriptionRoute)
 app.use("/api/config", configRoute)
 
 

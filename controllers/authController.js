@@ -44,7 +44,7 @@ const authController = {
       // Choose the appropriate model based on userType
       let healthProviderModel;
       let medicalReportModel;
-      switch (userType) {
+      switch (userType.toLowerCase()) {
         case 'doctor':
           healthProviderModel = Doctor;
           break;
@@ -749,15 +749,6 @@ getMostRecentActiveSession: async (req, res) => {
 },
 
 
-
-
-
-
-
-
-
-
-
 cancelConsultation: async (req, res) => {
   const { sessionId } = req.body;
 
@@ -827,13 +818,6 @@ cancelConsultation: async (req, res) => {
     return res.status(500).json({ message: 'Error cancelling consultation', error: error.toString() });
   }
 },
-
-
-
-
-
-
-
 
 
 completeConsultation: async (req, res) => {
