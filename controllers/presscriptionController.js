@@ -91,7 +91,7 @@ makePrescriptions: async (req, res) => {
         case 'doctor':
           ProviderModel = Doctor;
           break;
-        case 'pharmacy':
+        case 'pharmacy': 
           ProviderModel = Pharmacy;
           break;
         case 'therapist':
@@ -207,37 +207,37 @@ makePrescriptions: async (req, res) => {
   
 // Function to add costing details
 addCosting: async (req, res) => {
-    const { prescriptionId, amount } = req.body;
-    const providerId = req.params.providerId;
-  
-    try {
-      // Find the prescription
-      const prescription = await Prescription.findById(prescriptionId);
-      if (!prescription) return res.status(404).json({ message: 'Prescription not found' });
-  
-      // Check if the provider is authorized based on the provider type
-      const isAuthorized = await Laboratory.exists({ _id: providerId }) || await Pharmacy.exists({ _id: providerId });
-      if (!isAuthorized) {
-        return res.status(403).json({ message: 'Not authorized to add costing to this prescription' });
-      }
-  
-      // Create a transaction for the costing
-      const transaction = new Transaction({
-        user: prescription.patient,
-        doctor: prescription.doctor, // Assuming this should reference the doctor for the prescription
-        prescription: prescriptionId,
-        type: 'costing',
-        status: 'pending',
-        amount,
-      });
-  
-      await transaction.save();
-      res.status(200).json({ message: 'Costing added successfully', transaction });
-    } catch (error) {
-      console.error('Error adding costing:', error);
-      res.status(500).json({ message: 'Internal server error' });
+  const { prescriptionId, amount } = req.body;
+  const providerId = req.params.providerId;
+
+  try {
+    const prescription = await Prescription.findById(prescriptionId);
+    if (!prescription) return res.status(404).json({ message: 'Prescription not found' });
+
+    const isAuthorized = await Laboratory.exists({ _id: providerId }) || await Pharmacy.exists({ _id: providerId });
+    if (!isAuthorized) {
+      return res.status(403).json({ message: 'Not authorized to add costing to this prescription' });
     }
-  },
+
+    prescription.totalCost = amount;
+    await prescription.save();
+
+    const transaction = new Transaction({
+      user: prescription.patient,
+      doctor: prescription.doctor,
+      prescription: prescriptionId,
+      type: 'costing',
+      status: 'pending',
+      amount,
+    });
+
+    await transaction.save();
+    res.status(200).json({ message: 'Costing added successfully', transaction });
+  } catch (error) {
+    console.error('Error adding costing:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+},
   
   
 
@@ -279,48 +279,64 @@ addCosting: async (req, res) => {
   },
 
   // Function to approve costing
-  approveCosting: async (req, res) => {
-    const { prescriptionId } = req.body;
-    const patientId = req.params.patientId;
+approveCosting: async (req, res) => {
+  const { prescriptionId } = req.body;
+  const patientId = req.params.patientId;
 
-    try {
-      const prescription = await Prescription.findById(prescriptionId);
-      if (!prescription) return res.status(404).json({ message: 'Prescription not found' });
+  try {
+    const prescription = await Prescription.findById(prescriptionId);
 
-      const amount = prescription.totalCost;
+    if (!prescription) return res.status(404).json({ message: 'Prescription not found' });
 
-      // Update transaction status
-      const transaction = await Transaction.findOne({ prescription: prescriptionId });
-      if (transaction) {
-        transaction.status = 'approved';
-        await transaction.save();
-      }
-
-      // Determine provider model and perform transfer
-      let providerModel;
-      switch (prescription.providerType) {
-        case 'pharmacy':
-          providerModel = Pharmacy;
-          break;
-        case 'laboratory':
-          providerModel = Laboratory;
-          break;
-        default:
-          return res.status(400).json({ message: 'Invalid provider type' });
-      }
-
-      const provider = await providerModel.findById(prescription.provider);
-      if (!provider) return res.status(404).json({ message: 'Provider not found' });
-
-      // Use the calculateFeesAndTransfer function
-      await calculateFeesAndTransfer(patientId, prescription.provider, amount, adminId);
-
-      res.status(200).json({ message: 'Costing approved successfully', transaction });
-    } catch (error) {
-      console.error('Error approving costing:', error);
-      res.status(500).json({ message: 'Internal server error' });
+    // Check if the prescription has already been approved
+    if (prescription.approved) {
+      return res.status(400).json({ error: 'This prescription has already been approved.' });
     }
-  },
+
+    const amount = prescription.totalCost;
+
+    const transaction = await Transaction.findOne({ prescription: prescriptionId });
+    if (transaction) {
+      transaction.status = 'approved';
+      await transaction.save();
+    }
+
+    let providerModel;
+    switch (prescription.providerType) {
+      case 'pharmacy':
+        providerModel = Pharmacy;
+        break;
+      case 'laboratory':
+        providerModel = Laboratory;
+        break;
+      default:
+        return res.status(400).json({ message: 'Invalid provider type' });
+    }
+
+    const provider = await providerModel.findById(prescription.provider);
+    if (!provider) return res.status(404).json({ message: 'Provider not found' });
+
+    // Check user's balance
+    const user = await User.findById(patientId);
+    if (!user) return res.status(404).json({ insufficientBalanceCheck: 'User not found' });
+
+    if (user.walletBalance < amount) {
+      return res.status(400).json({ message: 'Insufficient balance' });
+    }
+
+    await calculateFeesAndTransfer(patientId, prescription.provider, amount, adminId);
+
+    // Set the approved field to true
+    prescription.approved = true;
+    await prescription.save();
+
+    res.status(200).json({ message: 'Costing approved successfully', transaction });
+  } catch (error) {
+    console.error('Error approving costing:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+},
+
   
   // Function to update the status of a prescription
   updatePrescriptionStatus: async (req, res) => {

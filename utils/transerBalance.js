@@ -37,14 +37,14 @@ export const transferBalance = async (fromUserId, toUserId, amount, adminFee, ad
     const roundedAmount = Math.round(amount * 100) / 100;
     const roundedAdminFee = Math.round(adminFee * 100) / 100;
 
-    if (fromUser.balance < roundedAmount + roundedAdminFee) {
+    if (fromUser.walletBalance < roundedAmount + roundedAdminFee) {
       throw new Error('Insufficient balance');
     }
 
     // Update balances
-    fromUser.balance -= roundedAmount + roundedAdminFee;
-    toUser.balance += roundedAmount;
-    admin.balance += roundedAdminFee;
+    fromUser.walletBalance -= roundedAmount + roundedAdminFee;
+    toUser.walletBalance += roundedAmount;
+    admin.walletBalance += roundedAdminFee;
 
     // Save updated user balances
     await fromUser.save();

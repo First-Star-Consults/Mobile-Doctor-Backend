@@ -25,6 +25,7 @@ const prescriptionSchema = new mongoose.Schema({
   deliveryOption: { type: String, required: false },
   createdAt: { type: Date, default: Date.now },
   status: { type: String, enum: ['pending', 'approved', 'declined', 'completed'], default: 'pending' },
+  approved: { type: Boolean, default: false },
   totalCost: { type: Number},
   providerType: { type: String, enum: ['pharmacy', 'laboratory'] }, // Added provider type field
   provider: { type: mongoose.Schema.Types.ObjectId  } // Reference to either Pharmacy or Laboratory
