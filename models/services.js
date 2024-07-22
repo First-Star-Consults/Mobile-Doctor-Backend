@@ -17,12 +17,12 @@ const prescriptionSchema = new mongoose.Schema({
   patientAddress: { type: String, default: null },
   diagnosis: { type: String, required: false },
   medicines: [{
-    name: { type: String, required: true },
-    dosage: { type: String, required: true },
+    name: { type: String },
+    dosage: { type: String },
     daysOfTreatment: String
   }],
   labTests: [{ type: String }],
-  deliveryOption: { type: String, required: false },
+  deliveryOption: { type: String },
   createdAt: { type: Date, default: Date.now },
   status: { type: String, enum: ['pending', 'approved', 'declined', 'completed'], default: 'pending' },
   approved: { type: Boolean, default: false },

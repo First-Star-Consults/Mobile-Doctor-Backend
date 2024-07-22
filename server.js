@@ -16,15 +16,23 @@ import configRoute from './routes/configRoute.js'
 import medicalReportRoute from './routes/medicalReportRoute.js'
 import prescriptionRoute from './routes/prescriptionRoute.js'
 import http from 'http'; 
-import { Server as SocketIOServer } from 'socket.io';
+// import { Server as SocketIOServer } from 'socket.io';
+import { Server } from 'socket.io';
 
 const app = express();
-const server = http.createServer(app); // Wrap the express app with http server
-const io = new SocketIOServer(server, { // Initialize Socket.IO server
+// const server = http.createServer(app); 
+// const io = new SocketIOServer(server, { 
+//   cors: {
+//     origin: "*", 
+//     methods: ["GET", "POST"]
+//   }
+// });
+
+const server = http.createServer(app);
+const io = new Server(server, {
   cors: {
-    origin: "*", // Or specify your client's URL
-    methods: ["GET", "POST"]
-  }
+    origin: '*',
+  },
 });
 
 // Middleware
@@ -57,6 +65,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api/medical-report", medicalReportRoute);
 app.use("/api/prescription", prescriptionRoute)
 app.use("/api/config", configRoute)
+app.use('/api/messages', messageRoute);
 
 
 app.get("/api", (req, res) => {
@@ -69,40 +78,57 @@ app.get("/", (req, res) => {
 
 
 // Socket.IO logic
+// io.on('connection', (socket) => {
+//   console.log('A user connected', socket.id);
+
+//   // Join a conversation room
+//   socket.on('joinRoom', (roomId) => {
+//     socket.join(roomId);
+//     console.log(`User ${socket.id} joined room ${roomId}`);
+//   });
+
+//   // Listen for typing started
+//   socket.on('typingStarted', (roomId) => {
+//     socket.to(roomId).emit('typing', { userId: socket.id, typing: true });
+//     console.log(`User ${socket.id} is typing in room ${roomId}`);
+//   });
+
+//   // Listen for typing stopped
+//   socket.on('typingStopped', (roomId) => {
+//     socket.to(roomId).emit('typing', { userId: socket.id, typing: false });
+//     console.log(`User ${socket.id} stopped typing in room ${roomId}`);
+//   });
+
+//   socket.on('disconnect', () => {
+//     console.log('User disconnected', socket.id);
+//   });
+// });
+
+
+
+
+// Listen for new connections
 io.on('connection', (socket) => {
-  console.log('A user connected', socket.id);
+  console.log('a user connected');
 
-  // Join a conversation room
-  socket.on('joinRoom', (roomId) => {
-    socket.join(roomId);
-    console.log(`User ${socket.id} joined room ${roomId}`);
+  // Listen for a join room event
+  socket.on('joinRoom', (conversationId) => {
+    socket.join(conversationId);
+    console.log(`User joined room: ${conversationId}`);
   });
 
-  // Listen for typing started
-  socket.on('typingStarted', (roomId) => {
-    socket.to(roomId).emit('typing', { userId: socket.id, typing: true });
-    console.log(`User ${socket.id} is typing in room ${roomId}`);
-  });
-
-  // Listen for typing stopped
-  socket.on('typingStopped', (roomId) => {
-    socket.to(roomId).emit('typing', { userId: socket.id, typing: false });
-    console.log(`User ${socket.id} stopped typing in room ${roomId}`);
+  // Listen for a leave room event
+  socket.on('leaveRoom', (conversationId) => {
+    socket.leave(conversationId);
+    console.log(`User left room: ${conversationId}`);
   });
 
   socket.on('disconnect', () => {
-    console.log('User disconnected', socket.id);
+    console.log('user disconnected');
   });
 });
 
-app.use('/api/messages', messageRoute);
-
-
-server.listen(process.env.PORT || 3000, () => {
-    console.log("Server is running on port 3000");
-});
-
-
-//Set-ExecutionPolicy Bypass -Scope Process
-
 export { io };
+server.listen(3000, () => {
+  console.log('listening on *:3000');
+});

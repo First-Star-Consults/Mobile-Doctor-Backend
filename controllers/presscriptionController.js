@@ -9,18 +9,10 @@ const adminId = '669c4f6f78766d19d1d3230b';
 
 const prescriptionController = {
 
-  // Method for creating a prescription and saving it to the database
-// Method for creating a prescription and saving it to the database
-makePrescriptions: async (req, res) => {
+
+  makePrescriptions: async (req, res) => {
     const { doctorId } = req.params; 
     const { patientId, medicines, labTests, diagnosis } = req.body;
-  
-    // Check for missing required fields
-    if (!patientId || !medicines || medicines.length === 0) {
-      return res.status(400).json({ 
-        message: 'Missing required fields: patientId, medicines are required.' 
-      });
-    }
   
     try {
       // Fetch the doctor's details from the database
@@ -30,30 +22,97 @@ makePrescriptions: async (req, res) => {
       if (!doctor) {
         return res.status(404).json({ message: 'Doctor not found.' });
       }
-      
       if (doctor.kycVerification !== true) {
         return res.status(403).json({ message: 'Doctor not verified.' });
       }
   
-      // Proceed with creating the prescription
-      const prescription = await Prescription.create({
-        doctor: doctorId,
-        patient: patientId,
-        medicines,
-        labTests,
-        diagnosis
-      });
+      // Find an existing incomplete prescription for the patient
+      let prescription = await Prescription.findOne({ patient: patientId, status: 'incomplete' });
+  
+      if (!prescription) {
+        // If no incomplete prescription exists, create a new one
+        prescription = new Prescription({
+          doctor: doctorId,
+          patient: patientId,
+          medicines: medicines || [],
+          labTests: labTests || [],
+          diagnosis: diagnosis || ''
+        });
+      } else {
+        // Update the existing incomplete prescription with new data
+        if (medicines) {
+          prescription.medicines = medicines;
+        }
+        if (labTests) {
+          prescription.labTests = labTests;
+        }
+        if (diagnosis) {
+          prescription.diagnosis = diagnosis;
+        }
+      }
+  
+      // Update status to complete if all necessary fields are present
+      if (prescription.medicines.length > 0 && prescription.labTests.length > 0 && prescription.diagnosis) {
+        prescription.status = 'complete';
+      }
+  
+      await prescription.save();
   
       // Respond with a clear message including the prescription ID
       res.status(201).json({ 
-        message: 'Prescription created successfully', 
+        message: 'Prescription created/updated successfully', 
         prescriptionId: prescription._id 
       });
     } catch (error) {
-      console.error('Failed to create prescription:', error);
+      console.error('Failed to create/update prescription:', error);
       res.status(500).json({ message: 'Internal server error', error: error.message });
     }
   },
+
+ 
+// makePrescriptions: async (req, res) => {
+//     const { doctorId } = req.params; 
+//     const { patientId, medicines, labTests, diagnosis } = req.body;
+  
+//     // Check for missing required fields
+//     if (!patientId || !medicines || medicines.length === 0) {
+//       return res.status(400).json({ 
+//         message: 'Missing required fields: patientId, medicines are required.' 
+//       });
+//     }
+  
+//     try {
+//       // Fetch the doctor's details from the database
+//       const doctor = await Doctor.findById(doctorId);
+  
+//       // Check if the doctor exists and if their KYC verification is true
+//       if (!doctor) {
+//         return res.status(404).json({ message: 'Doctor not found.' });
+//       }
+      
+//       if (doctor.kycVerification !== true) {
+//         return res.status(403).json({ message: 'Doctor not verified.' });
+//       }
+  
+//       // Proceed with creating the prescription
+//       const prescription = await Prescription.create({
+//         doctor: doctorId,
+//         patient: patientId,
+//         medicines,
+//         labTests,
+//         diagnosis
+//       });
+  
+//       // Respond with a clear message including the prescription ID
+//       res.status(201).json({ 
+//         message: 'Prescription created successfully', 
+//         prescriptionId: prescription._id 
+//       });
+//     } catch (error) {
+//       console.error('Failed to create prescription:', error);
+//       res.status(500).json({ message: 'Internal server error', error: error.message });
+//     }
+//   },
   
   
   
@@ -318,10 +377,10 @@ approveCosting: async (req, res) => {
 
     // Check user's balance
     const user = await User.findById(patientId);
-    if (!user) return res.status(404).json({ insufficientBalanceCheck: 'User not found' });
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     if (user.walletBalance < amount) {
-      return res.status(400).json({ message: 'Insufficient balance' });
+      return res.status(400).json({ balanceMessage: 'Insufficient balance' });
     }
 
     await calculateFeesAndTransfer(patientId, prescription.provider, amount, adminId);
