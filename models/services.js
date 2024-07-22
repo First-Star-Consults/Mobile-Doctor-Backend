@@ -80,11 +80,18 @@ const notificationSchema = new mongoose.Schema({
 // Ensure proper indexing for performance
 notificationSchema.index({ recipient: 1, createdAt: -1 });
 
+// Test result schema
+const testResultSchema = new mongoose.Schema({
+  patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  provider: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  testName: { type: String, required: true },
+  testResult: { type: String, required: true },
+  date: { type: Date, default: Date.now },
+  // Other fields as needed
+});
+
+const TestResult = mongoose.model('TestResult', testResultSchema);
 const Notification = new mongoose.model('Notification', notificationSchema);
-
-
-
-
 const Transaction = new mongoose.model('Transaction', transactionSchema);
 // const Consultation = new mongoose.model("Consultation", consultationSchema);
 const Prescription = new mongoose.model("Prescription", prescriptionSchema);
@@ -92,4 +99,4 @@ const Reviews = new mongoose.model("Reviews", reviewSchema);
 
 
 
-export { Prescription, Reviews, Transaction};
+export { Prescription, Reviews, Transaction, TestResult, Notification};

@@ -397,6 +397,53 @@ approveCosting: async (req, res) => {
 },
 
   
+uploadTestResult: async (req, res) => {
+  try {
+    const { patientId, testName } = req.body;
+    const providerId = req.user._id;
+
+    const patient = await User.findById(patientId);
+    if (!patient || patient.role !== 'patient') {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    // Handle file upload
+    if (!req.files || !req.files.testResult) {
+      return res.status(400).json({ message: 'No test result file uploaded' });
+    }
+
+    const file = req.files.testResult;
+    const folderName = `test_results/${providerId}/${patientId}`;
+    const uploadedFile = await upload(file.tempFilePath, folderName);
+
+    const testResultEntry = new TestResult({
+      patient: patientId,
+      provider: providerId,
+      testName,
+      testResult: uploadedFile.secure_url,
+    });
+
+    await testResultEntry.save();
+    res.status(201).json({ message: 'Test result uploaded successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+},
+
+  getTestResults: async (req, res) => {
+    try {
+      const patientId = req.params.patientId;
+  
+      const testResults = await TestResult.find({ patient: patientId })
+        .populate('provider', 'username email')
+        .sort({ date: -1 });
+  
+      res.status(200).json(testResults);
+    } catch (error) {
+      res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+  },
+
   // Function to update the status of a prescription
   updatePrescriptionStatus: async (req, res) => {
     const { prescriptionId, status } = req.body;

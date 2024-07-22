@@ -72,6 +72,7 @@ const userSchema = new mongoose.Schema({
   underInsurrance: { type: Boolean, default: false },
   verificationcode: String,
   googleId: String,
+  date: { type: Date, default: Date.now },
 });
 
 
