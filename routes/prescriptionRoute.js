@@ -13,6 +13,7 @@ router.post('/costing/:providerId', prescriptionController.addCosting);
 router.post('/approve-costing/:patientId', prescriptionController.approveCosting);
 // Endpoint for providers to upload test results
 router.post('/upload-result/:providerId', prescriptionController.uploadTestResult);
+// Endpoint for updating prescription status
 router.post('/prescription-status/:providerId', prescriptionController.updatePrescriptionStatus);
 
 // Endpoint for patients to retrieve their test results

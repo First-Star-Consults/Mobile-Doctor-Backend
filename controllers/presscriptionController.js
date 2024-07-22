@@ -457,9 +457,7 @@ uploadTestResult: async (req, res) => {
       const prescription = await Prescription.findById(prescriptionId);
       if (!prescription) return res.status(404).json({ message: 'Prescription not found' });
 
-      if (prescription.doctor.toString() !== providerId) {
-        return res.status(403).json({ message: 'Not authorized to update this prescription' });
-      }
+      
 
       prescription.status = status;
       await prescription.save();
