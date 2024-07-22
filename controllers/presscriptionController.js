@@ -1,7 +1,8 @@
 import User from '../models/user.js'
-import { Prescription, Transaction } from '../models/services.js';
+import { Prescription, Transaction, TestResult } from '../models/services.js';
 import { calculateFeesAndTransfer } from '../utils/transactionService.js';
 import {Doctor, Therapist, Pharmacy, Laboratory} from '../models/healthProviders.js'
+import { upload } from "../config/cloudinary.js";
 
 
 // Assuming you have an admin user with a fixed ID for receiving fees
@@ -400,7 +401,7 @@ approveCosting: async (req, res) => {
 uploadTestResult: async (req, res) => {
   try {
     const { patientId, testName } = req.body;
-    const providerId = req.user._id;
+    const providerId = req.params.providerId;
 
     const patient = await User.findById(patientId);
     if (!patient || patient.role !== 'patient') {
@@ -424,30 +425,37 @@ uploadTestResult: async (req, res) => {
     });
 
     await testResultEntry.save();
-    res.status(201).json({ message: 'Test result uploaded successfully' });
+    res.status(201).json({ message: 'Test result uploaded successfully', testResult: testResultEntry });
   } catch (error) {
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 },
 
-  getTestResults: async (req, res) => {
-    try {
-      const patientId = req.params.patientId;
-  
-      const testResults = await TestResult.find({ patient: patientId })
-        .populate('provider', 'username email')
-        .sort({ date: -1 });
-  
-      res.status(200).json(testResults);
-    } catch (error) {
-      res.status(500).json({ message: 'Internal server error', error: error.message });
-    }
-  },
+getTestResults: async (req, res) => {
+  try {
+    const patientId = req.params.patientId;
+
+    // Debug: Log patientId
+    console.log('Fetching test results for patient ID:', patientId);
+
+    const testResults = await TestResult.find({ patient: patientId })
+      .populate('provider', 'name')
+      .sort({ date: -1 });
+
+    // Debug: Log testResults before sending response
+    console.log('Test results:', testResults);
+
+    res.status(200).json(testResults);
+  } catch (error) {
+    console.error('Error fetching test results:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+},
 
   // Function to update the status of a prescription
   updatePrescriptionStatus: async (req, res) => {
     const { prescriptionId, status } = req.body;
-    const providerId = req.params.providerId;
+    
 
     if (!['approved', 'declined', 'completed'].includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });

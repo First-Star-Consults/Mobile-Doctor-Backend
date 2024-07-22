@@ -83,7 +83,7 @@ notificationSchema.index({ recipient: 1, createdAt: -1 });
 // Test result schema
 const testResultSchema = new mongoose.Schema({
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  provider: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  provider: { type: mongoose.Schema.Types.ObjectId, ref: 'Laboratory', required: true },
   testName: { type: String, required: true },
   testResult: { type: String, required: true },
   date: { type: Date, default: Date.now },
