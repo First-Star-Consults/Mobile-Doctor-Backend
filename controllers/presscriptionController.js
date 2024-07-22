@@ -439,7 +439,7 @@ getTestResults: async (req, res) => {
     console.log('Fetching test results for patient ID:', patientId);
 
     const testResults = await TestResult.find({ patient: patientId })
-      .populate('provider', 'name')
+      .populate('provider', 'name profilePhoto')
       .sort({ date: -1 });
 
     // Debug: Log testResults before sending response
