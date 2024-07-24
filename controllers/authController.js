@@ -422,30 +422,25 @@ const authController = {
     }
   },
 
-  // Function to create a withdrawal request
+// Function to create a withdrawal request
 withdraw: async (req, res) => {
   try {
     const userId = req.params.userId;
     const { amount, accountNumber, bankName } = req.body;
 
-     // This is where you'd call the bank's API
-    // The specifics depend on the bank's API documentation
-//     const response = await someBankingAPI.verifyAccount({ accountNumber, bankCode });
-//     return response.isValid;
-//   } catch (error) {
-//     console.error('Error verifying bank account:', error);
-//     return false;
-//   }
-// }
+    // Log request details
+    console.log(`Withdrawal request by User ID: ${userId}, Amount: ${amount}, Account Number: ${accountNumber}, Bank Name: ${bankName}`);
 
     // Check if the user exists and has the appropriate role
     const user = await User.findById(userId);
-    if (!user || !['doctor', 'laboratory', 'therapist', 'pharmacist'].includes(user.role)) {
+    if (!user || !['doctor', 'laboratory', 'therapist', 'pharmacy'].includes(user.role)) {
+      console.log('Unauthorized user role or user not found');
       return res.status(403).json({ success: false, message: 'Unauthorized! You are not a health provider' });
     }
 
     // Check if the wallet has enough balance
     if (user.walletBalance < amount) {
+      console.log('Insufficient wallet balance');
       return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
     }
 
@@ -455,20 +450,56 @@ withdraw: async (req, res) => {
       type: 'withdrawal',
       status: 'pending',
       amount: amount,
-      accountNumber: accountNumber, // Saved for when the admin processes the withdrawal
-      bankName: bankName, // Saved as additional info for admin or for withdrawal processing
+      accountNumber: accountNumber,
+      bankName: bankName,
     });
 
-    await transaction.save();
+    const savedTransaction = await transaction.save();
+    
+    // Log the saved transaction
+    console.log('Transaction saved:', savedTransaction);
 
-    // Here, you can notify the admin for approval...
+    // Check the saved transaction in the database
+    const checkTransaction = await Transaction.findById(savedTransaction._id);
+    console.log('Checked Transaction in DB:', checkTransaction);
 
-    res.status(200).json({ success: true, message: 'Withdrawal request created and pending approval' });
+    // Notify the admin for approval...
+    res.status(200).json({ success: true, message: 'Withdrawal request created and pending approval', transactionId: savedTransaction._id });
   } catch (error) {
     console.error('Error during withdrawal:', error);
     res.status(500).json({ success: false, message: 'Internal Server Error' });
   }
 },
+
+
+
+
+
+
+getPendingWithdrawals: async (req, res) => {
+  try {
+    const adminId = req.params.adminId;
+
+    // Validate admin privileges
+    const admin = await User.findById(adminId);
+    if (!admin || !admin.isAdmin) {
+      console.log('Unauthorized admin access');
+      return res.status(403).json({ success: false, message: 'Unauthorized to perform this action' });
+    }
+
+    // Retrieve all pending withdrawal transactions
+    const pendingWithdrawals = await Transaction.find({ status: 'pending', type: 'withdrawal' }).populate('user', 'firstName lastName email');
+
+    // Log the retrieved transactions
+    console.log('Pending withdrawals:', pendingWithdrawals);
+
+    res.status(200).json({ success: true, pendingWithdrawals });
+  } catch (error) {
+    console.error('Error fetching pending withdrawals:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+},
+
 
 
 // Function to approve a withdrawal request by Admin
@@ -477,21 +508,27 @@ approveWithdrawal: async (req, res) => {
     const adminId = req.params.adminId; 
     const { transactionId, accountNumber, bankCode } = req.body; 
 
+    // Log admin and transaction details
+    console.log(`Admin ID: ${adminId}, Transaction ID: ${transactionId}`);
+
     // Validate admin privileges
     const admin = await User.findById(adminId);
     if (!admin || !admin.isAdmin) {
+      console.log('Unauthorized admin access');
       return res.status(403).json({ success: false, message: 'Unauthorized to perform this action' });
     }
 
     // Find the transaction and validate it
     const transaction = await Transaction.findById(transactionId);
     if (!transaction || transaction.status !== 'pending') {
+      console.log(`Invalid or already processed transaction. Transaction ID: ${transactionId}`);
       return res.status(400).json({ success: false, message: 'Invalid or already processed transaction' });
     }
 
     // Find the user who requested the withdrawal
     const user = await User.findById(transaction.user);
     if (!user) {
+      console.log(`User not found for Transaction ID: ${transactionId}`);
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
@@ -500,7 +537,8 @@ approveWithdrawal: async (req, res) => {
     if (!recipientDetails) {
       transaction.status = 'failed';
       await transaction.save();
-      return res.status(500).json({ success: false, message: 'Failed to create transfer recipient' });
+      console.log(`Failed to create transfer recipient for Transaction ID: ${transactionId}`);
+      return res.status(500).json({ success: false, message: 'Failed to create transfer recipient', transactionId });
     }
 
     // Initiate the transfer
@@ -508,7 +546,8 @@ approveWithdrawal: async (req, res) => {
     if (!transferResponse) {
       transaction.status = 'failed';
       await transaction.save();
-      return res.status(500).json({ success: false, message: 'Failed to initiate transfer' });
+      console.log(`Failed to initiate transfer for Transaction ID: ${transactionId}`);
+      return res.status(500).json({ success: false, message: 'Failed to initiate transfer', transactionId });
     }
 
     // If transfer initiation is successful, deduct the amount from user's wallet balance and mark the transaction as succeeded
@@ -517,32 +556,15 @@ approveWithdrawal: async (req, res) => {
     await user.save();
     await transaction.save();
 
-    res.status(200).json({ success: true, message: 'Withdrawal approved and processed', transferDetails: transferResponse });
+    console.log(`Withdrawal approved and processed for Transaction ID: ${transactionId}`);
+    res.status(200).json({ success: true, message: 'Withdrawal approved and processed', transferDetails: transferResponse, transactionId });
   } catch (error) {
     console.error('Error during withdrawal approval:', error);
-    res.status(500).json({ success: false, message: 'Internal Server Error' });
+    res.status(500).json({ success: false, message: 'Internal Server Error', transactionId: req.body.transactionId });
   }
 },
 
-getPendingWithdrawals: async (req, res) => {
-  try {
-    const adminId = req.params.adminId; // or req.user._id if you have the user ID stored in req.user
 
-    // Validate admin privileges
-    const admin = await User.findById(adminId);
-    if (!admin || !admin.isAdmin) {
-      return res.status(403).json({ success: false, message: 'Unauthorized to perform this action' });
-    }
-
-    // Retrieve all pending withdrawal transactions
-    const pendingWithdrawals = await Transaction.find({ status: 'pending', type: 'withdrawal' }).populate('user', 'firstName lastName email');
-
-    res.status(200).json({ success: true, pendingWithdrawals });
-  } catch (error) {
-    console.error('Error fetching pending withdrawals:', error);
-    res.status(500).json({ success: false, message: 'Internal Server Error' });
-  }
-},
 
 
 
