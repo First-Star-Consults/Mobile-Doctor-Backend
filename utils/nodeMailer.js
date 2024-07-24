@@ -39,7 +39,8 @@ export const sendVerificationEmail = async (to, code) => {
 
 
 export const sendForgetPasswordEmail = async (to, token) => {
-  const resetLink = `http://${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  const frontend_url = "https://linkProvidedByAlabo.com" 
+  const resetLink = `http://${frontend_url}/reset-password?token=${token}`;
   
   const mailOptions = {
     from: '"Mobile Doctor" <noreply@mobiledoctor.firststarconsults.online>', // Updated line
