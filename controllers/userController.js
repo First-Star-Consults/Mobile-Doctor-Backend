@@ -205,6 +205,13 @@ const userController = {
   resetPasswordWithToken: async (req, res) => {
     try {
       const { token, newPassword } = req.body;
+
+      // Check if token and new password are provided
+      if (!token || !newPassword) {
+        return res.status(400).json({ message: 'Token and new password are required.' });
+      }
+
+      // Find user by token and check if the token is expired
       const user = await User.findOne({ resetPasswordToken: token, resetPasswordExpires: { $gt: Date.now() } });
 
       if (!user) {
@@ -218,6 +225,7 @@ const userController = {
           return res.status(500).json({ message: 'Error resetting password' });
         }
 
+        // Clear the reset token and expiry
         user.resetPasswordToken = undefined;
         user.resetPasswordExpires = undefined;
 

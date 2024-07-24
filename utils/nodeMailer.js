@@ -26,7 +26,7 @@ transporter.verify(function(error, success) {
 
 export const sendVerificationEmail = async (to, code) => {
   const mailOptions = {
-    from: 'noreply@mobiledoctor.firststarconsults.online',
+    from: '"Mobile Doctor" <noreply@mobiledoctor.firststarconsults.online>',
     to,
     subject: 'Mobile-Doctor Verification Code',
     text: `Dear Mobile Doctor User,\n\nYour verification code is: ${code}\n\nThank you for choosing Mobile Doctor.\n\nBest regards,\nMobile Doctor Team`,
@@ -36,12 +36,18 @@ export const sendVerificationEmail = async (to, code) => {
 };
 
 
+
+
 export const sendForgetPasswordEmail = async (to, token) => {
+  const resetLink = `http://${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  
   const mailOptions = {
-    from: 'noreply@mobiledoctor.firststarconsults.online',
+    from: '"Mobile Doctor" <noreply@mobiledoctor.firststarconsults.online>', // Updated line
     to,
-    subject: 'Mobile-Doctor- Password Reset',
-    text: `Dear Mobile Doctor User,\n\nYour password temporal password reset token is: ${token}\n\nPlease copy and use to reset your password on the app\n\nThank you for choosing Mobile Doctor.\n\nBest regards,\nMobile Doctor Team`,
+    subject: 'Password Reset',
+    text: `You have requested a password reset. Please click the following link to reset your password: ${resetLink}`,
+    html: `<p>You have requested a password reset. Please click the following link to reset your password:</p>
+           <a href="${resetLink}">Reset Password</a>`,
   };
 
   return transporter.sendMail(mailOptions);

@@ -130,5 +130,5 @@ io.on('connection', (socket) => {
 
 export { io };
 server.listen(process.env.PORT || 3000, () => {
-  console.log('listening on *:3000');
+  console.log('listening on: 3000');
 });

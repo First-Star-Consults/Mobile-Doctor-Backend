@@ -1,6 +1,6 @@
 import User from '../models/user.js'
 import { Prescription, Transaction, TestResult } from '../models/services.js';
-import { calculateFeesAndTransfer } from '../utils/transactionService.js';
+import { calculateFeesAndTransfer } from '../utils/inAppTransferService.js';
 import {Doctor, Therapist, Pharmacy, Laboratory} from '../models/healthProviders.js'
 import { upload } from "../config/cloudinary.js";
 
