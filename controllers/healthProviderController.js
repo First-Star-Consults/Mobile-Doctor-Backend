@@ -1,5 +1,6 @@
 //health Provider controller
 import User from "../models/user.js";
+import haversineDistance from '../utils/distanceCalculator.js';
 import { Doctor, Pharmacy, Therapist, Laboratory } from "../models/healthProviders.js";
 import { Reviews } from "../models/services.js";
 import { upload } from "../config/cloudinary.js";
@@ -357,81 +358,106 @@ getDoctorReviews: async (req, res) => {
 
   recommendHealthProvider: async (req, res) => {
     try {
-      const doctorId = req.params.doctorId;
-      const { providerId, patientId } = req.body;
-
-      // Find the doctor, provider, and patient
-      const doctor = await Doctor.findById(doctorId);
-      const provider = await Doctor.findById(providerId)
-        || await Pharmacy.findById(providerId)
-        || await Therapist.findById(providerId)
-        || await Laboratory.findById(providerId);
-        const patient = await User.findOne({ _id: patientId, role: 'patient' });
-
-      if (!doctor || !provider || !patient) {
-        return res.status(404).json({ success: false, message: 'Doctor, Provider, or Patient not found' });
+      const { providerType, patientId } = req.body;
+      const doctorId = req.params.doctorId; // Assuming you have the doctor's ID in the request user object
+  
+      // Find the patient
+      const patient = await User.findOne({ _id: patientId, role: 'patient' });
+      if (!patient) {
+        return res.status(404).json({ success: false, message: 'Patient not found' });
       }
-
-      // Add recommendation to provider's recommendations array
-      provider.recommendations.push({ doctor: doctorId, patient: patientId });
-      await provider.save();
-
-     // Send the recommendation information to the patient
-    const recommendation = {
-      providerName: provider.name,
-      providerId: providerId,
-      providerAddress: provider.address,
-      patientId: patientId,
-      recommendedBy: doctor.fullName,
-    };
-
-      res.status(200).json({ success: true, recommendation });
+  
+      // Find the doctor
+      const doctor = await Doctor.findById(doctorId);
+      if (!doctor) {
+        return res.status(404).json({ success: false, message: 'Doctor not found' });
+      }
+  
+      // Find providers by role (providerType)
+      const providers = await User.find({ role: providerType });
+  
+      // Ensure patient and providers have location data
+      if (!patient.location || !patient.location.coordinates) {
+        return res.status(400).json({ success: false, message: 'Patient location not found' });
+      }
+  
+      const patientLocation = { lat: patient.location.coordinates[1], lon: patient.location.coordinates[0] };
+      const providersWithDistance = providers
+        .filter(provider => provider.location && provider.location.coordinates)
+        .map(provider => ({
+          ...provider.toObject(),
+          distance: haversineDistance(patientLocation, {
+            lat: provider.location.coordinates[1],
+            lon: provider.location.coordinates[0],
+          }),
+          recommendedBy: {
+            doctorId: doctor._id,
+            doctorName: doctor.fullName // Assuming the doctor's name is stored in the fullName field
+          }
+        }));
+  
+      // Sort providers by distance
+      const sortedProviders = providersWithDistance.sort((a, b) => a.distance - b.distance);
+  
+      // Save the recommendation to the patient's data
+      patient.recommendations = sortedProviders.map(provider => ({
+        providerId: provider._id,
+        providerName: provider.username, // Assuming the provider's name is stored in the username field
+        distance: provider.distance,
+        recommendedBy: provider.recommendedBy
+      }));
+      await patient.save();
+  
+      res.status(200).json({ success: true, providers: sortedProviders });
     } catch (error) {
       console.error('Error recommending health provider:', error);
       res.status(500).json({ success: false, message: 'Error recommending health provider', error: error.message });
     }
   },
+  
+  
 
-  getRecommendations: async (req, res) => {
-  try {
-    const patientId = req.params.patientId;
+  getRecommendation: async (req, res) => {
+    try {
+      const { patientId, providerType } = req.body;
 
-    // Fetch recommendations from all models
-    const doctorRecommendations = await Doctor.find({ 'recommendations.patient': patientId }).populate('recommendations.doctor');
-    const pharmacyRecommendations = await Pharmacy.find({ 'recommendations.patient': patientId }).populate('recommendations.doctor');
-    const therapistRecommendations = await Therapist.find({ 'recommendations.patient': patientId }).populate('recommendations.doctor');
-    const laboratoryRecommendations = await Laboratory.find({ 'recommendations.patient': patientId }).populate('recommendations.doctor');
+      // Find the patient by ID
+      const patient = await User.findById(patientId);
+      if (!patient) {
+        return res.status(404).json({ success: false, message: 'Patient not found' });
+      }
 
-    // Map recommendations to a unified structure
-    const recommendations = [
-      ...doctorRecommendations.map(rec => ({
-        providerName: rec.fullName, // Assuming fullName is the name of the doctor
-        providerAddress: rec.address, // Doctor has address directly
-        recommendedBy: rec.recommendations.map(r => r.doctor?.fullName).join(', '), // Handle multiple recommendations
-      })),
-      ...pharmacyRecommendations.map(rec => ({
-        providerName: rec.name,
-        providerAddress: rec.address, // Pharmacy uses address directly
-        recommendedBy: rec.recommendations.map(r => r.doctor?.fullName).join(', '),
-      })),
-      ...therapistRecommendations.map(rec => ({
-        providerName: rec.name,
-        providerAddress: rec.address, // Therapist uses address directly
-        recommendedBy: rec.recommendations.map(r => r.doctor?.fullName).join(', '),
-      })),
-      ...laboratoryRecommendations.map(rec => ({
-        providerName: rec.name,
-        providerAddress: rec.address, // Laboratory uses address directly
-        recommendedBy: rec.recommendations.map(r => r.doctor?.fullName).join(', '),
-      })),
-    ];
+      console.log('Patient:', patient);
 
-    res.status(200).json({ success: true, recommendations });
-  } catch (error) {
-    console.error('Error fetching recommendations:', error);
-    res.status(500).json({ success: false, message: 'Error fetching recommendations', error: error.message });
-  }
-},
+      // Find providers by role (providerType)
+      const providers = await User.find({ role: providerType });
+
+      console.log('Providers:', providers);
+
+      // Ensure patient and providers have location data
+      if (!patient.location || !patient.location.coordinates) {
+        return res.status(400).json({ success: false, message: 'Patient location not found' });
+      }
+
+      const sortedProviders = providers
+        .filter(provider => provider.location && provider.location.coordinates)
+        .map(provider => ({
+          ...provider.toObject(),
+          distance: haversineDistance(
+            patient.location.coordinates[1],
+            patient.location.coordinates[0],
+            provider.location.coordinates[1],
+            provider.location.coordinates[0]
+          ),
+        }))
+        .sort((a, b) => a.distance - b.distance);
+
+      res.status(200).json({ success: true, providers: sortedProviders });
+    } catch (error) {
+      console.error('Error getting recommendations:', error);
+      res.status(500).json({ success: false, message: 'Error getting recommendations', error: error.message });
+    }
+  },
 
 
   // Controller function to check the online status of a health provider

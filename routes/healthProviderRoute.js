@@ -17,7 +17,7 @@ router.post('/:doctorId/reviews', healthProviderControllers.addReview);
 //recommend a health provider to a patient
 router.post('/recommend/:doctorId', healthProviderControllers.recommendHealthProvider);
 //patient to get health provider recommedation
-router.get('/recommendations/:patientId', healthProviderControllers.getRecommendations);
+router.get('/get-recommendations', healthProviderControllers.getRecommendation);
 
 // Route to update the isOnline status of a doctor
 router.put('/:doctorId/update-isOnline', healthProviderControllers.updateIsOnlineStatus);
