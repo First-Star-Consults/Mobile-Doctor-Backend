@@ -373,8 +373,8 @@ getDoctorReviews: async (req, res) => {
         return res.status(404).json({ success: false, message: 'Doctor not found' });
       }
   
-      // Find providers by role (providerType)
-      const providers = await User.find({ role: providerType });
+      // Find approved providers by role (providerType)
+      const providers = await User.find({ role: providerType, isApproved: true });
   
       // Ensure patient and providers have location data
       if (!patient.location || !patient.location.coordinates) {
@@ -429,8 +429,8 @@ getDoctorReviews: async (req, res) => {
 
       console.log('Patient:', patient);
 
-      // Find providers by role (providerType)
-      const providers = await User.find({ role: providerType });
+      // Find approved providers by role (providerType)
+    const providers = await User.find({ role: providerType, isApproved: true });
 
       console.log('Providers:', providers);
 

@@ -68,6 +68,7 @@ const userSchema = new mongoose.Schema({
   medicalRecord: { type: mongoose.Schema.Types.ObjectId, ref: 'MedicalRecord', default: null },
   walletBalance: { type: Number, default: 0 },
   isAdmin: { type: Boolean, default: false },
+  isApproved: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
   underInsurrance: { type: Boolean, default: false },
   verificationcode: String,
