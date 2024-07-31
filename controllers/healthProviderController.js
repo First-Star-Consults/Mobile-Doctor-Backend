@@ -359,7 +359,7 @@ getDoctorReviews: async (req, res) => {
   recommendHealthProvider: async (req, res) => {
     try {
       const { providerType, patientId } = req.body;
-      const doctorId = req.params.doctorId; // Assuming you have the doctor's ID in the request user object
+      const doctorId = req.params.doctorId;
   
       // Find the patient
       const patient = await User.findOne({ _id: patientId, role: 'patient' });
@@ -382,28 +382,65 @@ getDoctorReviews: async (req, res) => {
       }
   
       const patientLocation = { lat: patient.location.coordinates[1], lon: patient.location.coordinates[0] };
-      const providersWithDistance = providers
-        .filter(provider => provider.location && provider.location.coordinates)
-        .map(provider => ({
+  
+      // Map providers to fetch detailed information from the respective schemas
+      const providersWithDetails = await Promise.all(providers.map(async (provider) => {
+        if (!provider.location || !provider.location.coordinates) return null;
+  
+        const providerLocation = {
+          lat: provider.location.coordinates[1],
+          lon: provider.location.coordinates[0]
+        };
+        const distance = haversineDistance(patientLocation.lat, patientLocation.lon, providerLocation.lat, providerLocation.lon);
+  
+        if (isNaN(distance)) {
+          console.error('Invalid distance calculated:', { patientLocation, providerLocation });
+          return null;
+        }
+  
+        let providerDetails;
+        switch (provider.role) {
+          case 'doctor':
+            providerDetails = await Doctor.findById(provider._id);
+            break;
+          case 'pharmacy':
+            providerDetails = await Pharmacy.findById(provider._id);
+            break;
+          case 'therapist':
+            providerDetails = await Therapist.findById(provider._id);
+            break;
+          case 'laboratory':
+            providerDetails = await Laboratory.findById(provider._id);
+            break;
+          default:
+            providerDetails = null;
+        }
+  
+        return providerDetails ? {
           ...provider.toObject(),
-          distance: haversineDistance(patientLocation, {
-            lat: provider.location.coordinates[1],
-            lon: provider.location.coordinates[0],
-          }),
+          distance,
+          providerName: providerDetails.name || providerDetails.fullName,
+          address: providerDetails.address || 'N/A',
+          about: providerDetails.about || 'No information available',
+          profilePhoto: providerDetails.images.profilePhoto || null,
           recommendedBy: {
             doctorId: doctor._id,
-            doctorName: doctor.fullName // Assuming the doctor's name is stored in the fullName field
+            doctorName: doctor.fullName
           }
-        }));
+        } : null;
+      }));
   
-      // Sort providers by distance
-      const sortedProviders = providersWithDistance.sort((a, b) => a.distance - b.distance);
+      // Filter out null values and sort by distance
+      const sortedProviders = providersWithDetails.filter(provider => provider !== null).sort((a, b) => a.distance - b.distance);
   
       // Save the recommendation to the patient's data
       patient.recommendations = sortedProviders.map(provider => ({
         providerId: provider._id,
-        providerName: provider.username, // Assuming the provider's name is stored in the username field
+        providerName: provider.providerName,
         distance: provider.distance,
+        address: provider.address,
+        about: provider.about,
+        profilePhoto: provider.profilePhoto,
         recommendedBy: provider.recommendedBy
       }));
       await patient.save();
@@ -417,47 +454,27 @@ getDoctorReviews: async (req, res) => {
   
   
 
-  getRecommendation: async (req, res) => {
-    try {
-      const { patientId, providerType } = req.body;
+  
+  
 
-      // Find the patient by ID
-      const patient = await User.findById(patientId);
+  getRecommendedProviders: async (req, res) => {
+    try {
+      const patientId = req.params.patientId;
+  
+      // Find the patient
+      const patient = await User.findOne({ _id: patientId, role: 'patient' });
       if (!patient) {
         return res.status(404).json({ success: false, message: 'Patient not found' });
       }
-
-      console.log('Patient:', patient);
-
-      // Find approved providers by role (providerType)
-    const providers = await User.find({ role: providerType, isApproved: true });
-
-      console.log('Providers:', providers);
-
-      // Ensure patient and providers have location data
-      if (!patient.location || !patient.location.coordinates) {
-        return res.status(400).json({ success: false, message: 'Patient location not found' });
-      }
-
-      const sortedProviders = providers
-        .filter(provider => provider.location && provider.location.coordinates)
-        .map(provider => ({
-          ...provider.toObject(),
-          distance: haversineDistance(
-            patient.location.coordinates[1],
-            patient.location.coordinates[0],
-            provider.location.coordinates[1],
-            provider.location.coordinates[0]
-          ),
-        }))
-        .sort((a, b) => a.distance - b.distance);
-
-      res.status(200).json({ success: true, providers: sortedProviders });
+  
+      // Return the recommended providers
+      res.status(200).json({ success: true, recommendations: patient.recommendations });
     } catch (error) {
-      console.error('Error getting recommendations:', error);
-      res.status(500).json({ success: false, message: 'Error getting recommendations', error: error.message });
+      console.error('Error fetching recommended providers:', error);
+      res.status(500).json({ success: false, message: 'Error fetching recommended providers', error: error.message });
     }
   },
+  
 
 
   // Controller function to check the online status of a health provider

@@ -35,6 +35,20 @@ const userLocationSchema = new mongoose.Schema({
 // Ensure to set the index for the geospatial query to work
 userLocationSchema.index({ coordinates: '2dsphere' });
 
+const recommendationSchema = new mongoose.Schema({
+  providerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  providerName: { type: String },
+  distance: { type: Number },
+  address: { type: String }, // Added address field
+  about: { type: String },   // Added about field
+  profilePhoto: { type: String }, // Added profilePhoto field
+  recommendedBy: {
+    doctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
+    doctorName: { type: String }
+  }
+});
+
+
 // User schema (patient, doctor, therapist, etc.)
 const userSchema = new mongoose.Schema({
   profilePhoto: { type: String, default: null },
@@ -61,6 +75,7 @@ const userSchema = new mongoose.Schema({
     message: { type: String, required: true },
     timestamp: { type: Date, default: Date.now }
   }], 
+  recommendations: [recommendationSchema],
   doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor', default: null },
   pharmacy: { type: mongoose.Schema.Types.ObjectId, ref: 'Pharmacy', default: null },
   therapist: { type: mongoose.Schema.Types.ObjectId, ref: 'Therapist', default: null },
