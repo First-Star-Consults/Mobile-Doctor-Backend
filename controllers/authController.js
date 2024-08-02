@@ -1261,6 +1261,8 @@ const authController = {
 
       // Create notification for the patient
       const patient = session.patient;
+      const doctor = session.doctor;
+      
       if (patient) {
         const patientNotification = new Notification({
           recipient: patient._id,
@@ -1273,7 +1275,7 @@ const authController = {
       }
 
       // Create notification for the doctor
-      const doctor = session.doctor;
+     
       if (doctor) {
         const doctorNotification = new Notification({
           recipient: doctor._id,
