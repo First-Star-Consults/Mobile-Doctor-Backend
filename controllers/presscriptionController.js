@@ -205,9 +205,10 @@ const prescriptionController = {
         ...prescription.toObject(),
         doctor: prescription.doctor,
         diagnosis: prescription.diagnosis,
-        medicines: prescription.medicines, // Include medicines with daysOfTreatment
+        medicines: prescription.medicines,
         labTests: prescription.labTests,
-        createdAt: prescription.createdAt
+        createdAt: prescription.createdAt,
+        status: prescription.status // Include the status field
       }));
   
       res.status(200).json(prescriptionsWithDetails);
