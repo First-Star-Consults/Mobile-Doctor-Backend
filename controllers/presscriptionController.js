@@ -202,13 +202,19 @@ const prescriptionController = {
       }
   
       const prescriptionsWithDetails = prescriptions.map(prescription => ({
-        ...prescription.toObject(),
-        doctor: prescription.doctor,
+        prescriptionId: prescription._id,  // Add prescriptionId
+        doctorId: prescription.doctor._id, // Add doctorId
+        doctor: {
+          fullName: prescription.doctor.fullName,
+          profilePhoto: prescription.doctor.profilePhoto,
+          medicalSpecialty: prescription.doctor.medicalSpecialty
+        },
         diagnosis: prescription.diagnosis,
         medicines: prescription.medicines,
         labTests: prescription.labTests,
         createdAt: prescription.createdAt,
-        status: prescription.status // Include the status field
+        status: prescription.status,      // Include the status field
+        providerType: prescription.providerType // Add providerType
       }));
   
       res.status(200).json(prescriptionsWithDetails);
@@ -217,7 +223,8 @@ const prescriptionController = {
       res.status(500).json({ message: error.message });
     }
   },
-  
+
+
   
   
   // for provider to get presction
