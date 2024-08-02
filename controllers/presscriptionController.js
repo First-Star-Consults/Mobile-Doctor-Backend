@@ -13,7 +13,7 @@ const prescriptionController = {
 
   makePrescriptions: async (req, res) => {
     const { doctorId } = req.params; 
-    const { patientId, medicines, labTests, diagnosis } = req.body;
+    const { patientId, medicines, labTests, diagnosis, providerType } = req.body;
   
     try {
       // Fetch the doctor's details from the database
@@ -37,7 +37,8 @@ const prescriptionController = {
           patient: patientId,
           medicines: medicines || [],
           labTests: labTests || [],
-          diagnosis: diagnosis || ''
+          diagnosis: diagnosis || '',
+          providerType: providerType || ''
         });
       } else {
         // Update the existing incomplete prescription with new data
@@ -62,7 +63,8 @@ const prescriptionController = {
       // Respond with a clear message including the prescription ID
       res.status(201).json({ 
         message: 'Prescription created/updated successfully', 
-        prescriptionId: prescription._id 
+        prescriptionId: prescription._id,
+        providerType: prescription.providerType  
       });
     } catch (error) {
       console.error('Failed to create/update prescription:', error);
