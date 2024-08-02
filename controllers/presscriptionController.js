@@ -9,6 +9,7 @@ import {
 } from "../models/healthProviders.js";
 import { upload } from "../config/cloudinary.js";
 import { sendNotificationEmail } from "../utils/nodeMailer.js";
+import Notification from "../models/notificationModel.js";
 
 // Assuming you have an admin user with a fixed ID for receiving fees
 const adminId = "669c4f6f78766d19d1d3230b";
@@ -83,10 +84,11 @@ const prescriptionController = {
 
       // Create in-app notification for the patient
       const notification = new Notification({
-        user: patientEmail._id,
+        recipient: patientEmail._id, // Set recipient field
         type: "Prescription Created",
         message: `A new prescription has been created for you by Dr. ${doctor.fullName}.`,
-        timestamp: new Date(),
+        relatedObject: prescription._id,
+        relatedModel: "Prescription",
       });
       await notification.save();
 
@@ -216,10 +218,11 @@ const prescriptionController = {
 
       // Create in-app notification
       const inAppNotification = new Notification({
-        user: providerUser._id,
+        recipient: providerUser._id,
         type: "Prescription Shared",
         message: `A new prescription has been shared with you by patient ${patient.firstName} ${patient.lastName}.`,
-        timestamp: new Date(),
+        relatedObject: prescriptionId,
+        relatedModel: "Prescription",
       });
       await inAppNotification.save();
 
@@ -363,10 +366,11 @@ const prescriptionController = {
       const patient = await User.findById(prescription.patient);
       if (patient) {
         const notification = new Notification({
-          user: patient._id,
+          recipient: patient._id,
           type: "Costing Added",
           message: `The provider has added a cost of ${amount} to your prescription. Please review and approve the cost.`,
-          timestamp: new Date(),
+          relatedObject: prescriptionId,
+          relatedModel: "Prescription",
         });
 
         await notification.save();
@@ -482,16 +486,16 @@ const prescriptionController = {
       prescription.approved = true;
       await prescription.save();
 
-
       // Create an in-app notification for the provider
-    const providerNotification = new Notification({
-      user: provider._id,
-      type: 'Costing Approved',
-      message: `The patient has approved the cost of ${amount} for the prescription.`,
-      timestamp: new Date(),
-    });
+      const providerNotification = new Notification({
+        recipient: provider._id,
+        type: "Costing Approved",
+        message: `The patient has approved the cost of ${amount} for the prescription.`,
+        relatedObject: prescriptionId,
+        relatedModel: "Prescription",
+      });
 
-    await providerNotification.save();
+      await providerNotification.save();
 
       res
         .status(200)
@@ -504,7 +508,7 @@ const prescriptionController = {
 
   uploadTestResult: async (req, res) => {
     try {
-      const { patientId, testName } = req.body;
+      const { patientId, testName, prescriptionId } = req.body;
       const providerId = req.params.providerId;
 
       const patient = await User.findById(patientId);
@@ -534,23 +538,22 @@ const prescriptionController = {
 
       await testResultEntry.save();
 
+      // Create an in-app notification for the patient
+      const patientNotification = new Notification({
+        recipient: patient._id,
+        type: "Test Result Uploaded",
+        message: `A new test result for ${testName} has been uploaded by ${healthProvider.firstName}.`,
+        relatedObject: prescriptionId,
+        relatedModel: "Prescription",
+      });
 
-    // Create an in-app notification for the patient
-    const patientNotification = new Notification({
-      user: patient._id,
-      type: 'Test Result Uploaded',
-      message: `A new test result for ${testName} has been uploaded by ${healthProvider.firstName}.`,
-      timestamp: new Date(),
-    });
+      await patientNotification.save();
 
-    await patientNotification.save();
+      // Send email notification to the patient
+      const subject = "New Test Result Uploaded";
+      const message = `Dear ${patient.firstName},\n\nA new test result for ${testName} has been uploaded by your provider. log into the mobile doctor app to download your result.\n\nBest regards,\nYour Healthcare Team`;
 
-     // Send email notification to the patient
-     const subject = 'New Test Result Uploaded';
-     const message = `Dear ${patient.firstName},\n\nA new test result for ${testName} has been uploaded by your provider. log into the mobile doctor app to download your result.\n\nBest regards,\nYour Healthcare Team`;
-     
-     await sendNotificationEmail(patient.email, subject, message);
-
+      await sendNotificationEmail(patient.email, subject, message);
 
       res.status(201).json({
         message: "Test result uploaded successfully",
@@ -589,19 +592,21 @@ const prescriptionController = {
   // Function to update the status of a prescription
   updatePrescriptionStatus: async (req, res) => {
     const { prescriptionId, status } = req.body;
-
+  
     if (!["approved", "declined", "completed"].includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
-
+  
     try {
+      // Fetch the prescription
       const prescription = await Prescription.findById(prescriptionId);
       if (!prescription)
         return res.status(404).json({ message: "Prescription not found" });
-
+  
+      // Update the status of the prescription
       prescription.status = status;
       await prescription.save();
-
+  
       // Handle transaction state if needed
       const transaction = await Transaction.findOne({
         prescription: prescriptionId,
@@ -610,7 +615,23 @@ const prescriptionController = {
         transaction.status = status === "completed" ? "success" : "pending";
         await transaction.save();
       }
-
+  
+      // Fetch the patient details for notification
+      const patient = await User.findById(prescription.patient);
+      if (!patient)
+        return res.status(404).json({ message: "Patient not found" });
+  
+      // Create an in-app notification for the patient
+      const notification = new Notification({
+        recipient: patient._id,
+        type: "Prescription Status Updated",
+        message: `The status of your prescription has been updated to "${status}". Please check your prescription details for more information.`,
+        timestamp: new Date(),
+        relatedObject: prescription._id,
+        relatedModel: 'Prescription',
+      });
+      await notification.save();
+  
       res.status(200).json({ message: `Prescription ${status} successfully` });
     } catch (error) {
       console.error("Error updating prescription status:", error);
