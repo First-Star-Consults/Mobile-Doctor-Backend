@@ -802,7 +802,7 @@ const authController = {
   },
 
   startConsultation: async (req, res) => {
-    const { patientId, doctorId, specialty } = req.body;
+    const { patientId, doctorId } = req.body;
 
     try {
       // Check if there is an existing active session for this patient and doctor
@@ -895,7 +895,7 @@ const authController = {
         recipient: doctorId,
         type: "Consultation",
         message: `You have a new consultation session scheduled with patient ${patient.username}.`,
-        relatedObject: user._id,
+        relatedObject: doctorId,
         relatedModel: "Consultation",
       });
       await notification.save();
