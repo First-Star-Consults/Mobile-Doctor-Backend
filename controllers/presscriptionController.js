@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import User from "../models/user.js";
 import { Prescription, Transaction, TestResult } from "../models/services.js";
 import { calculateFeesAndTransfer } from "../utils/inAppTransferService.js";
@@ -155,6 +156,11 @@ const prescriptionController = {
       req.body;
     const patientId = req.params.patientId;
 
+    // Validate inputs
+  if (!mongoose.isValidObjectId(prescriptionId) || !mongoose.isValidObjectId(providerId)) {
+    return res.status(400).json({ message: "Invalid prescription or provider ID" });
+  }
+
     try {
       const prescription = await Prescription.findById(prescriptionId);
       if (!prescription)
@@ -164,11 +170,23 @@ const prescriptionController = {
       if (!patient)
         return res.status(404).json({ message: "Patient not found" });
 
-      prescription.patientAddress = patient.address;
-      prescription.deliveryOption = deliveryOption;
-      prescription.providerType = providerType.toLowerCase(); // Set provider type
-      prescription.provider = providerId; // Set provider reference
-      await prescription.save();
+      // Perform update using findByIdAndUpdate
+    const updatedPrescription = await Prescription.findByIdAndUpdate(
+      prescriptionId,
+      {
+        $set: {
+          patientAddress: patient.address,
+          deliveryOption: deliveryOption,
+          providerType: providerType.toLowerCase(), // Ensure lowercase
+          provider: providerId, // Set provider reference
+        }
+      },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedPrescription) {
+      return res.status(500).json({ message: "Failed to update prescription" });
+    }
 
       const sharedPrescription = {
         prescription: prescription._id,
