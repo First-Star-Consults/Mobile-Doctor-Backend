@@ -342,23 +342,14 @@ const authController = {
             });
             await transaction.save();
 
-            // Create notification for the user that funded the wallet
-            const notification = {
-              type: 'funded Successfully',
-              message: `Your account has been successfully funded with ${amount}. Your new wallet balance is ${user.walletBalance}.`,
-              timestamp: new Date()
-            };
-
-            // Push the notification to the user's notifications array if available
-            if (user.notifications) {
-              user.notifications.push(notification);
-            } else {
-              // If notifications array is not initialized, initialize it with the new notification
-              user.notifications = [notification];
-            }
-
-            // Save the updated user object with the new notification
-            await user.save();
+            // Create and save a notification for the user
+          const notification = new Notification({
+            user: user._id,
+            type: 'wallet funding',
+            message: `Your account has been successfully funded with ₦${amount}. Your new wallet balance is ₦${user.walletBalance}.`,
+            timestamp: new Date()
+          });
+          await notification.save();
   
             res.status(200).send('Wallet funded and transaction recorded successfully');
           } else {
@@ -466,6 +457,22 @@ withdraw: async (req, res) => {
     const checkTransaction = await Transaction.findById(savedTransaction._id);
     console.log('Checked Transaction in DB:', checkTransaction);
 
+    // Create a notification for the user about the withdrawal request
+    const notification = new Notification({
+      user: user._id,
+      type: 'withdrawal',
+      message: `Your withdrawal request of ₦${amount} to ${bankName} (${accountNumber}) has been created and is pending approval.`,
+      timestamp: new Date()
+    });
+    await notification.save();
+
+     // Send email notification to the user
+     await sendNotificationEmail(
+      user.email,
+      'Withdrawal Request Created',
+      `Your withdrawal request of ₦${amount} to ${bankName} (${accountNumber}) has been created and is pending approval.`
+    );
+
     // Notify the admin for approval...
     res.status(200).json({ success: true, message: 'Withdrawal request created and pending approval', transactionId: savedTransaction._id });
   } catch (error) {
@@ -506,10 +513,72 @@ getPendingWithdrawals: async (req, res) => {
 
 
 // Function to approve a withdrawal request by Admin
+// approveWithdrawal: async (req, res) => {
+//   try {
+//     const adminId = req.params.adminId; 
+//     const { transactionId, accountNumber, bankCode } = req.body; 
+
+//     // Log admin and transaction details
+//     console.log(`Admin ID: ${adminId}, Transaction ID: ${transactionId}`);
+
+//     // Validate admin privileges
+//     const admin = await User.findById(adminId);
+//     if (!admin || !admin.isAdmin) {
+//       console.log('Unauthorized admin access');
+//       return res.status(403).json({ success: false, message: 'Unauthorized to perform this action' });
+//     }
+
+//     // Find the transaction and validate it
+//     const transaction = await Transaction.findById(transactionId);
+//     if (!transaction || transaction.status !== 'pending') {
+//       console.log(`Invalid or already processed transaction. Transaction ID: ${transactionId}`);
+//       return res.status(400).json({ success: false, message: 'Invalid or already processed transaction' });
+//     }
+
+//     // Find the user who requested the withdrawal
+//     const user = await User.findById(transaction.user);
+//     if (!user) {
+//       console.log(`User not found for Transaction ID: ${transactionId}`);
+//       return res.status(404).json({ success: false, message: 'User not found' });
+//     }
+
+//     // Create a transfer recipient
+//     const recipientDetails = await createTransferRecipient(user.firstName + ' ' + user.lastName, accountNumber, bankCode);
+//     if (!recipientDetails) {
+//       transaction.status = 'failed';
+//       await transaction.save();
+//       console.log(`Failed to create transfer recipient for Transaction ID: ${transactionId}`);
+//       return res.status(500).json({ success: false, message: 'Failed to create transfer recipient', transactionId });
+//     }
+
+//     // Initiate the transfer
+//     const transferResponse = await initiateTransfer(transaction.amount, recipientDetails.recipient_code);
+//     if (!transferResponse) {
+//       transaction.status = 'failed';
+//       await transaction.save();
+//       console.log(`Failed to initiate transfer for Transaction ID: ${transactionId}`);
+//       return res.status(500).json({ success: false, message: 'Failed to initiate transfer', transactionId });
+//     }
+
+//     // If transfer initiation is successful, deduct the amount from user's wallet balance and mark the transaction as succeeded
+//     user.walletBalance -= transaction.amount;
+//     transaction.status = 'success';
+//     await user.save();
+//     await transaction.save();
+
+//     console.log(`Withdrawal approved and processed for Transaction ID: ${transactionId}`);
+//     res.status(200).json({ success: true, message: 'Withdrawal approved and processed', transferDetails: transferResponse, transactionId });
+//   } catch (error) {
+//     console.error('Error during withdrawal approval:', error);
+//     res.status(500).json({ success: false, message: 'Internal Server Error', transactionId: req.body.transactionId });
+//   }
+// },
+
+// Function to approve a withdrawal request by Admin
 approveWithdrawal: async (req, res) => {
   try {
-    const adminId = req.params.adminId; 
-    const { transactionId, accountNumber, bankCode } = req.body; 
+    const adminId = req.params.adminId;
+    const { transactionId, accountNumber, bankCode } = req.body;
 
     // Log admin and transaction details
     console.log(`Admin ID: ${adminId}, Transaction ID: ${transactionId}`);
@@ -540,6 +609,23 @@ approveWithdrawal: async (req, res) => {
     if (!recipientDetails) {
       transaction.status = 'failed';
       await transaction.save();
+
+      // Notify the user about the failed transaction
+      const failedNotification = new Notification({
+        user: user._id,
+        type: 'withdrawal',
+        message: `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed.`,
+        timestamp: new Date()
+      });
+      await failedNotification.save();
+
+      // Send email notification to the user
+      await sendNotificationEmail(
+        user.email,
+        'Withdrawal Request Failed',
+        `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed. Please try again later or contact support.`
+      );
+
       console.log(`Failed to create transfer recipient for Transaction ID: ${transactionId}`);
       return res.status(500).json({ success: false, message: 'Failed to create transfer recipient', transactionId });
     }
@@ -549,6 +635,23 @@ approveWithdrawal: async (req, res) => {
     if (!transferResponse) {
       transaction.status = 'failed';
       await transaction.save();
+
+      // Notify the user about the failed transaction
+      const failedNotification = new Notification({
+        user: user._id,
+        type: 'withdrawal',
+        message: `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed.`,
+        timestamp: new Date()
+      });
+      await failedNotification.save();
+
+      // Send email notification to the user
+      await sendNotificationEmail(
+        user.email,
+        'Withdrawal Request Failed',
+        `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed. Please try again later or contact support.`
+      );
+
       console.log(`Failed to initiate transfer for Transaction ID: ${transactionId}`);
       return res.status(500).json({ success: false, message: 'Failed to initiate transfer', transactionId });
     }
@@ -559,6 +662,22 @@ approveWithdrawal: async (req, res) => {
     await user.save();
     await transaction.save();
 
+    // Notify the user about the successful withdrawal
+    const successNotification = new Notification({
+      user: user._id,
+      type: 'withdrawal',
+      message: `Your withdrawal request of ₦${transaction.amount} has been approved and processed.`,
+      timestamp: new Date()
+    });
+    await successNotification.save();
+
+    // Send email notification to the user
+    await sendNotificationEmail(
+      user.email,
+      'Withdrawal Request Approved',
+      `Your withdrawal request of ₦${transaction.amount} has been approved and processed. The amount will be credited to your account shortly.`
+    );
+
     console.log(`Withdrawal approved and processed for Transaction ID: ${transactionId}`);
     res.status(200).json({ success: true, message: 'Withdrawal approved and processed', transferDetails: transferResponse, transactionId });
   } catch (error) {
@@ -566,6 +685,7 @@ approveWithdrawal: async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal Server Error', transactionId: req.body.transactionId });
   }
 },
+
 
 
 
@@ -858,11 +978,6 @@ cancelConsultation: async (req, res) => {
     });
     await doctorNotification.save();
 
-
-   
-
-    
-
     return res.status(200).json({ message: 'Consultation cancelled and fee refunded to patient' });
   } catch (error) {
     console.error('Error during consultation cancellation:', error);
@@ -871,12 +986,85 @@ cancelConsultation: async (req, res) => {
 },
 
 
+// completeConsultation: async (req, res) => {
+//   const { sessionId } = req.body;
+//   let consultationComplete = false; // Initialize the flag as false
+
+//   try {
+//     const session = await ConsultationSession.findById(sessionId);
+//     if (!session) {
+//       return res.status(404).json({ message: 'Consultation session not found' });
+//     }
+
+//     // Check if the session is already completed to avoid repeated completions
+//     if (session.status === 'completed') {
+//       return res.status(400).json({ message: 'Consultation session is already marked as completed.' });
+//     }
+
+//     // Mark session as completed
+//     session.status = 'completed';
+//     session.endTime = new Date(); // Mark the end time
+//     await session.save();
+
+//     // Now release the escrow to the doctor
+//     const transaction = await Transaction.findById(session.escrowTransaction);
+//     if (transaction && transaction.escrowStatus === 'held') {
+//       const doctor = await User.findById(session.doctor);
+//       if (doctor) {
+//         doctor.walletBalance += transaction.amount; // Release funds to the doctor
+//         await doctor.save();
+
+//         transaction.escrowStatus = 'released'; // Update transaction status
+//         await transaction.save();
+//         consultationComplete = true; // Set the flag to true since all steps are completed successfully
+//       }
+//     }
+
+
+//     // Create notification for patient
+
+//     const patient = session.patient; // Retrieve the patient from the session
+//       const doctor = await User.findById(session.doctor);
+
+//       const notification = {
+//         type: 'Consultation Completed',
+//         message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} is completed.`,
+//         timestamp: new Date()
+//       };
+
+//       patient.notifications.push(notification); // Push the notification to the patient's notifications array
+//       await patient.save(); // Save the patient object
+
+//       // Create notification for the doctor
+//       const doctorNotification = {
+//         type: 'Consultation Completed',
+//         message: `The consultation with ${session.patient.firstName} ${session.patient.lastName} is completed.`,
+//         timestamp: new Date()
+//       };
+//       doctor.notifications.push(doctorNotification);
+//       await doctor.save();
+
+//     res.status(200).json({ 
+//       message: 'Consultation completed, funds released to doctor', 
+//       consultationComplete: consultationComplete 
+//     });
+//   } catch (error) {
+//     console.error('Error during consultation completion:', error);
+//     // In case of any error, the consultationComplete remains false
+//     res.status(500).json({ 
+//       message: 'Error completing consultation', 
+//       error: error.toString(), 
+//       consultationComplete: consultationComplete 
+//     });
+//   }
+// },
+
 completeConsultation: async (req, res) => {
   const { sessionId } = req.body;
-  let consultationComplete = false; // Initialize the flag as false
+  let consultationComplete = false;
 
   try {
-    const session = await ConsultationSession.findById(sessionId);
+    const session = await ConsultationSession.findById(sessionId).populate('patient doctor'); // Populate patient and doctor details
     if (!session) {
       return res.status(404).json({ message: 'Consultation session not found' });
     }
@@ -888,61 +1076,60 @@ completeConsultation: async (req, res) => {
 
     // Mark session as completed
     session.status = 'completed';
-    session.endTime = new Date(); // Mark the end time
+    session.endTime = new Date();
     await session.save();
 
-    // Now release the escrow to the doctor
+    // Release the escrow to the doctor
     const transaction = await Transaction.findById(session.escrowTransaction);
     if (transaction && transaction.escrowStatus === 'held') {
-      const doctor = await User.findById(session.doctor);
+      const doctor = session.doctor;
       if (doctor) {
         doctor.walletBalance += transaction.amount; // Release funds to the doctor
         await doctor.save();
 
-        transaction.escrowStatus = 'released'; // Update transaction status
+        transaction.escrowStatus = 'released';
         await transaction.save();
-        consultationComplete = true; // Set the flag to true since all steps are completed successfully
+        consultationComplete = true;
       }
     }
 
-
-    // Create notification for patient
-
-    const patient = session.patient; // Retrieve the patient from the session
-      const doctor = await User.findById(session.doctor);
-
-      const notification = {
+    // Create notification for the patient
+    const patient = session.patient;
+    if (patient) {
+      const patientNotification = new Notification({
+        user: patient._id,
         type: 'Consultation Completed',
-        message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} is completed.`,
-        timestamp: new Date()
-      };
+        message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} has been completed.`,
+        timestamp: new Date(),
+      });
+      await patientNotification.save();
+    }
 
-      patient.notifications.push(notification); // Push the notification to the patient's notifications array
-      await patient.save(); // Save the patient object
-
-      // Create notification for the doctor
-      const doctorNotification = {
+    // Create notification for the doctor
+    if (doctor) {
+      const doctorNotification = new Notification({
+        user: doctor._id,
         type: 'Consultation Completed',
-        message: `The consultation with ${session.patient.firstName} ${session.patient.lastName} is completed.`,
-        timestamp: new Date()
-      };
-      doctor.notifications.push(doctorNotification);
-      await doctor.save();
+        message: `The consultation with ${patient.firstName} ${patient.lastName} has been completed.`,
+        timestamp: new Date(),
+      });
+      await doctorNotification.save();
+    }
 
     res.status(200).json({ 
       message: 'Consultation completed, funds released to doctor', 
-      consultationComplete: consultationComplete 
+      consultationComplete 
     });
   } catch (error) {
     console.error('Error during consultation completion:', error);
-    // In case of any error, the consultationComplete remains false
     res.status(500).json({ 
       message: 'Error completing consultation', 
       error: error.toString(), 
-      consultationComplete: consultationComplete 
+      consultationComplete 
     });
   }
 },
+
 
 
 
