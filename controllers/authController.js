@@ -894,7 +894,7 @@ const authController = {
       const notification = new Notification({
         recipient: doctorId,
         type: "Consultation",
-        message: `You have a new consultation session scheduled with patient ${patient.username}.`,
+        message: `Dear Doctor,\n\n You have a new consultation session scheduled with patient ${patient.username}.`,
         relatedObject: doctorId,
         relatedModel: "Consultation",
       });
@@ -1262,7 +1262,7 @@ const authController = {
       // Create notification for the patient
       const patient = session.patient;
       const doctor = session.doctor;
-      
+
       if (patient) {
         const patientNotification = new Notification({
           recipient: patient._id,
