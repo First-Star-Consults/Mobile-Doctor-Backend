@@ -54,3 +54,17 @@ export const sendForgetPasswordEmail = async (to, token) => {
   return transporter.sendMail(mailOptions);
 };
 
+
+export const sendNotificationEmail = async (to, subject, message) => {
+  const mailOptions = {
+    from: '"Mobile Doctor" <noreply@mobiledoctor.firststarconsults.online>',
+    to,
+    subject,
+    text: message,
+    html: `<p>${message}</p>`,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+

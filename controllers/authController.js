@@ -1,5 +1,8 @@
 //authcontroller
 import crypto from 'crypto';
+import { io } from '../server.js';
+import { sendNotificationEmail } from '../utils/nodeMailer.js';
+import Notification from '../models/notificationModel.js';
 
 
 import passport from "passport";
@@ -647,6 +650,34 @@ startConsultation: async (req, res) => {
     });
     await newSession.save();
 
+    // Notify the doctor about the new consultation session
+    io.to(doctorId).emit('consultationStarted', { 
+      message: 'A new consultation has started!', 
+      sessionId: newSession._id 
+    });
+
+
+
+     // Create an in-app notification for the doctor
+     const notification = new Notification({
+      user: doctorId,
+      type: 'Consultation',
+      message: `You have a new consultation session scheduled with patient ${patient.username}.`,
+    });
+    await notification.save();
+
+    
+    // Retrieve the doctor's email from the User schema
+    const doctorUser = await User.findById(doctorId);
+    if (doctorUser && doctorUser.email) {
+      // Send a notification email to the doctor
+      sendNotificationEmail(
+        doctorUser.email,
+        'New Consultation Session',
+        `You have a new consultation session scheduled with patient ${patient.username}. Please check your dashboard for more details.`
+      );
+    }
+
     // Return success response with session details and conversation ID
     res.status(200).json({
       message: 'New consultation session started successfully.',
@@ -811,28 +842,26 @@ cancelConsultation: async (req, res) => {
 
 
     // Create notification for the patient
-    const notification = {
-      type: 'Consultation Canceled',
-      message: `Your consultation with ${doctor.firstName} ${doctor.lastName}  has been canceled.`,
-      timestamp: new Date()
-    };
-
-    // Push the notification to the patient's notifications array
-    patient.notifications.push(notification);
-    await patient.save();
+    const patientNotification = new Notification({
+      user: patient,
+      type: 'Canceled Consultation',
+      message: `Your consultation session with ${doctor.firstName} has been canceled.`,
+    });
+    await patientNotification.save();
 
     // Create notification for the doctor
-    const doctorNotification = {
-      type: 'Consultation Canceled',
-      message: `Consultation with ${patient.firstName} ${patient.lastName} has been canceled.`,
-      timestamp: new Date()
-    };
 
-    // Push the notification to the doctor's notifications array
-    if (doctor.notifications) {
-      doctor.notifications.push(doctorNotification);
-      await doctor.save();
-    }
+    const doctorNotification = new Notification({
+      user: doctor,
+      type: 'Canceled Consultation',
+      message: `Your consultation session with patient: ${patient.firstName} has been canceled.`,
+    });
+    await doctorNotification.save();
+
+
+   
+
+    
 
     return res.status(200).json({ message: 'Consultation cancelled and fee refunded to patient' });
   } catch (error) {

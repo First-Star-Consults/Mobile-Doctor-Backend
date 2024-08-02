@@ -12,9 +12,13 @@ import providerRouter from './routes/healthProviderRoute.js';
 import searchRouter from './routes/searchRoute.js';
 import adminRouter from './routes/adminRoute.js';
 import messageRoute from './routes/messageRoute.js';
-import configRoute from './routes/configRoute.js'
-import medicalReportRoute from './routes/medicalReportRoute.js'
-import prescriptionRoute from './routes/prescriptionRoute.js'
+import configRoute from './routes/configRoute.js';
+import medicalReportRoute from './routes/medicalReportRoute.js';
+import prescriptionRoute from './routes/prescriptionRoute.js';
+import notificationRoute from './routes/notificationRoute.js';
+
+
+
 import http from 'http'; 
 // import { Server as SocketIOServer } from 'socket.io';
 import { Server } from 'socket.io';
@@ -66,6 +70,8 @@ app.use("/api/medical-report", medicalReportRoute);
 app.use("/api/prescription", prescriptionRoute)
 app.use("/api/config", configRoute)
 app.use('/api/messages', messageRoute);
+app.use('/api/notification', notificationRoute)
+
 
 
 app.get("/api", (req, res) => {
