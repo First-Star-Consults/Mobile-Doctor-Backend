@@ -303,55 +303,66 @@ const prescriptionController = {
   
 
   // for provider to get presction
-  getProviderPrescriptions: async (req, res) => {
-    const providerId = req.params.providerId;
-    const providerType = req.body.providerType;
+ // For provider to get prescriptions
+getProviderPrescriptions: async (req, res) => {
+  const providerId = req.params.providerId;
+  const providerType = req.body.providerType;
 
-    try {
-      let ProviderModel;
-
-      switch (providerType.toLowerCase()) {
-        case "doctor":
-          ProviderModel = Doctor;
-          break;
-        case "pharmacy":
-          ProviderModel = Pharmacy;
-          break;
-        case "therapist":
-          ProviderModel = Therapist;
-          break;
-        case "laboratory":
-          ProviderModel = Laboratory;
-          break;
-        default:
-          return res.status(400).json({ message: "Invalid provider type" });
-      }
-
-      const provider = await ProviderModel.findById(providerId).populate(
-        "prescriptions.prescription"
-      );
-      if (!provider) {
-        return res.status(404).json({ message: "Provider not found" });
-      }
-
-      const prescriptionsWithDetails = provider.prescriptions.map(
-        (prescription) => {
-          return {
-            ...prescription.prescription.toObject(),
-            patientAddress: prescription.prescription.patientAddress,
-            diagnosis: prescription.prescription.diagnosis,
-            medicines: prescription.prescription.medicines,
-            createdAt: prescription.prescription.createdAt,
-          };
-        }
-      );
-
-      res.status(200).json(prescriptionsWithDetails);
-    } catch (error) {
-      console.error("Failed to get prescriptions:", error);
-      res.status(500).json({ message: error.message });
+  try {
+    let ProviderModel;
+    
+    switch (providerType.toLowerCase()) {
+      case "doctor":
+        ProviderModel = Doctor;
+        break;
+      case "pharmacy":
+        ProviderModel = Pharmacy;
+        break;
+      case "therapist":
+        ProviderModel = Therapist;
+        break;
+      case "laboratory":
+        ProviderModel = Laboratory;
+        break;
+      default:
+        return res.status(400).json({ message: "Invalid provider type" });
     }
-  },
+
+    const provider = await ProviderModel.findById(providerId).populate({
+      path: 'prescriptions.prescription',
+      populate: {
+        path: 'patient',
+        model: 'User',
+        select: 'firstName lastName' // Populating patient details
+      }
+    });
+
+    if (!provider) {
+      return res.status(404).json({ message: "Provider not found" });
+    }
+
+    const prescriptionsWithDetails = provider.prescriptions.map((prescription) => {
+      const prescriptionDoc = prescription.prescription.toObject();
+      return {
+        ...prescriptionDoc,
+        providerName: provider.name || provider.fullName, // Ensure provider name is assigned
+        patientFirstName: prescriptionDoc.patient.firstName,
+        patientLastName: prescriptionDoc.patient.lastName,
+        patientAddress: prescriptionDoc.patientAddress,
+        diagnosis: prescriptionDoc.diagnosis,
+        medicines: prescriptionDoc.medicines,
+        createdAt: prescriptionDoc.createdAt,
+      };
+    });
+
+    res.status(200).json(prescriptionsWithDetails);
+  } catch (error) {
+    console.error("Failed to get prescriptions:", error);
+    res.status(500).json({ message: error.message });
+  }
+},
+
+
 
   // Function to add costing details
   addCosting: async (req, res) => {

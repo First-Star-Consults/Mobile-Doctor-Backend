@@ -355,7 +355,7 @@ getDoctorReviews: async (req, res) => {
     }
   },
 
-
+  // this function works with the prescription controller flow
   recommendHealthProvider: async (req, res) => {
     try {
       const { providerType, patientId } = req.body;
@@ -457,7 +457,7 @@ getDoctorReviews: async (req, res) => {
 
   
   
-
+// this function works with the prescription controller flow
   getRecommendedProviders: async (req, res) => {
     try {
       const patientId = req.params.patientId;
