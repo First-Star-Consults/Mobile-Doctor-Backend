@@ -23,7 +23,7 @@ router.get('/test-results/:patientId', prescriptionController.getTestResults);
 router.get('/costing-details/:prescriptionId', prescriptionController.getCostingDetails);
 
 // for prescription to be shared with health provider
-router.get('/provider-prescriptions/:providerId', prescriptionController.getProviderPrescriptions);
+router.post('/provider-prescriptions/:providerId', prescriptionController.getProviderPrescriptions);
 // patient to get their prescription
 router.get('/prescriptions/patient/:patientId', prescriptionController.getPatientPrescriptions);
 
