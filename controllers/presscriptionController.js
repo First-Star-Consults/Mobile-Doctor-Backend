@@ -311,7 +311,7 @@ getProviderPrescriptions: async (req, res) => {
   try {
     let ProviderModel;
     
-    switch (providerType.toLowerCase()) {
+    switch (providerType) {
       case "doctor":
         ProviderModel = Doctor;
         break;
