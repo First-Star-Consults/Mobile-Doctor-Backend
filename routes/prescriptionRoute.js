@@ -24,6 +24,8 @@ router.get('/costing-details/:prescriptionId', prescriptionController.getCosting
 
 // for prescription to be shared with health provider
 router.post('/provider-prescriptions/:providerId', prescriptionController.getProviderPrescriptions);
+// get single recent prescription for provider
+router.post('/providerSingle-prescriptions/:providerId', prescriptionController.providerSinglePrescription);
 // patient to get their prescription
 router.get('/prescriptions/patient/:patientId', prescriptionController.getPatientPrescriptions);
 
