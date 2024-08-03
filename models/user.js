@@ -38,6 +38,7 @@ userLocationSchema.index({ coordinates: '2dsphere' });
 const recommendationSchema = new mongoose.Schema({
   providerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   providerName: { type: String },
+  providerType: {type: String},
   distance: { type: Number },
   address: { type: String }, // Added address field
   about: { type: String },   // Added about field

@@ -177,7 +177,7 @@ const prescriptionController = {
         $set: {
           patientAddress: patient.address,
           deliveryOption: deliveryOption,
-          providerType: providerType.toLowerCase(), // Ensure lowercase
+          providerType: providerType, 
           provider: providerId, // Set provider reference
         }
       },
@@ -261,21 +261,22 @@ const prescriptionController = {
 
   getPatientPrescriptions: async (req, res) => {
     const patientId = req.params.patientId;
-
+  
     try {
       const prescriptions = await Prescription.find({ patient: patientId })
         .populate("doctor", "fullName profilePhoto medicalSpecialty.name")
         .sort({ createdAt: -1 });
-
+  
       if (!prescriptions.length) {
-        return res
-          .status(404)
-          .json({ message: "No prescriptions found for this patient" });
+        return res.status(404).json({ message: "No prescriptions found for this patient" });
       }
-
+  
+      // Log the prescriptions to check if providerType is present
+      console.log("Fetched prescriptions:", prescriptions);
+  
       const prescriptionsWithDetails = prescriptions.map((prescription) => ({
-        prescriptionId: prescription._id, // Add prescriptionId
-        doctorId: prescription.doctor._id, // Add doctorId
+        prescriptionId: prescription._id,
+        doctorId: prescription.doctor._id,
         doctor: {
           fullName: prescription.doctor.fullName,
           profilePhoto: prescription.doctor.profilePhoto,
@@ -285,16 +286,21 @@ const prescriptionController = {
         medicines: prescription.medicines,
         labTests: prescription.labTests,
         createdAt: prescription.createdAt,
-        status: prescription.status, // Include the status field
-        providerType: prescription.providerType, // Add providerType
+        status: prescription.status,
+        providerType: prescription.providerType, // Ensure providerType is included
       }));
-
+  
+      // Log the transformed prescriptions
+      console.log("Transformed prescriptions with details:", prescriptionsWithDetails);
+  
       res.status(200).json(prescriptionsWithDetails);
     } catch (error) {
       console.error("Failed to fetch prescriptions:", error);
       res.status(500).json({ message: error.message });
     }
   },
+  
+  
 
   // for provider to get presction
   getProviderPrescriptions: async (req, res) => {

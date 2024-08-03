@@ -437,6 +437,7 @@ getDoctorReviews: async (req, res) => {
       patient.recommendations = sortedProviders.map(provider => ({
         providerId: provider._id,
         providerName: provider.providerName,
+        providerType: providerType,
         distance: provider.distance,
         address: provider.address,
         about: provider.about,
