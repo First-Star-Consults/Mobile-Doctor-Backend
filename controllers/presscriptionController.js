@@ -271,8 +271,7 @@ const prescriptionController = {
         return res.status(404).json({ message: "No prescriptions found for this patient" });
       }
   
-      // Log the prescriptions to check if providerType is present
-      console.log("Fetched prescriptions:", prescriptions);
+    
   
       const prescriptionsWithDetails = prescriptions.map((prescription) => ({
         prescriptionId: prescription._id,
@@ -288,6 +287,7 @@ const prescriptionController = {
         createdAt: prescription.createdAt,
         status: prescription.status,
         providerType: prescription.providerType, // Ensure providerType is included
+        providerId: prescription.provider 
       }));
   
       // Log the transformed prescriptions
@@ -303,7 +303,6 @@ const prescriptionController = {
   
 
   // for provider to get presction
- // For provider to get prescriptions
 getProviderPrescriptions: async (req, res) => {
   const providerId = req.params.providerId;
   const providerType = req.body.providerType;
@@ -330,11 +329,18 @@ getProviderPrescriptions: async (req, res) => {
 
     const provider = await ProviderModel.findById(providerId).populate({
       path: 'prescriptions.prescription',
-      populate: {
-        path: 'patient',
-        model: 'User',
-        select: 'firstName lastName' // Populating patient details
-      }
+      populate: [
+        {
+          path: 'patient',
+          model: 'User',
+          select: 'firstName lastName profilePhoto', // Populating patient details
+        },
+        {
+          path: 'doctor',
+          model: 'Doctor',
+          select: 'fullName', // Populating doctor details
+        }
+      ]
     });
 
     if (!provider) {
@@ -345,12 +351,15 @@ getProviderPrescriptions: async (req, res) => {
       const prescriptionDoc = prescription.prescription.toObject();
       return {
         ...prescriptionDoc,
+        prescriptionId: prescriptionDoc._id,
         providerName: provider.name || provider.fullName, // Ensure provider name is assigned
         patientFirstName: prescriptionDoc.patient.firstName,
         patientLastName: prescriptionDoc.patient.lastName,
+        patientProfilePhoto: prescriptionDoc.patient.profilePhoto,
         patientAddress: prescriptionDoc.patientAddress,
         diagnosis: prescriptionDoc.diagnosis,
         medicines: prescriptionDoc.medicines,
+        doctorName: prescriptionDoc.doctor.fullName,
         createdAt: prescriptionDoc.createdAt,
       };
     });
@@ -425,6 +434,58 @@ providerSinglePrescription: async (req, res) => {
   } catch (error) {
     console.error("Failed to get the recent prescription:", error);
     res.status(500).json({ message: error.message });
+  }
+},
+
+
+
+getPrescription: async (req, res) => {
+  const { prescriptionId } = req.params;
+
+  // Validate the prescriptionId
+  if (!mongoose.isValidObjectId(prescriptionId)) {
+    return res.status(400).json({ message: "Invalid prescription ID" });
+  }
+
+  try {
+    // Find the prescription by ID
+    const prescription = await Prescription.findById(prescriptionId)
+      .populate("doctor", "fullName profilePhoto medicalSpecialty.name")
+      .populate("patient", "firstName lastName");
+
+    if (!prescription) {
+      return res.status(404).json({ message: "Prescription not found" });
+    }
+
+    // Return the found prescription
+    res.status(200).json({
+      prescriptionId: prescription._id,
+      doctor: prescription.doctor ? {
+        doctorId: prescription.doctor._id,
+        fullName: prescription.doctor.fullName,
+        profilePhoto: prescription.doctor.profilePhoto,
+        medicalSpecialty: prescription.doctor.medicalSpecialty.name,
+      } : null,
+      patient: prescription.patient ? {
+        patientId: prescription.patient._id,
+        firstName: prescription.patient.firstName,
+        lastName: prescription.patient.lastName,
+      } : null,
+      patientAddress: prescription.patientAddress,
+      diagnosis: prescription.diagnosis,
+      medicines: prescription.medicines,
+      labTests: prescription.labTests,
+      deliveryOption: prescription.deliveryOption,
+      createdAt: prescription.createdAt,
+      status: prescription.status,
+      approved: prescription.approved,
+      totalCost: prescription.totalCost,
+      providerType: prescription.providerType,
+      provider: prescription.provider
+    });
+  } catch (error) {
+    console.error("Failed to fetch prescription:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 },
 

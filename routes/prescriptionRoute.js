@@ -28,5 +28,6 @@ router.post('/provider-prescriptions/:providerId', prescriptionController.getPro
 router.post('/providerSingle-prescriptions/:providerId', prescriptionController.providerSinglePrescription);
 // patient to get their prescription
 router.get('/prescriptions/patient/:patientId', prescriptionController.getPatientPrescriptions);
+router.get('/get-prescription/:prescriptionId', prescriptionController.getPrescription)
 
 export default router;
