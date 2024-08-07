@@ -681,6 +681,25 @@ getPrescription: async (req, res) => {
 
       const healthProvider = await User.findById(providerId);
 
+      
+
+
+      // Find the prescription and populate the provider
+    const prescription = await Prescription.findById(prescriptionId)
+    .populate('provider');
+
+    if (!prescription) {
+      return res.status(404).json({ message: "Prescription not found" });
+      
+    }
+
+    let providerName = null;
+    if (prescription.provider) {
+      const providerId = prescription.provider._id;
+      const provider = await Pharmacy.findById(providerId) || await Laboratory.findById(providerId);
+      providerName = provider ? provider.name : null;
+    }
+
       // Handle file upload
       if (!req.files || !req.files.testResult) {
         return res
@@ -697,6 +716,8 @@ getPrescription: async (req, res) => {
         provider: providerId,
         testName,
         testResult: uploadedFile.secure_url,
+        prescription: prescriptionId,
+        providerName: providerName,
       });
 
       await testResultEntry.save();

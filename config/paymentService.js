@@ -50,6 +50,30 @@ export async function verifyTransaction(reference) {
   }
 }
 
+export async function validateAccountNumber(account_number, bank_code) {
+  try {
+    console.log(`Validating account number: ${account_number} with bank code: ${bank_code}`);
+    const response = await paystack.get(`/bank/resolve?account_number=${account_number}&bank_code=${bank_code}`);
+    
+    if (response.data.data) {
+      console.log('Account validation successful:', response.data.data);
+      return response.data.data;
+    } else {
+      console.log('Account validation returned no data.');
+      throw new Error('Account validation returned no data.');
+    }
+  } catch (error) {
+    console.error('Error validating account number:', {
+      account_number,
+      bank_code,
+      error: error.response?.data || error.message
+    });
+    throw error;
+  }
+}
+
+
+
 export async function creditWallet(email, amount) {
     try {
       // Find the user by email
@@ -75,6 +99,23 @@ export async function creditWallet(email, amount) {
     }
   }
 
+  // export async function createTransferRecipient(name, accountNumber, bankCode) {
+  //   try {
+  //     const body = {
+  //       type: "nuban",
+  //       name: name,
+  //       account_number: accountNumber,
+  //       bank_code: bankCode,
+  //       currency: "NGN"
+  //     };
+  //     const response = await paystack.post('/transferrecipient', body);
+  //     return response.data.data; // Contains recipient_code needed for transfer
+  //   } catch (error) {
+  //     console.error('Error creating transfer recipient:', error);
+  //     return null;
+  //   }
+  // }
+
   export async function createTransferRecipient(name, accountNumber, bankCode) {
     try {
       const body = {
@@ -85,6 +126,7 @@ export async function creditWallet(email, amount) {
         currency: "NGN"
       };
       const response = await paystack.post('/transferrecipient', body);
+      console.log('Response:', response.data);
       return response.data.data; // Contains recipient_code needed for transfer
     } catch (error) {
       console.error('Error creating transfer recipient:', error);

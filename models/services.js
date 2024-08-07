@@ -84,9 +84,12 @@ const transactionSchema = new mongoose.Schema({
 const testResultSchema = new mongoose.Schema({
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   provider: { type: mongoose.Schema.Types.ObjectId, ref: 'Laboratory', required: true },
+  providerName: { type: String, required: true },
   testName: { type: String, required: true },
   testResult: { type: String, required: true },
+  prescription: { type: mongoose.Schema.Types.ObjectId, ref: 'Prescription', required: true }, 
   date: { type: Date, default: Date.now },
+
   // Other fields as needed
 });
 

@@ -22,6 +22,7 @@ import {
   verifyTransaction,
   initiateTransfer,
   createTransferRecipient,
+  validateAccountNumber
 } from "../config/paymentService.js";
 import { Transaction } from "../models/services.js";
 import ConsultationSession from "../models/consultationModel.js";
@@ -633,173 +634,289 @@ const authController = {
   // },
 
   // Function to approve a withdrawal request by Admin
+  // approveWithdrawal: async (req, res) => {
+  //   try {
+  //     const adminId = req.params.adminId;
+  //     const { transactionId, accountNumber, bankCode } = req.body;
+  
+  //     // Log admin and transaction details
+  //     console.log(`Admin ID: ${adminId}, Transaction ID: ${transactionId}`);
+  
+  //     // Validate admin privileges
+  //     const admin = await User.findById(adminId);
+  //     if (!admin || !admin.isAdmin) {
+  //       console.log("Unauthorized admin access");
+  //       return res.status(403).json({ success: false, message: "Unauthorized to perform this action" });
+  //     }
+  
+  //     // Find the transaction and validate it
+  //     const transaction = await Transaction.findById(transactionId);
+  //     if (!transaction || transaction.status !== "pending") {
+  //       console.log(`Invalid or already processed transaction. Transaction ID: ${transactionId}`);
+  //       return res.status(400).json({ success: false, message: "Invalid or already processed transaction" });
+  //     }
+  
+  //     // Find the user who requested the withdrawal
+  //     const user = await User.findById(transaction.user);
+  //     if (!user) {
+  //       console.log(`User not found for Transaction ID: ${transactionId}`);
+  //       return res.status(404).json({ success: false, message: "User not found" });
+  //     }
+  
+  //     // Create a transfer recipient
+  //     const recipientDetails = await createTransferRecipient(user.firstName + " " + user.lastName, accountNumber, bankCode);
+  //     if (!recipientDetails) {
+  //       transaction.status = "failed";
+  //       await transaction.save();
+  
+  //       // Notify the user about the failed transaction
+  //       const failedNotification = new Notification({
+  //         recipient: user._id,
+  //         type: "withdrawal",
+  //         message: `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed.`,
+  //         relatedObject: user._id,
+  //         relatedModel: "Transaction",
+  //       });
+  //       await failedNotification.save();
+  
+  //       // Send email notification to the user
+  //       await sendNotificationEmail(user.email, "Withdrawal Request Failed", `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed. Please try again later or contact support.`);
+  
+  //       console.log(`Failed to create transfer recipient for Transaction ID: ${transactionId}`);
+  //       return res.status(500).json({ success: false, message: "Failed to create transfer recipient", transactionId });
+  //     }
+  
+  //     // Initiate the transfer
+  //     const transferResponse = await initiateTransfer(transaction.amount, recipientDetails.recipient_code);
+  //     if (!transferResponse) {
+  //       transaction.status = "failed";
+  //       await transaction.save();
+  
+  //       // Notify the user about the failed transaction
+  //       const failedNotification = new Notification({
+  //         recipient: user._id,
+  //         type: "withdrawal",
+  //         message: `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed.`,
+  //         relatedObject: user._id,
+  //         relatedModel: "Transaction",
+  //       });
+  //       await failedNotification.save();
+  
+  //       // Send email notification to the user
+  //       await sendNotificationEmail(user.email, "Withdrawal Request Failed", `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed. Please try again later or contact support.`);
+  
+  //       console.log(`Failed to initiate transfer for Transaction ID: ${transactionId}`);
+  //       return res.status(500).json({ success: false, message: "Failed to initiate transfer", transactionId });
+  //     }
+  
+  //     // If transfer initiation is successful, deduct the amount from user's wallet balance and mark the transaction as succeeded
+  //     user.walletBalance -= transaction.amount;
+  //     transaction.status = "success";
+  //     await user.save();
+  //     await transaction.save();
+  
+  //     // Notify the user about the successful withdrawal
+  //     const successNotification = new Notification({
+  //       recipient: user._id,
+  //       type: "withdrawal",
+  //       message: `Your withdrawal request of ₦${transaction.amount} has been approved and processed.`,
+  //       relatedObject: user._id,
+  //       relatedModel: "Transaction",
+  //     });
+  //     await successNotification.save();
+  
+  //     // Send email notification to the user
+  //     await sendNotificationEmail(user.email, "Withdrawal Request Approved", `Your withdrawal request of ₦${transaction.amount} has been approved and processed. The amount will be credited to your account shortly.`);
+  
+  //     console.log(`Withdrawal approved and processed for Transaction ID: ${transactionId}`);
+  //     res.status(200).json({ success: true, message: "Withdrawal approved and processed", transferDetails: transferResponse, transactionId });
+  //   } catch (error) {
+  //     console.error("Error during withdrawal approval:", error);
+  //     res.status(500).json({ success: false, message: "Internal Server Error", transactionId: req.body.transactionId });
+  //   }
+  // },
+
+
+
   approveWithdrawal: async (req, res) => {
     try {
-      const adminId = req.params.adminId;
-      const { transactionId, accountNumber, bankCode } = req.body;
+        const adminId = req.params.adminId;
+        const { transactionId, accountNumber, bankCode } = req.body;
 
-      // Log admin and transaction details
-      console.log(`Admin ID: ${adminId}, Transaction ID: ${transactionId}`);
+        console.log(`Admin ID: ${adminId}, Transaction ID: ${transactionId}`);
+        console.log(`Withdrawal request received with account number: ${accountNumber} and bank code: ${bankCode}`);
 
-      // Validate admin privileges
-      const admin = await User.findById(adminId);
-      if (!admin || !admin.isAdmin) {
-        console.log("Unauthorized admin access");
-        return res
-          .status(403)
-          .json({
-            success: false,
-            message: "Unauthorized to perform this action",
-          });
-      }
+        const admin = await User.findById(adminId);
+        if (!admin || !admin.isAdmin) {
+            console.log("Unauthorized admin access");
+            return res.status(403).json({ success: false, message: "Unauthorized to perform this action" });
+        }
 
-      // Find the transaction and validate it
-      const transaction = await Transaction.findById(transactionId);
-      if (!transaction || transaction.status !== "pending") {
-        console.log(
-          `Invalid or already processed transaction. Transaction ID: ${transactionId}`
-        );
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "Invalid or already processed transaction",
-          });
-      }
+        const transaction = await Transaction.findById(transactionId).populate('user');
+        if (!transaction || transaction.status !== "pending") {
+            console.log(`Invalid or already processed transaction. Transaction ID: ${transactionId}`);
+            return res.status(400).json({ success: false, message: "Invalid or already processed transaction" });
+        }
 
-      // Find the user who requested the withdrawal
-      const user = await User.findById(transaction.user);
-      if (!user) {
-        console.log(`User not found for Transaction ID: ${transactionId}`);
-        return res
-          .status(404)
-          .json({ success: false, message: "User not found" });
-      }
+        const user = transaction.user;
+        if (!user) {
+            console.log(`User not found for Transaction ID: ${transactionId}`);
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
 
-      // Create a transfer recipient
-      const recipientDetails = await createTransferRecipient(
-        user.firstName + " " + user.lastName,
-        accountNumber,
-        bankCode
-      );
-      if (!recipientDetails) {
-        transaction.status = "failed";
+        let accountValidation;
+        try {
+            console.log(`Validating account number: ${accountNumber} with bank code: ${bankCode}`);
+            accountValidation = await validateAccountNumber(accountNumber, bankCode);
+            if (!accountValidation) {
+                console.log('Account validation failed');
+                transaction.status = "failed";
+                await transaction.save();
+
+                const failedNotification = new Notification({
+                    recipient: user._id,
+                    type: "withdrawal",
+                    message: `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed due to invalid account details.`,
+                    relatedObject: user._id,
+                    relatedModel: "Transaction",
+                });
+                await failedNotification.save();
+                await sendNotificationEmail(user.email, "Withdrawal Request Failed", `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed due to invalid account details. Please try again later or contact support.`);
+
+                console.log(`Failed account validation for Transaction ID: ${transactionId}`);
+                return res.status(400).json({ success: false, message: "Invalid account details", transactionId });
+            }
+            console.log('Account validation successful:', accountValidation);
+        } catch (validationError) {
+            console.error('Error during account validation:', validationError);
+            transaction.status = "failed";
+            await transaction.save();
+
+            const failedNotification = new Notification({
+                recipient: user._id,
+                type: "withdrawal",
+                message: `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed due to an error in account validation.`,
+                relatedObject: user._id,
+                relatedModel: "Transaction",
+            });
+            await failedNotification.save();
+            await sendNotificationEmail(user.email, "Withdrawal Request Failed", `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed due to an error in account validation. Please try again later or contact support.`);
+
+            console.log(`Error during account validation for Transaction ID: ${transactionId}`);
+            return res.status(500).json({ success: false, message: "Account validation error", transactionId });
+        }
+
+        const recipientName = accountValidation.account_name;
+        const recipientDetails = await createTransferRecipient(recipientName, accountNumber, bankCode);
+        if (!recipientDetails) {
+            console.log('Failed to create transfer recipient');
+            transaction.status = "failed";
+            await transaction.save();
+
+            const failedNotification = new Notification({
+                recipient: user._id,
+                type: "withdrawal",
+                message: `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed due to an error in creating the transfer recipient.`,
+                relatedObject: user._id,
+                relatedModel: "Transaction",
+            });
+            await failedNotification.save();
+            await sendNotificationEmail(user.email, "Withdrawal Request Failed", `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed due to an error in creating the transfer recipient. Please try again later or contact support.`);
+
+            console.log(`Failed to create transfer recipient for Transaction ID: ${transactionId}`);
+            return res.status(500).json({ success: false, message: "Failed to create transfer recipient", transactionId });
+        }
+
+        console.log('Recipient Data:', recipientDetails);
+
+        const transferResponse = await initiateTransfer(transaction.amount, recipientDetails.recipient_code);
+        if (!transferResponse) {
+            console.log('Failed to initiate transfer');
+            transaction.status = "failed";
+            await transaction.save();
+
+            const failedNotification = new Notification({
+                recipient: user._id,
+                type: "withdrawal",
+                message: `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed due to an error in initiating the transfer.`,
+                relatedObject: user._id,
+                relatedModel: "Transaction",
+            });
+            await failedNotification.save();
+            await sendNotificationEmail(user.email, "Withdrawal Request Failed", `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed due to an error in initiating the transfer. Please try again later or contact support.`);
+
+            console.log(`Failed to initiate transfer for Transaction ID: ${transactionId}`);
+            return res.status(500).json({ success: false, message: "Failed to initiate transfer", transactionId });
+        }
+
+        // Poll for transfer status to confirm successful transfer
+        const checkTransferStatus = async (reference, retries = 5) => {
+            try {
+                const { success, data, message } = await verifyTransaction(reference);
+                if (success && data.status === 'success') {
+                    return true;
+                } else if (retries > 0) {
+                    console.log(`Transfer not completed yet. Retrying... (${retries} retries left)`);
+                    await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before retrying
+                    return checkTransferStatus(reference, retries - 1);
+                } else {
+                    console.log(`Transfer failed after retries. Message: ${message}`);
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error checking transfer status:', error);
+                return false;
+            }
+        };
+
+        const transferConfirmed = await checkTransferStatus(transferResponse.reference);
+        if (!transferConfirmed) {
+            console.log('Transfer not confirmed. Marking transaction as failed.');
+            transaction.status = "failed";
+            await transaction.save();
+
+            const failedNotification = new Notification({
+                recipient: user._id,
+                type: "withdrawal",
+                message: `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed due to an error in confirming the transfer.`,
+                relatedObject: user._id,
+                relatedModel: "Transaction",
+            });
+            await failedNotification.save();
+            await sendNotificationEmail(user.email, "Withdrawal Request Failed", `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed due to an error in confirming the transfer. Please try again later or contact support.`);
+
+            return res.status(500).json({ success: false, message: "Transfer confirmation failed", transactionId });
+        }
+
+        // Deduct the amount from user's wallet balance
+        user.walletBalance -= transaction.amount;
+        await user.save();
+
+        transaction.status = "success";
         await transaction.save();
 
-        // Notify the user about the failed transaction
-        const failedNotification = new Notification({
-          recipient: user._id,
-          type: "withdrawal",
-          message: `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed.`,
-          relatedObject: user._id,
-          relatedModel: "Transaction",
+        const successNotification = new Notification({
+            recipient: user._id,
+            type: "withdrawal",
+            message: `Your withdrawal request of ₦${transaction.amount} has been approved and processed.`,
+            relatedObject: user._id,
+            relatedModel: "Transaction",
         });
-        await failedNotification.save();
+        await successNotification.save();
+        await sendNotificationEmail(user.email, "Withdrawal Request Approved", `Your withdrawal request of ₦${transaction.amount} has been approved and processed. The amount will be credited to your account shortly.`);
 
-        // Send email notification to the user
-        await sendNotificationEmail(
-          user.email,
-          "Withdrawal Request Failed",
-          `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed. Please try again later or contact support.`
-        );
-
-        console.log(
-          `Failed to create transfer recipient for Transaction ID: ${transactionId}`
-        );
-        return res
-          .status(500)
-          .json({
-            success: false,
-            message: "Failed to create transfer recipient",
-            transactionId,
-          });
-      }
-
-      // Initiate the transfer
-      const transferResponse = await initiateTransfer(
-        transaction.amount,
-        recipientDetails.recipient_code
-      );
-      if (!transferResponse) {
-        transaction.status = "failed";
-        await transaction.save();
-
-        // Notify the user about the failed transaction
-        const failedNotification = new Notification({
-          recipient: user._id,
-          type: "withdrawal",
-          message: `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed.`,
-          relatedObject: user._id,
-          relatedModel: "Transaction",
-        });
-        await failedNotification.save();
-
-        // Send email notification to the user
-        await sendNotificationEmail(
-          user.email,
-          "Withdrawal Request Failed",
-          `Your withdrawal request of ₦${transaction.amount} to ${bankCode} (${accountNumber}) has failed. Please try again later or contact support.`
-        );
-
-        console.log(
-          `Failed to initiate transfer for Transaction ID: ${transactionId}`
-        );
-        return res
-          .status(500)
-          .json({
-            success: false,
-            message: "Failed to initiate transfer",
-            transactionId,
-          });
-      }
-
-      // If transfer initiation is successful, deduct the amount from user's wallet balance and mark the transaction as succeeded
-      user.walletBalance -= transaction.amount;
-      transaction.status = "success";
-      await user.save();
-      await transaction.save();
-
-      
-
-      // Notify the user about the successful withdrawal
-      const successNotification = new Notification({
-        recipient: user._id,
-        type: "withdrawal",
-        message: `Your withdrawal request of ₦${transaction.amount} has been approved and processed.`,
-        relatedObject: user._id,
-        relatedModel: "Transaction",
-      });
-      await successNotification.save();
-
-      // Send email notification to the user
-      await sendNotificationEmail(
-        user.email,
-        "Withdrawal Request Approved",
-        `Your withdrawal request of ₦${transaction.amount} has been approved and processed. The amount will be credited to your account shortly.`
-      );
-
-      console.log(
-        `Withdrawal approved and processed for Transaction ID: ${transactionId}`
-      );
-      res
-        .status(200)
-        .json({
-          success: true,
-          message: "Withdrawal approved and processed",
-          transferDetails: transferResponse,
-          transactionId,
-        });
+        console.log(`Withdrawal approved and processed for Transaction ID: ${transactionId}`);
+        res.status(200).json({ success: true, message: "Withdrawal approved and processed", transferDetails: transferResponse, transactionId });
     } catch (error) {
-      console.error("Error during withdrawal approval:", error);
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: "Internal Server Error",
-          transactionId: req.body.transactionId,
-        });
+        console.error("Error during withdrawal approval:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error", transactionId: req.body.transactionId });
     }
-  },
+},
+
+
+
+ 
+  
 
   startConsultation: async (req, res) => {
     const { patientId, doctorId } = req.body;
