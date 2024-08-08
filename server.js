@@ -16,14 +16,10 @@ import configRoute from './routes/configRoute.js';
 import medicalReportRoute from './routes/medicalReportRoute.js';
 import prescriptionRoute from './routes/prescriptionRoute.js';
 import notificationRoute from './routes/notificationRoute.js';
-
-
-
 import http from 'http'; 
-// import { Server as SocketIOServer } from 'socket.io';
 import { Server } from 'socket.io';
-
 const app = express();
+
 // const server = http.createServer(app); 
 // const io = new SocketIOServer(server, { 
 //   cors: {
@@ -114,27 +110,62 @@ app.get("/", (req, res) => {
 
 
 // Listen for new connections
+// Socket.IO logic
 io.on('connection', (socket) => {
-  console.log('a user connected');
+  console.log('A user connected');
 
-  // Listen for a join room event
+  // Join a conversation room
   socket.on('joinRoom', (conversationId) => {
     socket.join(conversationId);
-    console.log(`User joined room: ${conversationId}`);
+    console.log(`User ${socket.id} joined room ${conversationId}`);
   });
 
-  // Listen for a leave room event
+  // Leave a conversation room
   socket.on('leaveRoom', (conversationId) => {
     socket.leave(conversationId);
-    console.log(`User left room: ${conversationId}`);
+    console.log(`User ${socket.id} left room ${conversationId}`);
+  });
+
+  // Handle sending messages
+  socket.on('sendMessage', async (message) => {
+    try {
+      const { conversationId, sender, receiver, content } = message;
+
+      const activeSession = await ConsultationSession.findOne({
+        $or: [{ doctor: sender, patient: receiver }, { doctor: receiver, patient: sender }],
+        status: { $in: ['scheduled', 'in-progress'] }
+      });
+
+      if (!activeSession) {
+        return socket.emit('messageError', { message: 'No active consultation session found between the users.' });
+      }
+
+      const newMessage = await Message.create({
+        conversationId,
+        sender,
+        receiver,
+        content
+      });
+
+      io.to(conversationId).emit('newMessage', newMessage);
+
+      await Conversation.findByIdAndUpdate(conversationId, {
+        $set: { lastMessage: newMessage._id },
+        $currentDate: { updatedAt: true }
+      });
+
+      socket.emit('messageSent', newMessage);
+    } catch (error) {
+      socket.emit('messageError', { error: error.message });
+    }
   });
 
   socket.on('disconnect', () => {
-    console.log('user disconnected');
+    console.log('User disconnected');
   });
 });
 
 export { io };
 server.listen(process.env.PORT || 3000, () => {
-  console.log('listening on: 3000');
+  console.log(`Server is listening on port ${process.env.PORT || 3000}`);
 });
