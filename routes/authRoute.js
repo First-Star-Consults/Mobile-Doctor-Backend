@@ -93,6 +93,9 @@ router.post('/withdraw/:userId', authController.withdraw);
 // Endpoint for admin to approve a withdrawal request
 router.post('/approve-withdrawal/:adminId', authController.approveWithdrawal); 
 
+//Endpoint to get OTP and finalize withdrawal
+router.post('/finalize-withdrawal/:adminId', authController.finalizeWithdrawal);
+
 router.post('/paystack/webhook', express.json(), authController.handlePaystackWebhook);
 
 // Start consultation and handle escrow

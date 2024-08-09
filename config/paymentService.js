@@ -99,22 +99,7 @@ export async function creditWallet(email, amount) {
     }
   }
 
-  // export async function createTransferRecipient(name, accountNumber, bankCode) {
-  //   try {
-  //     const body = {
-  //       type: "nuban",
-  //       name: name,
-  //       account_number: accountNumber,
-  //       bank_code: bankCode,
-  //       currency: "NGN"
-  //     };
-  //     const response = await paystack.post('/transferrecipient', body);
-  //     return response.data.data; // Contains recipient_code needed for transfer
-  //   } catch (error) {
-  //     console.error('Error creating transfer recipient:', error);
-  //     return null;
-  //   }
-  // }
+  
 
   export async function createTransferRecipient(name, accountNumber, bankCode) {
     try {
@@ -133,6 +118,27 @@ export async function creditWallet(email, amount) {
       return null;
     }
   }
+
+
+export async function submitOtpForTransfer(otp, transferCode) {
+  try {
+    const body = {
+      otp: otp,
+      transfer_code: transferCode,
+    };
+
+    const response = await paystack.post('/transfer/finalize_transfer', body);
+    if (response.data.status === 'success') {
+      return { success: true, message: 'Transfer successful', data: response.data.data };
+    } else {
+      return { success: false, message: response.data.message };
+    }
+  } catch (error) {
+    console.error('Error submitting OTP:', error);
+    return { success: false, message: error.response?.data?.message || error.message };
+  }
+}
+
   
   export async function initiateTransfer(amount, recipientCode) {
     try {

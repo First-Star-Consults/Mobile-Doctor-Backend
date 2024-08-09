@@ -32,7 +32,7 @@ const messageController = {
       const { conversationId, sender, receiver, content } = req.body;
 
       const activeSession = await ConsultationSession.findOne({
-        $or: [{ doctor: sender, patient: receiver }, { doctor: receiver, patient: sender }],
+        $or: [{ doctor: sender, patient: receiver }, { doctor: receiver, patient: sender }], 
         status: { $in: ['scheduled', 'in-progress'] }
       });
 
