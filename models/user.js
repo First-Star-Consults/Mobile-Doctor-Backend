@@ -59,7 +59,7 @@ const userSchema = new mongoose.Schema({
   // Add to your userSchema in the user.js file
   isOnline: { type: Boolean, default: false },
   lastActive: { type: Date, default: Date.now },
-  password: String,
+  password: String, 
   resetPasswordToken: String,
   resetPasswordExpires: Date,
   email: { type: String, required: false },

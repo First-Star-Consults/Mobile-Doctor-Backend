@@ -749,6 +749,7 @@ const authController = {
                 data: result.data,
             });
         } else {
+          // for result ques transaction is successful
             return res.status(400).json({ success: true, message: result.message });
         }
     } catch (error) {

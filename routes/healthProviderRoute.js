@@ -15,7 +15,7 @@ router.post('/otherProvidersCredentials/:providerId', healthProviderControllers.
 router.post('/:doctorId/reviews', healthProviderControllers.addReview);
 
 //recommend a health provider to a patient
-router.post('/recommend/:doctorId', healthProviderControllers.recommendHealthProvider);
+router.post('/recommend/:doctorId', healthProviderControllers.recommendHealthProvider); 
 //patient to get health provider recommedation
 router.get('/recommendations/:patientId', healthProviderControllers.getRecommendedProviders);
 
@@ -30,6 +30,8 @@ router.get('/:doctorId/reviews', healthProviderControllers.getDoctorReviews);
 
 // Route to check the online status of a health provider
 router.get('/:providerId/isOnline', healthProviderControllers.checkOnlineStatus);
+
+router.get('/doctor-summary/:doctorId', healthProviderControllers.doctorSummary);
 
 
 // Route to get top-rated doctors

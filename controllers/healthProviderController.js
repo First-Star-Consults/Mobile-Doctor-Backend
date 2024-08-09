@@ -1,9 +1,12 @@
 //health Provider controller
+import mongoose from "mongoose";
 import User from "../models/user.js";
 import haversineDistance from '../utils/distanceCalculator.js';
 import { Doctor, Pharmacy, Therapist, Laboratory } from "../models/healthProviders.js";
 import { Reviews } from "../models/services.js";
 import { upload } from "../config/cloudinary.js";
+import moment from 'moment';
+import ConsultationSession from "../models/consultationModel.js";
 
 const healthProviderControllers = {
 
@@ -536,6 +539,77 @@ getDoctorReviews: async (req, res) => {
       res.status(500).json({ success: false, error: 'Error updating isOnline status' });
     }
   },
+
+
+  //
+  doctorSummary: async (req, res) => {
+    try {
+        const doctorId = req.params.doctorId;
+
+        // Fetch user and doctor data
+        const user = await User.findById(doctorId);
+        const doctor = await Doctor.findById(doctorId);
+
+        if (!user || !doctor) {
+            return res.status(404).json({ message: "Doctor not found" });
+        }
+
+        // Calculate today's earnings
+        const startOfDay = moment().startOf('day').toDate();
+        const endOfDay = moment().endOf('day').toDate();
+
+        const todayEarnings = await ConsultationSession.aggregate([
+            { 
+                $match: { 
+                    doctor: new mongoose.Types.ObjectId(doctorId), 
+                    status: 'completed', 
+                    createdAt: { $gte: startOfDay, $lt: endOfDay }
+                }
+            },
+            { 
+                $lookup: {
+                    from: 'transactions', // The name of the collection that holds your transactions
+                    localField: 'escrowTransaction',
+                    foreignField: '_id',
+                    as: 'transactions'
+                }
+            },
+            { $unwind: '$transactions' },
+            { $group: { _id: null, totalEarnings: { $sum: '$transactions.amount' } } }
+        ]);
+
+        // Count today's patients attended to
+        const todayPatientsCount = await ConsultationSession.countDocuments({
+            doctor: doctorId,
+            status: 'completed',
+            createdAt: { $gte: startOfDay, $lt: endOfDay }
+        });
+
+        // Calculate overall rating from the Reviews schema
+        const overallRating = await Reviews.aggregate([
+            { $match: { doctor: new mongoose.Types.ObjectId(doctorId) } },
+            { $group: { _id: null, averageRating: { $avg: "$rating" } } }
+        ]);
+
+        // Completed consultations
+        const completedConsultations = await ConsultationSession.countDocuments({
+            doctor: doctorId,
+            status: 'completed'
+        });
+
+        res.json({
+            walletBalance: user.walletBalance,
+            todayEarnings: todayEarnings[0]?.totalEarnings || 0,
+            patientsAttendedTo: todayPatientsCount,
+            overallRating: overallRating.length > 0 ? overallRating[0].averageRating.toFixed(1) : 0,
+            completedConsultations: completedConsultations
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error" });
+    }
+}
+
 
 
   
