@@ -277,7 +277,7 @@ getDoctorReviews: async (req, res) => {
 
 
   // Function to get top-rated doctors
-getTopRatedDoctors: async (req, res) => {
+  getTopRatedDoctors: async (req, res) => {
   try {
     const topRatedDoctors = await Doctor.aggregate([
       {
@@ -287,31 +287,15 @@ getTopRatedDoctors: async (req, res) => {
       },
       {
         $lookup: {
-          from: 'users', // Collection name for User schema
-          localField: 'user', // Field in Doctor schema that references User
-          foreignField: '_id', // Field in User schema
-          as: 'userDetails'
-        }
-      },
-      {
-        $unwind: '$userDetails'
-      },
-      {
-        $match: {
-          'userDetails.isApproved': true // Filter by User's isApproved field
-        }
-      },
-      {
-        $lookup: {
-          from: 'reviews', // Assuming your reviews collection is named "reviews"
-          localField: '_id',
-          foreignField: 'doctor',
-          as: 'reviews'
+          from: "reviews", // Assuming your reviews collection is named "reviews"
+          localField: "_id",
+          foreignField: "doctor",
+          as: "reviews"
         }
       },
       {
         $addFields: {
-          averageRating: { $avg: '$reviews.rating' }
+          averageRating: { $avg: "$reviews.rating" }
         }
       },
       { $sort: { averageRating: -1 } }, // Sort by averageRating in descending order
@@ -323,110 +307,38 @@ getTopRatedDoctors: async (req, res) => {
       data: topRatedDoctors
     });
   } catch (error) {
-    console.error('Error fetching top rated doctors:', error);
-    res.status(500).json({ success: false, message: 'Error fetching top rated doctors' });
+    console.error("Error fetching top rated doctors:", error);
+    res.status(500).json({ success: false, message: "Error fetching top rated doctors" });
   }
 },
 
 
-  // Get all laboratories with kycVerification and User isApproved
-getAllLaboratories: async (req, res) => {
-  try {
-    const laboratories = await Laboratory.aggregate([
-      {
-        $match: {
-          kycVerification: true // Filter laboratories that are KYC verified
-        }
-      },
-      {
-        $lookup: {
-          from: 'users', // Collection name for User schema
-          localField: 'user', // Field in Laboratory schema that references User
-          foreignField: '_id', // Field in User schema
-          as: 'userDetails'
-        }
-      },
-      {
-        $unwind: '$userDetails'
-      },
-      {
-        $match: {
-          'userDetails.isApproved': true // Filter by User's isApproved field
-        }
-      }
-    ]);
+  getAllLaboratories: async (req, res) => {
+    try {
+      const laboratories = await Laboratory.find({}); // Retrieves all laboratories
+      res.status(200).json({ success: true, laboratories });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Error fetching laboratories', error });
+    }
+  },
 
-    res.status(200).json({ success: true, laboratories });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error fetching laboratories', error });
-  }
-},
+  getAllPharmacies: async (req, res) => {
+    try {
+      const pharmacies = await Pharmacy.find({}); // Retrieves all pharmacies
+      res.status(200).json({ success: true, pharmacies });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Error fetching pharmacies', error });
+    }
+  },
 
-// Get all pharmacies with kycVerification and User isApproved
-getAllPharmacies: async (req, res) => {
-  try {
-    const pharmacies = await Pharmacy.aggregate([
-      {
-        $match: {
-          kycVerification: true // Filter pharmacies that are KYC verified
-        }
-      },
-      {
-        $lookup: {
-          from: 'users', // Collection name for User schema
-          localField: 'user', // Field in Pharmacy schema that references User
-          foreignField: '_id', // Field in User schema
-          as: 'userDetails'
-        }
-      },
-      {
-        $unwind: '$userDetails'
-      },
-      {
-        $match: {
-          'userDetails.isApproved': true // Filter by User's isApproved field
-        }
-      }
-    ]);
-
-    res.status(200).json({ success: true, pharmacies });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error fetching pharmacies', error });
-  }
-},
-
- // Get all therapists with kycVerification and User isApproved
-getAllTherapists: async (req, res) => {
-  try {
-    const therapists = await Therapist.aggregate([
-      {
-        $match: {
-          kycVerification: true // Filter therapists that are KYC verified
-        }
-      },
-      {
-        $lookup: {
-          from: 'users', // Collection name for User schema
-          localField: 'user', // Field in Therapist schema that references User
-          foreignField: '_id', // Field in User schema
-          as: 'userDetails'
-        }
-      },
-      {
-        $unwind: '$userDetails'
-      },
-      {
-        $match: {
-          'userDetails.isApproved': true // Filter by User's isApproved field
-        }
-      }
-    ]);
-
-    res.status(200).json({ success: true, therapists });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error fetching therapists', error });
-  }
-},
+  getAllTherapists: async (req, res) => {
+    try {
+      const therapists = await Therapist.find({}); // Retrieves all therapists
+      res.status(200).json({ success: true, therapists });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Error fetching therapists', error });
+    }
+  },
 
   getAllDoctors: async (req, res) => {
     try {
@@ -435,30 +347,9 @@ getAllTherapists: async (req, res) => {
           $match: {
             kycVerification: true // Only include doctors whose kycVerification is true
           }
-        },
-        {
-          $lookup: {
-            from: 'users', // Assuming the collection name for User schema is 'users'
-            localField: '_id', // The field in Doctor schema to match
-            foreignField: 'doctor', // The field in User schema that references Doctor
-            as: 'user' // The name of the array that will contain the user document(s)
-          }
-        },
-        {
-          $unwind: '$user' // Deconstruct the user array to filter on its fields
-        },
-        {
-          $match: {
-            'user.isApproved': true // Only include doctors whose associated user is approved
-          }
-        },
-        {
-          $project: {
-            user: 0 // Exclude the user data from the final result if not needed
-          }
         }
       ]);
-  
+      
       // Send the response outside the aggregation pipeline
       res.status(200).json({ success: true, doctors });
     } catch (error) {
@@ -466,7 +357,6 @@ getAllTherapists: async (req, res) => {
       res.status(500).json({ success: false, message: 'Error fetching doctors', error });
     }
   },
-  
 
   // this function works with the prescription controller flow
   recommendHealthProvider: async (req, res) => {
