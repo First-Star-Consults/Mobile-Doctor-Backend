@@ -260,6 +260,28 @@ const userController = {
     }
   },
 
+  // To get online status
+getOnlineStatus: async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    // Find the user by ID
+    const user = await User.findById(userId);
+
+    // If user not found, return a 404 error
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Return the online status of the user
+    res.status(200).json({ isOnline: user.isOnline });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Unexpected error retrieving online status' });
+  }
+},
+
+
   // Assuming this is in a controller file where User model is imported
 
   getOnlineUsers: async (req, res) => {

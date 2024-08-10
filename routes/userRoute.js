@@ -23,6 +23,7 @@ router.post('/update-location', userController.updateLocation);
 router.get('/find-nearby-providers/:userId', userController.getNearbyProvider )
 // get notification
 router.get('/get-notifications/:userId', userController.getNotifications);
+router.get('/online-status/:userId', userController.getOnlineStatus);
 //update user location
 router.post('/map/patient/update-location', userController.updateLocation)
 // Update user profile route
