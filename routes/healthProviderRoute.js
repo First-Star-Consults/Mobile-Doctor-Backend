@@ -33,6 +33,8 @@ router.get('/:providerId/isOnline', healthProviderControllers.checkOnlineStatus)
 
 router.get('/doctor-summary/:doctorId', healthProviderControllers.doctorSummary);
 
+router.get('/doctors-patient/:doctorId', healthProviderControllers.getPatientsOfDoctor);
+
 
 // Route to get top-rated doctors
 router.get('/top-rated-doctors', healthProviderControllers.getTopRatedDoctors);

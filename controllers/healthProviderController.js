@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import User from "../models/user.js";
 import haversineDistance from '../utils/distanceCalculator.js';
 import { Doctor, Pharmacy, Therapist, Laboratory } from "../models/healthProviders.js";
-import { Reviews } from "../models/services.js";
+import { Reviews, Prescription, TestResult } from "../models/services.js";
 import { upload } from "../config/cloudinary.js";
 import moment from 'moment';
 import ConsultationSession from "../models/consultationModel.js";
@@ -608,7 +608,70 @@ getDoctorReviews: async (req, res) => {
         console.error(error);
         res.status(500).json({ message: "Server error" });
     }
+},
+
+
+
+getPatientsOfDoctor: async (req, res) => {
+  try {
+    const doctorId = req.params.doctorId;
+
+    // Fetch all consultation sessions involving the doctor
+    const sessions = await ConsultationSession.find({ doctor: doctorId })
+      .populate({
+        path: 'patient',
+        select: 'firstName lastName',
+      })
+      .populate({
+        path: 'prescription',
+        populate: [
+          { path: 'doctor', select: 'fullName' },
+          { path: 'patient', select: 'firstName lastName' },
+          { path: 'provider', select: 'name' },
+        ],
+      })
+      .exec();
+
+    // Extract patient IDs
+    const patientIds = [...new Set(sessions.map(session => session.patient._id.toString()))];
+
+    // Fetch prescriptions
+    const prescriptions = await Prescription.find({ patient: { $in: patientIds } })
+      .populate({
+        path: 'provider',
+        select: 'name',
+      })
+      .exec();
+
+    // Fetch test results for prescriptions
+    const prescriptionIds = [...new Set(prescriptions.map(prescription => prescription._id.toString()))];
+    const testResults = await TestResult.find({ prescription: { $in: prescriptionIds } })
+      .populate({
+        path: 'provider',
+        select: 'name',
+      })
+      .exec();
+
+    // Format the result
+    const result = sessions.map(session => {
+      const patientPrescriptions = prescriptions.filter(prescription => prescription.patient.toString() === session.patient._id.toString());
+      const patientResults = testResults.filter(result => patientPrescriptions.some(prescription => prescription._id.toString() === result.prescription.toString()));
+
+      return {
+        patient: session.patient,
+        status: session.status,
+        prescriptions: patientPrescriptions,
+        testResults: patientResults,
+      };
+    });
+
+    return res.json(result);
+  } catch (error) {
+    console.error('Error fetching patients of doctor:', error);
+    return res.status(500).json({ error: 'Error fetching data' });
+  }
 }
+
 
 
 
