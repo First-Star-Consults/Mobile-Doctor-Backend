@@ -897,55 +897,116 @@ const authController = {
   },
   
 
+  // getActiveSession: async (req, res) => {
+  //   const { patientId, doctorId } = req.params;
+
+  //   try {
+  //     // First, find the conversation ID for the patient and doctor
+  //     const conversation = await Conversation.findOne({
+  //       participants: { $all: [patientId, doctorId] },
+  //     }).select("_id");
+
+  //     if (!conversation) {
+  //       return res.status(404).json({ message: "Conversation not found." });
+  //     }
+
+  //     // Then, find the active session
+  //     const activeSession = await ConsultationSession.findOne({
+  //       patient: patientId,
+  //       doctor: doctorId,
+  //       status: { $in: ["scheduled", "in-progress"] },
+  //     })
+  //       .sort({ createdAt: -1 })
+  //       .populate("patient", "firstName lastName profilePhoto");
+
+  //     if (!activeSession) {
+  //       return res.status(404).json({ message: "Active session not found." });
+  //     }
+
+  //     // Fetch the Doctor document to access the profilePhoto within the images object
+  //     const doctorInfo = await Doctor.findById(doctorId).select(
+  //       "images.profilePhoto -_id"
+  //     );
+
+  //     // Return the session info including the conversation ID
+  //     res.status(200).json({
+  //       sessionId: activeSession._id,
+  //       conversationId: conversation._id,
+  //       patientFirstName: activeSession.patient.firstName,
+  //       patientLastName: activeSession.patient.lastName,
+  //       patientProfilePhoto: activeSession.patient.profilePhoto,
+  //       doctorProfilePhoto: doctorInfo ? doctorInfo.images.profilePhoto : null,
+  //       startTime: activeSession.startTime,
+  //     });
+  //   } catch (error) {
+  //     console.error("Error retrieving active session:", error);
+  //     res.status(500).json({
+  //       message: "Failed to retrieve active session.",
+  //       error: error.message,
+  //     });
+  //   }
+  // },
+
+
   getActiveSession: async (req, res) => {
     const { patientId, doctorId } = req.params;
 
     try {
-      // First, find the conversation ID for the patient and doctor
-      const conversation = await Conversation.findOne({
-        participants: { $all: [patientId, doctorId] },
-      }).select("_id");
+        // First, find the conversation ID for the patient and doctor
+        const conversation = await Conversation.findOne({
+            participants: { $all: [patientId, doctorId] },
+        }).select("_id");
 
-      if (!conversation) {
-        return res.status(404).json({ message: "Conversation not found." });
-      }
+        if (!conversation) {
+            return res.status(404).json({ message: "Conversation not found." });
+        }
 
-      // Then, find the active session
-      const activeSession = await ConsultationSession.findOne({
-        patient: patientId,
-        doctor: doctorId,
-        status: { $in: ["scheduled", "in-progress"] },
-      })
-        .sort({ createdAt: -1 })
-        .populate("patient", "firstName lastName profilePhoto");
+        // Find the active session
+        const activeSession = await ConsultationSession.findOne({
+            patient: patientId,
+            doctor: doctorId,
+            status: { $in: ["scheduled", "in-progress"] },
+        })
+            .sort({ createdAt: -1 })
+            .populate("patient", "firstName lastName profilePhoto isOnline")
+            .populate({
+                path: 'doctor', // Fetch the doctor profilePhoto from Doctor schema
+                select: 'images.profilePhoto',
+                populate: {
+                    path: '_id', // Populate User schema data for isOnline status
+                    model: 'User',
+                    select: 'isOnline',
+                }
+            });
 
-      if (!activeSession) {
-        return res.status(404).json({ message: "Active session not found." });
-      }
+        if (!activeSession) {
+            return res.status(404).json({ message: "Active session not found." });
+        }
 
-      // Fetch the Doctor document to access the profilePhoto within the images object
-      const doctorInfo = await Doctor.findById(doctorId).select(
-        "images.profilePhoto -_id"
-      );
+        // Fetch the User document to get the isOnline status of the doctor
+        const doctorUser = await User.findById(doctorId).select("isOnline");
 
-      // Return the session info including the conversation ID
-      res.status(200).json({
-        sessionId: activeSession._id,
-        conversationId: conversation._id,
-        patientFirstName: activeSession.patient.firstName,
-        patientLastName: activeSession.patient.lastName,
-        patientProfilePhoto: activeSession.patient.profilePhoto,
-        doctorProfilePhoto: doctorInfo ? doctorInfo.images.profilePhoto : null,
-        startTime: activeSession.startTime,
-      });
+        // Return the session info including the conversation ID
+        res.status(200).json({
+            sessionId: activeSession._id,
+            conversationId: conversation._id,
+            patientFirstName: activeSession.patient.firstName,
+            patientLastName: activeSession.patient.lastName,
+            patientProfilePhoto: activeSession.patient.profilePhoto,
+            patientIsOnline: activeSession.patient.isOnline,
+            doctorProfilePhoto: activeSession.doctor.images.profilePhoto,
+            doctorIsOnline: doctorUser ? doctorUser.isOnline : null,
+            startTime: activeSession.startTime,
+        });
     } catch (error) {
-      console.error("Error retrieving active session:", error);
-      res.status(500).json({
-        message: "Failed to retrieve active session.",
-        error: error.message,
-      });
+        console.error("Error retrieving active session:", error);
+        res.status(500).json({
+            message: "Failed to retrieve active session.",
+            error: error.message,
+        });
     }
-  },
+},
+
 
   getMostRecentActiveSession: async (req, res) => {
     const userId = req.params.userId;

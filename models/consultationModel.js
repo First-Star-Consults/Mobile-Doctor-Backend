@@ -6,6 +6,11 @@ const consultationSessionSchema = new mongoose.Schema({
     ref: 'Doctor', 
     required: true 
   },
+  doctorUser: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', // Reference to the User schema for isOnline status
+    required: true 
+  },
   patient: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User', 
