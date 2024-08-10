@@ -8,6 +8,7 @@ const router = express.Router();
 router.post('/updateKycVerificationStatus/adminId', adminController.updateKycVerificationStatus);
 router.post('/updateConsultationFees/:userId', adminController.updateConsultationFees);
 router.post('/setFeeForAllSpecialties/:userId', adminController.setFeeForAllSpecialties);
+router.post('/set-approval/:adminId', adminController.setApprovalStatus);
 
 // Endpoint to update the isOnline status of a doctor
 router.post('/doctors/update-sponsored-status', adminController.updateSponsoredStatus);

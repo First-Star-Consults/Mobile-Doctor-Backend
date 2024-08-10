@@ -279,6 +279,48 @@ updateSponsoredStatus: async (req, res) => {
   }
 },
 
+
+setApprovalStatus: async (req, res) => {
+  try {
+    const adminId = req.params.adminId; // Assuming you're using authentication middleware that adds user info to req
+
+    // Extract userId and approval status from the request body
+    const { userId, isApproved } = req.body;
+
+    const admin = await User.findById(adminId);
+    if (!admin || !admin.isAdmin) {
+        console.log("Unauthorized admin access");
+        return res.status(403).json({
+            success: false,
+            message: "Unauthorized to perform this action",
+        });
+    }
+
+    
+
+    // Find the user by ID
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    // Update the isApproved status
+    user.isApproved = isApproved;
+
+    // Save the updated user
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'User approval status updated successfully',
+      user,
+    });
+  } catch (error) {
+    console.error('Error updating approval status:', error);
+    res.status(500).json({ success: false, error: 'Error updating approval status' });
+  }
+},
+
   
 
   
