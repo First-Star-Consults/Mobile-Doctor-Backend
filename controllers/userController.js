@@ -195,7 +195,7 @@ const userController = {
       // Use your sendVerificationEmail function
       await sendForgetPasswordEmail(user.email, token);
 
-      res.status(200).json({ message: 'An e-mail has been sent to ' + user.email + ' with further instructions.' });
+      res.status(200).json({ message: 'An e-mail has been sent to ' + user.email + ' with further instructions.', token: token });
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: 'Unexpected error during the forgot password process' });
