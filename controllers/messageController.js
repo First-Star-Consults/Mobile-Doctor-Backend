@@ -87,52 +87,108 @@ const messageController = {
     }
   },
 
+
   getRecentChats: async (req, res) => {
     const { userId } = req.params;
 
     try {
-      const recentChats = await Conversation.find({ participants: userId })
-        .populate({
-          path: 'lastMessage',
-          select: 'content timestamp -_id',
-          options: { sort: { 'timestamp': -1 } }
-        })
-        .populate({
-          path: 'participants',
-          match: { _id: { $ne: userId } },
-          select: 'firstName lastName profilePhoto role _id'
-        })
-        .sort({ 'updatedAt': -1 })
-        .limit(10);
+        const recentChats = await Conversation.find({ participants: userId })
+            .populate({
+                path: 'lastMessage',
+                select: 'content timestamp -_id',
+                options: { sort: { 'timestamp': -1 } }
+            })
+            .populate({
+                path: 'participants',
+                match: { _id: { $ne: userId } },
+                select: 'firstName lastName profilePhoto role _id isOnline'
+            })
+            .sort({ 'updatedAt': -1 })
+            .limit(10);
 
-      const transformedChats = await Promise.all(recentChats.map(async (chat) => {
-        const lastMessageContent = chat.lastMessage ? chat.lastMessage.content : '';
-        const lastMessageTime = chat.lastMessage ? chat.lastMessage.timestamp : '';
+        const transformedChats = await Promise.all(recentChats.map(async (chat) => {
+            const lastMessageContent = chat.lastMessage ? chat.lastMessage.content : '';
+            const lastMessageTime = chat.lastMessage ? chat.lastMessage.timestamp : '';
 
-        const otherParticipantId = chat.participants[0]._id;
+            const otherParticipant = chat.participants[0];
 
-        const mostRecentSession = await ConsultationSession.findOne({
-          $or: [
-            { patient: userId, doctor: otherParticipantId },
-            { patient: otherParticipantId, doctor: userId }
-          ]
-        }).sort({ startTime: -1 });
+            const mostRecentSession = await ConsultationSession.findOne({
+                $or: [
+                    { patient: userId, doctor: otherParticipant._id },
+                    { patient: otherParticipant._id, doctor: userId }
+                ]
+            }).sort({ startTime: -1 });
 
-        return {
-          conversationId: chat._id,
-          lastMessage: lastMessageContent,
-          lastMessageTime: lastMessageTime,
-          otherParticipant: chat.participants[0],
-          sessionStatus: mostRecentSession ? mostRecentSession.status : 'No session'
-        };
-      }));
+            return {
+                conversationId: chat._id,
+                lastMessage: lastMessageContent,
+                lastMessageTime: lastMessageTime,
+                otherParticipant: {
+                    _id: otherParticipant._id,
+                    firstName: otherParticipant.firstName,
+                    lastName: otherParticipant.lastName,
+                    profilePhoto: otherParticipant.profilePhoto,
+                    role: otherParticipant.role,
+                    isOnline: otherParticipant.isOnline // Include isOnline status
+                },
+                sessionStatus: mostRecentSession ? mostRecentSession.status : 'No session'
+            };
+        }));
 
-      res.status(200).json({ success: true, recentChats: transformedChats });
+        res.status(200).json({ success: true, recentChats: transformedChats });
     } catch (error) {
-      console.error('Error retrieving recent chats:', error);
-      res.status(500).json({ success: false, message: 'Internal Server Error', error: error.toString() });
+        console.error('Error retrieving recent chats:', error);
+        res.status(500).json({ success: false, message: 'Internal Server Error', error: error.toString() });
     }
-  },
+},
+
+
+  // getRecentChats: async (req, res) => {
+  //   const { userId } = req.params;
+
+  //   try {
+  //     const recentChats = await Conversation.find({ participants: userId })
+  //       .populate({
+  //         path: 'lastMessage',
+  //         select: 'content timestamp -_id',
+  //         options: { sort: { 'timestamp': -1 } }
+  //       })
+  //       .populate({
+  //         path: 'participants',
+  //         match: { _id: { $ne: userId } },
+  //         select: 'firstName lastName profilePhoto role _id'
+  //       })
+  //       .sort({ 'updatedAt': -1 })
+  //       .limit(10);
+
+  //     const transformedChats = await Promise.all(recentChats.map(async (chat) => {
+  //       const lastMessageContent = chat.lastMessage ? chat.lastMessage.content : '';
+  //       const lastMessageTime = chat.lastMessage ? chat.lastMessage.timestamp : '';
+
+  //       const otherParticipantId = chat.participants[0]._id;
+
+  //       const mostRecentSession = await ConsultationSession.findOne({
+  //         $or: [
+  //           { patient: userId, doctor: otherParticipantId },
+  //           { patient: otherParticipantId, doctor: userId }
+  //         ]
+  //       }).sort({ startTime: -1 });
+
+  //       return {
+  //         conversationId: chat._id,
+  //         lastMessage: lastMessageContent,
+  //         lastMessageTime: lastMessageTime,
+  //         otherParticipant: chat.participants[0],
+  //         sessionStatus: mostRecentSession ? mostRecentSession.status : 'No session'
+  //       };
+  //     }));
+
+  //     res.status(200).json({ success: true, recentChats: transformedChats });
+  //   } catch (error) {
+  //     console.error('Error retrieving recent chats:', error);
+  //     res.status(500).json({ success: false, message: 'Internal Server Error', error: error.toString() });
+  //   }
+  // },
    
 
 //       sendMessage: async (req, res) => {
