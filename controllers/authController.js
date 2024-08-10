@@ -195,6 +195,8 @@ const authController = {
                   status: user.isVerified,
                   message: "Alabo, this one na for email verification o",
                 },
+                isOnline: user.isOnline,      // Added isOnline status
+                isApproved: user.isApproved, 
               },
             };
 
