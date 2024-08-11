@@ -1230,18 +1230,44 @@ const authController = {
       await session.save();
 
       // Release the escrow to the doctor
-      const transaction = await Transaction.findById(session.escrowTransaction);
-      if (transaction && transaction.escrowStatus === "held") {
-        const doctor = session.doctor;
-        if (doctor) {
-          doctor.walletBalance += transaction.amount; // Release funds to the doctor
-          await doctor.save();
+      // const transaction = await Transaction.findById(session.escrowTransaction);
+      // if (transaction && transaction.escrowStatus === "held") {
+      //   const doctor = session.doctor;
+      //   if (doctor) {
+      //     doctor.walletBalance += transaction.amount; // Release funds to the doctor
+      //     await doctor.save();
 
-          transaction.escrowStatus = "released";
-          await transaction.save();
-          consultationComplete = true;
+      //     transaction.escrowStatus = "released";
+      //     await transaction.save();
+      //     consultationComplete = true;
+      //   }
+      // }
+
+
+      // Release the escrow to the doctor
+const transaction = await Transaction.findById(session.escrowTransaction);
+if (transaction && transaction.escrowStatus === "held") {
+    // Fetch the User document for the doctor
+    const doctorUser = await User.findById(session.doctor);
+    if (doctorUser) {
+        // Update the wallet balance
+        doctorUser.walletBalance += transaction.amount;
+        try {
+            await doctorUser.save(); // Save the updated User document
+        } catch (error) {
+            console.error("Error saving user wallet balance:", error);
+            return res.status(500).json({ message: "Error updating doctor's wallet balance" });
         }
-      }
+
+        // Update the transaction status
+        transaction.escrowStatus = "released";
+        await transaction.save();
+
+        consultationComplete = true;
+    } else {
+        return res.status(404).json({ message: "Doctor user not found" });
+    }
+}
 
       // Create notification for the patient
       const patient = session.patient;
