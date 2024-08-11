@@ -38,6 +38,8 @@ router.post('/updateOnlineStatus/:userId', userController.updateOnlineStatus)
 router.post('/forgot-password', userController.forgotPassword);
 router.post('/reset-password', userController.resetPasswordWithToken);
 
+router.delete('/:userId', userController.deleteUser);
+
 
 
 

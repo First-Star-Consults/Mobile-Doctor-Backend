@@ -93,6 +93,10 @@ const userSchema = new mongoose.Schema({
 });
 
 
+
+
+
+
 // Add method to find nearby providers
 userSchema.methods.findNearbyProvidersByRole = async function(role, distance) {
   return await User.find({

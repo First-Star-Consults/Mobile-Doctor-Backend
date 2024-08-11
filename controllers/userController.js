@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import User from "../models/user.js";
 import Configuration from '../models/configModel.js';
 import { Doctor, Pharmacy, Laboratory, Therapist } from "../models/healthProviders.js";
+import DeletedUser from '../models/deleteModel.js';
 // import nodemailer from 'nodemailer';
 import { upload } from "../config/cloudinary.js";
 import { sendForgetPasswordEmail } from "../utils/nodeMailer.js";
@@ -393,7 +394,93 @@ getOnlineStatus: async (req, res) => {
       console.error('Error fetching notifications:', error);
       res.status(500).json({ message: 'Error fetching notifications', error: error.toString() });
     }
+},
+
+deleteUser: async (req, res) => {
+  const userId = req.params.userId;
+  console.log(`Received request to delete user with ID: ${userId}`);
+
+  try {
+    // Find the user by ID
+    const user = await User.findById(userId);
+    if (!user) {
+      console.error('User not found');
+      return res.status(404).json({ message: 'User not found' });
+    }
+    console.log('User found:', user);
+
+    // Fetch related data based on the user's role
+    let relatedData = {};
+    if (user.role === 'doctor') {
+      relatedData.doctor = await Doctor.findById(userId);
+    } else if (user.role === 'pharmacy') {
+      relatedData.pharmacy = await Pharmacy.findById(userId);
+    } else if (user.role === 'therapist') {
+      relatedData.therapist = await Therapist.findById(userId);
+    } else if (user.role === 'laboratory') {
+      relatedData.laboratory = await Laboratory.findById(userId);
+    }
+
+    // Create a new entry in the DeletedUser collection with related data
+    const deletedUser = new DeletedUser({
+      originalUserId: user._id,
+      role: user.role,
+      deletedData: {
+        user: user.toObject(),
+        relatedData: {
+          doctor: relatedData.doctor ? relatedData.doctor.toObject() : null,
+          pharmacy: relatedData.pharmacy ? relatedData.pharmacy.toObject() : null,
+          therapist: relatedData.therapist ? relatedData.therapist.toObject() : null,
+          laboratory: relatedData.laboratory ? relatedData.laboratory.toObject() : null,
+        },
+      },
+    });
+
+   
+
+    await deletedUser.save();
+    console.log('Deleted user data saved to archive');
+
+    // Delete related data from other schemas
+    if (relatedData.doctor) {
+      await Doctor.deleteOne({ _id: userId });
+      console.log('Doctor data deleted');
+    }
+
+    if (relatedData.pharmacy) {
+      await Pharmacy.deleteOne({ _id: userId });
+      console.log('Pharmacy data deleted');
+    }
+
+    if (relatedData.therapist) {
+      await Therapist.deleteOne({ _id: userId });
+      console.log('Therapist data deleted');
+    }
+
+    if (relatedData.laboratory) {
+      await Laboratory.deleteOne({ _id: userId });
+      console.log('Laboratory data deleted');
+    }
+
+    // Delete the user from User schema
+    await User.deleteOne({ _id: userId });
+    console.log('User deleted from User collection');
+
+    res.status(200).json({ message: 'User and related data deleted and moved to archive' });
+  } catch (error) {
+    console.error('Error during deletion process:', error);
+    res.status(500).json({ message: 'Error deleting user', error: error.message });
+  }
 }
+
+
+
+
+
+
+
+
+
   
 
 
