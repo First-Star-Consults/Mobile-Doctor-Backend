@@ -107,6 +107,9 @@ router.post('/cancelConsultation', authController.cancelConsultation);
 // Release funds from escrow
 router.post('/completeConsultation', authController.completeConsultation);
 
+router.post('/resend-verification-code', authController.resendVerificationCode);
+
+
 
 
 export default router;

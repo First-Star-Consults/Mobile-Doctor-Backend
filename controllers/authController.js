@@ -154,6 +154,42 @@ const authController = {
     }
   },
 
+  resendVerificationCode: async (req, res) => {
+    try {
+      const { email } = req.body;
+  
+      // Find the user by email
+      const user = await User.findOne({ email });
+  
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+  
+      // Check if the user is already verified
+      if (user.isVerified) {
+        // Set verification code to null since the user is already verified
+        user.verificationcode = null;
+        await user.save();
+  
+        return res.status(200).json({ message: "User is already verified. No need to resend the verification code." });
+      }
+  
+      // Check if the user has a verification code
+      if (!user.verificationcode) {
+        return res.status(400).json({ message: "No verification code found. Please register again." });
+      }
+  
+      // Resend the existing verification code via email
+      await sendVerificationEmail(user.email, user.verificationcode);
+  
+      res.status(200).json({ message: "Verification code resent successfully" });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
+  
+
   login: async (req, res) => {
     const user = new User({
       username: req.body.email,
