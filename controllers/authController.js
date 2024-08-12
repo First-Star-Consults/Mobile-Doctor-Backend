@@ -49,6 +49,19 @@ const authController = {
 
       const role = determineRole(userType);
 
+       // Validation checks
+    const phoneRegex = /^(\+234|0)?[789]\d{9}$/; // Regex for Nigerian phone numbers
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json({ 
+        message: "Invalid phone number format. Example of a valid Nigerian number: +2347012345678 or 07012345678" 
+      });
+    };
+
+    //check passward lenght
+    if (password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters long" });
+    }
+
       // Create a new user instance
       const newUser = new User({
         username: email,
@@ -189,91 +202,178 @@ const authController = {
       return res.status(500).json({ message: "Internal Server Error" });
     }
   },
-  
 
   login: async (req, res) => {
     const user = new User({
       username: req.body.email,
       password: req.body.password,
     });
-
+  
     req.login(user, async (err) => {
       if (err) {
         console.log(err);
-      } else {
-        passport.authenticate("local", (err, user, info) => {
+        return res.status(500).json({ message: "Internal Server Error" });
+      }
+  
+      passport.authenticate("local", (err, user, info) => {
+        if (err) {
+          console.log(err);
+          return res.status(500).json({ message: "Internal Server Error" });
+        }
+  
+        if (!user) {
+          // Return a specific message if authentication fails
+          return res.status(401).json({ message: "Username or password is incorrect" });
+        }
+  
+        req.logIn(user, async (err) => {
           if (err) {
             console.log(err);
             return res.status(500).json({ message: "Internal Server Error" });
           }
-
-          if (!user) {
-            return res.status(401).json({ message: "Authentication failed" });
-          }
-
-          req.logIn(user, async (err) => {
-            if (err) {
-              console.log(err);
-              return res.status(500).json({ message: "Internal Server Error" });
-            }
-
-            // Prepare the response data
-            const responseData = {
-              message: "Successfully logged in",
-              user: {
-                profilePhoto: user.profilePhoto,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                id: user._id,
-                username: user.username,
-                email: user.email,
-                role: user.role,
-                isVerified: {
-                  status: user.isVerified,
-                  message: "Alabo, this one na for email verification o",
-                },
-                isOnline: user.isOnline,      // Added isOnline status
-                isApproved: user.isApproved, 
+  
+          // Prepare the response data
+          const responseData = {
+            message: "Successfully logged in",
+            user: {
+              profilePhoto: user.profilePhoto,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              id: user._id,
+              username: user.username,
+              email: user.email,
+              role: user.role,
+              isVerified: {
+                status: user.isVerified,
+                message: "Alabo, this one na for email verification o",
               },
-            };
-
-            // Include kycVerification for health providers
-            if (
-              ["doctor", "therapist", "pharmacy", "laboratory"].includes(
-                user.role
-              )
-            ) {
-              let healthProviderInfo = null;
-              switch (user.role) {
-                case "doctor":
-                  healthProviderInfo = await Doctor.findById(user._id);
-                  break;
-                case "therapist":
-                  healthProviderInfo = await Therapist.findById(user._id);
-                  break;
-                case "pharmacy":
-                  healthProviderInfo = await Pharmacy.findById(user._id);
-                  break;
-                case "laboratory":
-                  healthProviderInfo = await Laboratory.findById(user._id);
-                  break;
-              }
-
-              if (
-                healthProviderInfo &&
-                healthProviderInfo.kycVerification !== undefined
-              ) {
-                responseData.user.kycVerification =
-                  healthProviderInfo.kycVerification;
-              }
+              isOnline: user.isOnline, // Added isOnline status
+              isApproved: user.isApproved,
+            },
+          };
+  
+          // Include kycVerification for health providers
+          if (
+            ["doctor", "therapist", "pharmacy", "laboratory"].includes(
+              user.role
+            )
+          ) {
+            let healthProviderInfo = null;
+            switch (user.role) {
+              case "doctor":
+                healthProviderInfo = await Doctor.findById(user._id);
+                break;
+              case "therapist":
+                healthProviderInfo = await Therapist.findById(user._id);
+                break;
+              case "pharmacy":
+                healthProviderInfo = await Pharmacy.findById(user._id);
+                break;
+              case "laboratory":
+                healthProviderInfo = await Laboratory.findById(user._id);
+                break;
             }
-
-            res.status(201).json(responseData);
-          });
-        })(req, res);
-      }
+  
+            if (
+              healthProviderInfo &&
+              healthProviderInfo.kycVerification !== undefined
+            ) {
+              responseData.user.kycVerification =
+                healthProviderInfo.kycVerification;
+            }
+          }
+  
+          res.status(201).json(responseData);
+        });
+      })(req, res);
     });
   },
+  
+  
+
+  // login: async (req, res) => {
+  //   const user = new User({
+  //     username: req.body.email,
+  //     password: req.body.password,
+  //   });
+
+  //   req.login(user, async (err) => {
+  //     if (err) {
+  //       console.log(err);
+  //     } else {
+  //       passport.authenticate("local", (err, user, info) => {
+  //         if (err) {
+  //           console.log(err);
+  //           return res.status(500).json({ message: "Internal Server Error" });
+  //         }
+
+  //         if (!user) {
+  //           return res.status(401).json({ message: "Authentication failed" });
+  //         }
+
+  //         req.logIn(user, async (err) => {
+  //           if (err) {
+  //             console.log(err);
+  //             return res.status(500).json({ message: "Internal Server Error" });
+  //           }
+
+  //           // Prepare the response data
+  //           const responseData = {
+  //             message: "Successfully logged in",
+  //             user: {
+  //               profilePhoto: user.profilePhoto,
+  //               firstName: user.firstName,
+  //               lastName: user.lastName,
+  //               id: user._id,
+  //               username: user.username,
+  //               email: user.email,
+  //               role: user.role,
+  //               isVerified: {
+  //                 status: user.isVerified,
+  //                 message: "Alabo, this one na for email verification o",
+  //               },
+  //               isOnline: user.isOnline,      // Added isOnline status
+  //               isApproved: user.isApproved, 
+  //             },
+  //           };
+
+  //           // Include kycVerification for health providers
+  //           if (
+  //             ["doctor", "therapist", "pharmacy", "laboratory"].includes(
+  //               user.role
+  //             )
+  //           ) {
+  //             let healthProviderInfo = null;
+  //             switch (user.role) {
+  //               case "doctor":
+  //                 healthProviderInfo = await Doctor.findById(user._id);
+  //                 break;
+  //               case "therapist":
+  //                 healthProviderInfo = await Therapist.findById(user._id);
+  //                 break;
+  //               case "pharmacy":
+  //                 healthProviderInfo = await Pharmacy.findById(user._id);
+  //                 break;
+  //               case "laboratory":
+  //                 healthProviderInfo = await Laboratory.findById(user._id);
+  //                 break;
+  //             }
+
+  //             if (
+  //               healthProviderInfo &&
+  //               healthProviderInfo.kycVerification !== undefined
+  //             ) {
+  //               responseData.user.kycVerification =
+  //                 healthProviderInfo.kycVerification;
+  //             }
+  //           }
+
+  //           res.status(201).json(responseData);
+  //         });
+  //       })(req, res);
+  //     }
+  //   });
+  // },
 
   logout: async function (req, res) {
     // Check if the user is authenticated
