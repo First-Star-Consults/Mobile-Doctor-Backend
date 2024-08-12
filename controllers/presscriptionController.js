@@ -16,42 +16,52 @@ import Notification from "../models/notificationModel.js";
 const adminId = "669c4f6f78766d19d1d3230b";
 
 const prescriptionController = {
+
   makePrescriptions: async (req, res) => {
     const { doctorId } = req.params;
-    const { patientId, medicines, labTests, diagnosis, providerType } =
-      req.body;
-
+    const { patientId, sessionId, medicines, labTests, diagnosis, providerType } = req.body;
+  
     try {
       // Fetch the doctor's details from the database
       const doctor = await Doctor.findById(doctorId);
-      const patientEmail = await User.findById(patientId);
-
-      // Check if the doctor exists and if their KYC verification is true
+      const patient = await User.findById(patientId);
+      const session = await ConsultationSession.findById(sessionId);
+  
+      // Ensure the doctor, patient, and session exist
       if (!doctor) {
         return res.status(404).json({ message: "Doctor not found." });
       }
       if (doctor.kycVerification !== true) {
         return res.status(403).json({ message: "Doctor not verified." });
       }
-
-      // Find an existing incomplete prescription for the patient
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found." });
+      }
+      if (!session) {
+        return res.status(404).json({ message: "Consultation session not found." });
+      }
+  
+      // Find an existing incomplete or pending prescription for the same session
       let prescription = await Prescription.findOne({
         patient: patientId,
-        status: "incomplete",
+        session: sessionId,
+        status: { $in: ["incomplete", "pending"] },
       });
-
+  
       if (!prescription) {
-        // If no incomplete prescription exists, create a new one
+        // If no incomplete or pending prescription exists, create a new one
         prescription = new Prescription({
           doctor: doctorId,
           patient: patientId,
+          session: sessionId,
           medicines: medicines || [],
           labTests: labTests || [],
           diagnosis: diagnosis || "",
           providerType: providerType || "",
+          status: providerType === "laboratory" ? "pending" : "incomplete",
         });
       } else {
-        // Update the existing incomplete prescription with new data
+        // If an existing prescription is found, update it
         if (medicines) {
           prescription.medicines = medicines;
         }
@@ -61,95 +71,140 @@ const prescriptionController = {
         if (diagnosis) {
           prescription.diagnosis = diagnosis;
         }
+  
+        // Check if the new prescription is a pharmacy one after a laboratory one
+        if (prescription.providerType === "laboratory" && providerType === "pharmacy") {
+          prescription.status = "complete";
+        }
+  
+        // Update the providerType if needed
+        prescription.providerType = providerType || prescription.providerType;
       }
-
-      // Update status to complete if all necessary fields are present
-      if (
-        prescription.medicines.length > 0 &&
-        prescription.labTests.length > 0 &&
-        prescription.diagnosis
-      ) {
-        prescription.status = "complete";
-      }
-
+  
       await prescription.save();
-
+  
       // Send email notification to the patient
       const emailSubject = "New Prescription Created";
-      const emailMessage = `Dear ${patientEmail.firstName},\n\nYour doctor has created a new prescription for you. Please check your prescription details in app.\n\nBest regards,\nThe Mobile Doctor Team`;
-      await sendNotificationEmail(
-        patientEmail.email,
-        emailSubject,
-        emailMessage
-      );
-
+      const emailMessage = `Dear ${patient.firstName},\n\nYour doctor has created a new prescription for you. Please check your prescription details in the app.\n\nBest regards,\nThe Mobile Doctor Team`;
+      await sendNotificationEmail(patient.email, emailSubject, emailMessage);
+  
       // Create in-app notification for the patient
       const notification = new Notification({
-        recipient: patientEmail._id, // Set recipient field
+        recipient: patient._id, // Set recipient field
         type: "Prescription Created",
         message: `A new prescription has been created for you by Dr. ${doctor.fullName}.`,
         relatedObject: prescription._id,
         relatedModel: "Prescription",
       });
       await notification.save();
-
+  
       // Respond with a clear message including the prescription ID
       res.status(201).json({
         message: "Prescription created/updated successfully",
         prescriptionId: prescription._id,
         providerType: prescription.providerType,
+        status: prescription.status,
       });
     } catch (error) {
       console.error("Failed to create/update prescription:", error);
-      res
-        .status(500)
-        .json({ message: "Internal server error", error: error.message });
+      res.status(500).json({ message: "Internal server error", error: error.message });
     }
   },
+  
+
 
   // makePrescriptions: async (req, res) => {
-  //     const { doctorId } = req.params;
-  //     const { patientId, medicines, labTests, diagnosis } = req.body;
+  //   const { doctorId } = req.params;
+  //   const { patientId, medicines, labTests, diagnosis, providerType } =
+  //     req.body;
 
-  //     // Check for missing required fields
-  //     if (!patientId || !medicines || medicines.length === 0) {
-  //       return res.status(400).json({
-  //         message: 'Missing required fields: patientId, medicines are required.'
-  //       });
+  //   try {
+  //     // Fetch the doctor's details from the database
+  //     const doctor = await Doctor.findById(doctorId);
+  //     const patientEmail = await User.findById(patientId);
+
+  //     // Check if the doctor exists and if their KYC verification is true
+  //     if (!doctor) {
+  //       return res.status(404).json({ message: "Doctor not found." });
+  //     }
+  //     if (doctor.kycVerification !== true) {
+  //       return res.status(403).json({ message: "Doctor not verified." });
   //     }
 
-  //     try {
-  //       // Fetch the doctor's details from the database
-  //       const doctor = await Doctor.findById(doctorId);
+  //     // Find an existing incomplete prescription for the patient
+  //     let prescription = await Prescription.findOne({
+  //       patient: patientId,
+  //       status: "incomplete",
+  //     });
 
-  //       // Check if the doctor exists and if their KYC verification is true
-  //       if (!doctor) {
-  //         return res.status(404).json({ message: 'Doctor not found.' });
-  //       }
-
-  //       if (doctor.kycVerification !== true) {
-  //         return res.status(403).json({ message: 'Doctor not verified.' });
-  //       }
-
-  //       // Proceed with creating the prescription
-  //       const prescription = await Prescription.create({
+  //     if (!prescription) {
+  //       // If no incomplete prescription exists, create a new one
+  //       prescription = new Prescription({
   //         doctor: doctorId,
   //         patient: patientId,
-  //         medicines,
-  //         labTests,
-  //         diagnosis
+  //         medicines: medicines || [],
+  //         labTests: labTests || [],
+  //         diagnosis: diagnosis || "",
+  //         providerType: providerType || "",
   //       });
-
-  //       // Respond with a clear message including the prescription ID
-  //       res.status(201).json({
-  //         message: 'Prescription created successfully',
-  //         prescriptionId: prescription._id
-  //       });
-  //     } catch (error) {
-  //       console.error('Failed to create prescription:', error);
-  //       res.status(500).json({ message: 'Internal server error', error: error.message });
+  //     } else {
+  //       // Update the existing incomplete prescription with new data
+  //       if (medicines) {
+  //         prescription.medicines = medicines;
+  //       }
+  //       if (labTests) {
+  //         prescription.labTests = labTests;
+  //       }
+  //       if (diagnosis) {
+  //         prescription.diagnosis = diagnosis;
+  //       }
   //     }
-  //   },
+
+  //     // Update status to complete if all necessary fields are present
+  //     if (
+  //       prescription.medicines.length > 0 &&
+  //       prescription.labTests.length > 0 &&
+  //       prescription.diagnosis
+  //     ) {
+  //       prescription.status = "complete";
+  //     }
+
+  //     await prescription.save();
+
+  //     // Send email notification to the patient
+  //     const emailSubject = "New Prescription Created";
+  //     const emailMessage = `Dear ${patientEmail.firstName},\n\nYour doctor has created a new prescription for you. Please check your prescription details in app.\n\nBest regards,\nThe Mobile Doctor Team`;
+  //     await sendNotificationEmail(
+  //       patientEmail.email,
+  //       emailSubject,
+  //       emailMessage
+  //     );
+
+  //     // Create in-app notification for the patient
+  //     const notification = new Notification({
+  //       recipient: patientEmail._id, // Set recipient field
+  //       type: "Prescription Created",
+  //       message: `A new prescription has been created for you by Dr. ${doctor.fullName}.`,
+  //       relatedObject: prescription._id,
+  //       relatedModel: "Prescription",
+  //     });
+  //     await notification.save();
+
+  //     // Respond with a clear message including the prescription ID
+  //     res.status(201).json({
+  //       message: "Prescription created/updated successfully",
+  //       prescriptionId: prescription._id,
+  //       providerType: prescription.providerType,
+  //     });
+  //   } catch (error) {
+  //     console.error("Failed to create/update prescription:", error);
+  //     res
+  //       .status(500)
+  //       .json({ message: "Internal server error", error: error.message });
+  //   }
+  // },
+
+  
 
   sharePrescription: async (req, res) => {
     const { prescriptionId, providerId, providerType, deliveryOption } =

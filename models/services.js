@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 const prescriptionSchema = new mongoose.Schema({
   doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  session: {type: mongoose.Schema.Types.ObjectId, ref: 'ConsultationSession'},
   patientAddress: { type: String, default: null },
   diagnosis: { type: String, required: false },
   medicines: [{

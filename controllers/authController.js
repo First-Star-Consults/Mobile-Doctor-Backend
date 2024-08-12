@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { io } from "../server.js";
 import { sendNotificationEmail } from "../utils/nodeMailer.js";
 import Notification from "../models/notificationModel.js";
+import { Prescription } from "../models/services.js";
 
 import passport from "passport";
 import User from "../models/user.js";
@@ -1224,8 +1225,17 @@ const authController = {
         });
       }
 
-      // Mark session as completed
-      session.status = "completed";
+      // Check the providerType in the associated prescription
+      const prescription = await Prescription.findOne({ patient: session.patient, status: "complete" });
+
+      if (prescription && prescription.providerType === "laboratory") {
+          // Set session status to "in-progress" if providerType is laboratory
+          session.status = "pending";
+      } else {
+          // Otherwise, mark the session as completed
+          session.status = "completed";
+      }
+
       session.endTime = new Date();
       await session.save();
 
