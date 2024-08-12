@@ -46,7 +46,7 @@ const prescriptionController = {
       let prescription = await Prescription.findOne({
         patient: patientId,
         session: sessionId,
-        status: { $in: ["incomplete", "pending"] },
+        status: { $in: ["completed", "pending"] },
       });
   
       if (!prescription) {
@@ -59,7 +59,7 @@ const prescriptionController = {
           labTests: labTests || [],
           diagnosis: diagnosis || "",
           providerType: providerType || "",
-          status: providerType === "laboratory" ? "pending" : "incomplete",
+          status: providerType === "laboratory" ? "pending" : "completed",
         });
       } else {
         // If an existing prescription is found, update it
@@ -75,7 +75,7 @@ const prescriptionController = {
   
         // Check if the new prescription is a pharmacy one after a laboratory one
         if (prescription.providerType === "laboratory" && providerType === "pharmacy") {
-          prescription.status = "complete";
+          prescription.status = "completed";
         }
   
         // Update the providerType if needed
