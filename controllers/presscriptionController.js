@@ -11,6 +11,7 @@ import {
 import { upload } from "../config/cloudinary.js";
 import { sendNotificationEmail } from "../utils/nodeMailer.js";
 import Notification from "../models/notificationModel.js";
+import ConsultationSession from '../models/consultationModel.js';
 
 // Assuming you have an admin user with a fixed ID for receiving fees
 const adminId = "669c4f6f78766d19d1d3230b";
