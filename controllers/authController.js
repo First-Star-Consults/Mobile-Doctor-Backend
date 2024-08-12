@@ -53,7 +53,7 @@ const authController = {
     const phoneRegex = /^(\+234|0)?[789]\d{9}$/; // Regex for Nigerian phone numbers
     if (!phoneRegex.test(phone)) {
       return res.status(400).json({ 
-        message: "Invalid phone number format. Example of a valid Nigerian number: +2347012345678 or 07012345678" 
+        message: "Invalid phone format. Example: +2347012345678 or 07012345678" 
       });
     };
 
