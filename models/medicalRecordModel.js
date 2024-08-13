@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 
 const medicalRecordSchema = new mongoose.Schema({
-  patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User'},
   genotype: String,
   bloodGroup: String,
   maritalStatus: String,

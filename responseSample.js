@@ -4,6 +4,7 @@
             "_id": "66a19d45bc96bbe51a41b6cf",
             "firstName": "Prince ",
             "lastName": "Nna",
+            "sessionId": "66a1aa9cbc96bbe51a41b7d4",
             "medicalRecord": null,
             "status": "completed",
             "prescriptions": [],
@@ -15,6 +16,7 @@
             "_id": "665a31a0eeda4344d17a2fb0",
             "firstName": "Rubby",
             "lastName": "pb",
+            "sessionId": "66acb2285b8d2cfe7d0cff02",
             "medicalRecord": null,
             "status": "cancelled",
             "prescriptions": [
@@ -277,6 +279,7 @@
             "_id": "66571b9a68566b14553cc97d",
             "firstName": "Festus’s ",
             "lastName": "Festus",
+            "sessionId": "66acf1e38e17674382e27d7d",
             "medicalRecord": null,
             "status": "cancelled",
             "prescriptions": [
@@ -316,6 +319,7 @@
             "_id": "665a31a0eeda4344d17a2fb0",
             "firstName": "Rubby",
             "lastName": "pb",
+            "sessionId": "66ad3a9b25dd16535f04ec68",
             "medicalRecord": null,
             "status": "cancelled",
             "prescriptions": [
@@ -578,6 +582,7 @@
             "_id": "665a31a0eeda4344d17a2fb0",
             "firstName": "Rubby",
             "lastName": "pb",
+            "sessionId": "66ad3b7523ca404653b99042",
             "medicalRecord": null,
             "status": "cancelled",
             "prescriptions": [
@@ -840,6 +845,7 @@
             "_id": "665a31a0eeda4344d17a2fb0",
             "firstName": "Rubby",
             "lastName": "pb",
+            "sessionId": "66ad3cf3ced4e87279f9100a",
             "medicalRecord": null,
             "status": "completed",
             "prescriptions": [
@@ -1102,6 +1108,7 @@
             "_id": "665a31a0eeda4344d17a2fb0",
             "firstName": "Rubby",
             "lastName": "pb",
+            "sessionId": "66ad3eb2a9b13ce127ef679e",
             "medicalRecord": null,
             "status": "cancelled",
             "prescriptions": [
@@ -1364,6 +1371,7 @@
             "_id": "665a31a0eeda4344d17a2fb0",
             "firstName": "Rubby",
             "lastName": "pb",
+            "sessionId": "66ad3f51a9b13ce127ef67bc",
             "medicalRecord": null,
             "status": "completed",
             "prescriptions": [
@@ -1626,6 +1634,7 @@
             "_id": "665a31a0eeda4344d17a2fb0",
             "firstName": "Rubby",
             "lastName": "pb",
+            "sessionId": "66b4a4e549d62e9847fb3094",
             "medicalRecord": null,
             "status": "completed",
             "prescriptions": [
@@ -1888,6 +1897,7 @@
             "_id": "665a31a0eeda4344d17a2fb0",
             "firstName": "Rubby",
             "lastName": "pb",
+            "sessionId": "66b84652ab2d65d8d245add7",
             "medicalRecord": null,
             "status": "cancelled",
             "prescriptions": [
@@ -2150,6 +2160,7 @@
             "_id": "66b85546b14e8718178095f0",
             "firstName": "Vera",
             "lastName": "Orianwo",
+            "sessionId": "66b857f4b14e8718178096ac",
             "medicalRecord": null,
             "status": "completed",
             "prescriptions": [
@@ -2178,6 +2189,7 @@
             "_id": "665a31a0eeda4344d17a2fb0",
             "firstName": "Rubby",
             "lastName": "pb",
+            "sessionId": "66b864760ca17efa50d8204e",
             "medicalRecord": null,
             "status": "completed",
             "prescriptions": [
@@ -2440,6 +2452,7 @@
             "_id": "665a31a0eeda4344d17a2fb0",
             "firstName": "Rubby",
             "lastName": "pb",
+            "sessionId": "66b866a00ca17efa50d8206e",
             "medicalRecord": null,
             "status": "cancelled",
             "prescriptions": [
@@ -2702,6 +2715,7 @@
             "_id": "665a31a0eeda4344d17a2fb0",
             "firstName": "Rubby",
             "lastName": "pb",
+            "sessionId": "66b867a70ca17efa50d8208e",
             "medicalRecord": null,
             "status": "completed",
             "prescriptions": [
@@ -2964,6 +2978,7 @@
             "_id": "66b5f8b488d959bc1924308c",
             "firstName": "MICHAEL ",
             "lastName": "OKERE",
+            "sessionId": "66b882ea3445224f1c736852",
             "medicalRecord": null,
             "status": "completed",
             "prescriptions": [
@@ -3107,6 +3122,7 @@
             "_id": "665a31a0eeda4344d17a2fb0",
             "firstName": "Rubby",
             "lastName": "pb",
+            "sessionId": "66ba1f0a65b784abadeb1d32",
             "medicalRecord": null,
             "status": "cancelled",
             "prescriptions": [
@@ -3369,6 +3385,7 @@
             "_id": "66b85546b14e8718178095f0",
             "firstName": "Vera",
             "lastName": "Orianwo",
+            "sessionId": "66bafc4b712ace4c645d9ac1",
             "medicalRecord": null,
             "status": "scheduled",
             "prescriptions": [

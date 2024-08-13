@@ -660,7 +660,7 @@ getPatientsOfDoctor: async (req, res) => {
     console.log('Test Results:', testResults); // Debugging line
 
     // Fetch medical records for these patients
-    const medicalRecords = await MedicalRecord.find({ patient: { $in: patientIds } })
+    const medicalRecords = await MedicalRecord.find({ _id: { $in: patientIds } })
       .exec();
 
     console.log('Medical Records:', medicalRecords); // Debugging line
@@ -669,12 +669,12 @@ getPatientsOfDoctor: async (req, res) => {
     const result = sessions.map(session => {
       const patientPrescriptions = prescriptions.filter(prescription => prescription.patient.toString() === session.patient._id.toString());
       const patientResults = testResults.filter(result => patientPrescriptions.some(prescription => prescription._id.toString() === result.prescription.toString()));
-      const patientMedicalRecord = medicalRecords.find(record => record.patient.toString() === session.patient._id.toString()) || null;
+      const patientMedicalRecord = medicalRecords.find(record => record._id.toString() === session.patient._id.toString()) || null;
 
       return {
         patient: {
           ...session.patient.toObject(),
-          sessionId: session._id.toString(),
+          sessionId: session._id.toString(), // Add sessionId inside the patient object
           medicalRecord: patientMedicalRecord, // Include medical record or null if not available
           status: session.status,
           prescriptions: patientPrescriptions,
