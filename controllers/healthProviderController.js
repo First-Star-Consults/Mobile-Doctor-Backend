@@ -615,16 +615,13 @@ getDoctorReviews: async (req, res) => {
 getPatientsOfDoctor: async (req, res) => {
   try {
     const doctorId = req.params.doctorId;
+    console.log('Doctor ID:', doctorId); // Debugging line
 
     // Fetch all consultation sessions involving the doctor
     const sessions = await ConsultationSession.find({ doctor: doctorId })
       .populate({
         path: 'patient',
-        select: 'firstName lastName medicalRecord',
-        populate: {
-          path: 'medicalRecord', // Populate the medicalRecord field
-          select: 'diagnosis treatment notes', // Select relevant fields from the medicalRecord
-        },
+        select: 'firstName lastName',
       })
       .populate({
         path: 'prescription',
@@ -636,25 +633,35 @@ getPatientsOfDoctor: async (req, res) => {
       })
       .exec();
 
+    console.log('Sessions:', sessions); // Debugging line
+
     // Extract patient IDs
     const patientIds = [...new Set(sessions.map(session => session.patient._id.toString()))];
+    console.log('Patient IDs:', patientIds); // Debugging line
 
-    // Fetch prescriptions
-    const prescriptions = await Prescription.find({ patient: { $in: patientIds } })
-      .populate({
-        path: 'provider',
-        select: 'name',
-      })
-      .exec();
+    // Fetch prescriptions for these patients and doctor
+const prescriptions = await Prescription.find({ patient: { $in: patientIds }, doctor: doctorId }) // Ensure prescriptions are filtered by doctorId
+  .populate({
+    path: 'provider',
+    select: 'name',
+  })
+  .exec();
+
+   
 
     // Fetch test results for prescriptions
     const prescriptionIds = [...new Set(prescriptions.map(prescription => prescription._id.toString()))];
+
+
+
     const testResults = await TestResult.find({ prescription: { $in: prescriptionIds } })
       .populate({
         path: 'provider',
         select: 'name',
       })
       .exec();
+
+   
 
     // Format the result
     const result = sessions.map(session => {
@@ -666,7 +673,6 @@ getPatientsOfDoctor: async (req, res) => {
         status: session.status,
         prescriptions: patientPrescriptions,
         testResults: patientResults,
-        medicalReport: session.patient.medicalRecord, // Include the medical record in the result
       };
     });
 
@@ -676,6 +682,7 @@ getPatientsOfDoctor: async (req, res) => {
     return res.status(500).json({ error: 'Error fetching data' });
   }
 }
+
 
 
 
