@@ -674,6 +674,7 @@ getPatientsOfDoctor: async (req, res) => {
       return {
         patient: {
           ...session.patient.toObject(),
+          sessionId: session._id.toString(),
           medicalRecord: patientMedicalRecord, // Include medical record or null if not available
           status: session.status,
           prescriptions: patientPrescriptions,
