@@ -16,6 +16,10 @@ const consultationSessionSchema = new mongoose.Schema({
     ref: 'User', 
     required: true 
   },
+  medicalRecord: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'MedicalRecord', // Reference to the MedicalRecord model
+  },
   startTime: { 
     type: Date, 
     required: true 

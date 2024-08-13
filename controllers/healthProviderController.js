@@ -631,6 +631,9 @@ getPatientsOfDoctor: async (req, res) => {
           { path: 'provider', select: 'name' },
         ],
       })
+      .populate({
+        path: 'medicalRecord', // Populate the medical record
+      })
       .exec();
 
     console.log('Sessions:', sessions); // Debugging line
@@ -640,20 +643,17 @@ getPatientsOfDoctor: async (req, res) => {
     console.log('Patient IDs:', patientIds); // Debugging line
 
     // Fetch prescriptions for these patients and doctor
-const prescriptions = await Prescription.find({ patient: { $in: patientIds }, doctor: doctorId }) // Ensure prescriptions are filtered by doctorId
-  .populate({
-    path: 'provider',
-    select: 'name',
-  })
-  .exec();
+    const prescriptions = await Prescription.find({ patient: { $in: patientIds }, doctor: doctorId }) // Ensure prescriptions are filtered by doctorId
+      .populate({
+        path: 'provider',
+        select: 'name',
+      })
+      .exec();
 
-   
+    console.log('Prescriptions:', prescriptions); // Debugging line
 
     // Fetch test results for prescriptions
     const prescriptionIds = [...new Set(prescriptions.map(prescription => prescription._id.toString()))];
-
-
-
     const testResults = await TestResult.find({ prescription: { $in: prescriptionIds } })
       .populate({
         path: 'provider',
@@ -661,7 +661,7 @@ const prescriptions = await Prescription.find({ patient: { $in: patientIds }, do
       })
       .exec();
 
-   
+    console.log('Test Results:', testResults); // Debugging line
 
     // Format the result
     const result = sessions.map(session => {
@@ -669,7 +669,10 @@ const prescriptions = await Prescription.find({ patient: { $in: patientIds }, do
       const patientResults = testResults.filter(result => patientPrescriptions.some(prescription => prescription._id.toString() === result.prescription.toString()));
 
       return {
-        patient: session.patient,
+        patient: {
+          ...session.patient.toObject(),
+          medicalRecord: session.medicalRecord || null // Include medical record or null if not available
+        },
         status: session.status,
         prescriptions: patientPrescriptions,
         testResults: patientResults,
