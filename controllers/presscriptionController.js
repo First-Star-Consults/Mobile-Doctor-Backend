@@ -18,99 +18,196 @@ const adminId = "669c4f6f78766d19d1d3230b";
 
 const prescriptionController = {
 
+
   makePrescriptions: async (req, res) => {
     const { doctorId } = req.params;
     const { patientId, sessionId, medicines, labTests, diagnosis, providerType } = req.body;
-  
+
     try {
-      // Fetch the doctor's details from the database
-      const doctor = await Doctor.findById(doctorId);
-      const patient = await User.findById(patientId);
-      const session = await ConsultationSession.findById(sessionId);
-  
-      // Ensure the doctor, patient, and session exist
-      if (!doctor) {
-        return res.status(404).json({ message: "Doctor not found." });
-      }
-      if (doctor.kycVerification !== true) {
-        return res.status(403).json({ message: "Doctor not verified." });
-      }
-      if (!patient) {
-        return res.status(404).json({ message: "Patient not found." });
-      }
-      if (!session) {
-        return res.status(404).json({ message: "Consultation session not found." });
-      }
-  
-      // Find an existing incomplete or pending prescription for the same session
-      let prescription = await Prescription.findOne({
-        patient: patientId,
-        session: sessionId,
-        status: { $in: ["completed", "pending"] },
-      });
-  
-      if (!prescription) {
-        // If no incomplete or pending prescription exists, create a new one
-        prescription = new Prescription({
-          doctor: doctorId,
-          patient: patientId,
-          session: sessionId,
-          medicines: medicines || [],
-          labTests: labTests || [],
-          diagnosis: diagnosis || "",
-          providerType: providerType || "",
-          status: providerType === "laboratory" ? "pending" : "completed",
+        const doctor = await Doctor.findById(doctorId);
+        const patient = await User.findById(patientId);
+        const session = await ConsultationSession.findById(sessionId);
+
+        if (!doctor) {
+            return res.status(404).json({ message: "Doctor not found." });
+        }
+        if (doctor.kycVerification !== true) {
+            return res.status(403).json({ message: "Doctor not verified." });
+        }
+        if (!patient) {
+            return res.status(404).json({ message: "Patient not found." });
+        }
+        if (!session) {
+            return res.status(404).json({ message: "Consultation session not found." });
+        }
+
+        // Find or create a new prescription
+        let prescription = await Prescription.findOne({
+            patient: patientId,
+            session: sessionId,
+            status: { $in: ["completed", "pending"] },
         });
-      } else {
-        // If an existing prescription is found, update it
-        if (medicines) {
-          prescription.medicines = medicines;
+
+        if (!prescription) {
+            // Create a new prescription
+            prescription = new Prescription({
+                doctor: doctorId,
+                patient: patientId,
+                session: sessionId,
+                medicines: medicines || [],
+                labTests: labTests || [],
+                diagnosis: diagnosis || "",
+                providerType: providerType || "",
+                status: providerType === "laboratory" ? "pending" : "completed",
+            });
+        } else {
+            // Update existing prescription
+            if (medicines) {
+                prescription.medicines = medicines;
+            }
+            if (labTests) {
+                prescription.labTests = labTests;
+            }
+            if (diagnosis) {
+                prescription.diagnosis = diagnosis;
+            }
+
+            // Set the correct status based on providerType
+            if (providerType === "pharmacy") {
+                prescription.status = "completed";
+                session.status = "completed"; // Complete the session when a pharmacy prescription is made
+                await session.save();
+            } else if (providerType === "laboratory") {
+                prescription.status = "pending"; // Keep the status pending for laboratory
+            }
+
+            prescription.providerType = providerType || prescription.providerType;
         }
-        if (labTests) {
-          prescription.labTests = labTests;
-        }
-        if (diagnosis) {
-          prescription.diagnosis = diagnosis;
-        }
-  
-        // Check if the new prescription is a pharmacy one after a laboratory one
-        if (prescription.providerType === "laboratory" && providerType === "pharmacy") {
-          prescription.status = "completed";
-        }
-  
-        // Update the providerType if needed
-        prescription.providerType = providerType || prescription.providerType;
-      }
-  
-      await prescription.save();
-  
-      // Send email notification to the patient
-      const emailSubject = "New Prescription Created";
-      const emailMessage = `Dear ${patient.firstName},\n\nYour doctor has created a new prescription for you. Please check your prescription details in the app.\n\nBest regards,\nThe Mobile Doctor Team`;
-      await sendNotificationEmail(patient.email, emailSubject, emailMessage);
-  
-      // Create in-app notification for the patient
-      const notification = new Notification({
-        recipient: patient._id, // Set recipient field
-        type: "Prescription Created",
-        message: `A new prescription has been created for you by Dr. ${doctor.fullName}.`,
-        relatedObject: prescription._id,
-        relatedModel: "Prescription",
-      });
-      await notification.save();
-  
-      // Respond with a clear message including the prescription ID
-      res.status(201).json({
-        message: "Prescription created/updated successfully",
-        prescriptionId: prescription._id,
-        providerType: prescription.providerType,
-        status: prescription.status,
-      });
+
+        await prescription.save();
+
+        // Send email notification to the patient
+        const emailSubject = "New Prescription Created";
+        const emailMessage = `Dear ${patient.firstName},\n\nYour doctor has created a new prescription for you. Please check your prescription details in the app.\n\nBest regards,\nThe Mobile Doctor Team`;
+        await sendNotificationEmail(patient.email, emailSubject, emailMessage);
+
+        // Create in-app notification for the patient
+        const notification = new Notification({
+            recipient: patient._id,
+            type: "Prescription Created",
+            message: `A new prescription has been created for you by Dr. ${doctor.fullName}.`,
+            relatedObject: prescription._id,
+            relatedModel: "Prescription",
+        });
+        await notification.save();
+
+        res.status(201).json({
+            message: "Prescription created/updated successfully",
+            prescriptionId: prescription._id,
+            providerType: prescription.providerType,
+            status: prescription.status,
+        });
     } catch (error) {
-      console.error("Failed to create/update prescription:", error);
-      res.status(500).json({ message: "Internal server error", error: error.message });
+        console.error("Failed to create/update prescription:", error);
+        res.status(500).json({ message: "Internal server error", error: error.message });
     }
-  },
+},
+
+
+
+  // makePrescriptions: async (req, res) => {
+  //   const { doctorId } = req.params;
+  //   const { patientId, sessionId, medicines, labTests, diagnosis, providerType } = req.body;
+  
+  //   try {
+  //     // Fetch the doctor's details from the database
+  //     const doctor = await Doctor.findById(doctorId);
+  //     const patient = await User.findById(patientId);
+  //     const session = await ConsultationSession.findById(sessionId);
+  
+  //     // Ensure the doctor, patient, and session exist
+  //     if (!doctor) {
+  //       return res.status(404).json({ message: "Doctor not found." });
+  //     }
+  //     if (doctor.kycVerification !== true) {
+  //       return res.status(403).json({ message: "Doctor not verified." });
+  //     }
+  //     if (!patient) {
+  //       return res.status(404).json({ message: "Patient not found." });
+  //     }
+  //     if (!session) {
+  //       return res.status(404).json({ message: "Consultation session not found." });
+  //     }
+  
+  //     // Find an existing incomplete or pending prescription for the same session
+  //     let prescription = await Prescription.findOne({
+  //       patient: patientId,
+  //       session: sessionId,
+  //       status: { $in: ["completed", "pending"] },
+  //     });
+  
+  //     if (!prescription) {
+  //       // If no incomplete or pending prescription exists, create a new one
+  //       prescription = new Prescription({
+  //         doctor: doctorId,
+  //         patient: patientId,
+  //         session: sessionId,
+  //         medicines: medicines || [],
+  //         labTests: labTests || [],
+  //         diagnosis: diagnosis || "",
+  //         providerType: providerType || "",
+  //         status: providerType === "laboratory" ? "pending" : "completed",
+  //       });
+  //     } else {
+  //       // If an existing prescription is found, update it
+  //       if (medicines) {
+  //         prescription.medicines = medicines;
+  //       }
+  //       if (labTests) {
+  //         prescription.labTests = labTests;
+  //       }
+  //       if (diagnosis) {
+  //         prescription.diagnosis = diagnosis;
+  //       }
+  
+  //       // Check if the new prescription is a pharmacy one after a laboratory one
+  //       if (prescription.providerType === "laboratory" && providerType === "pharmacy") {
+  //         prescription.status = "completed";
+  //       }
+  
+  //       // Update the providerType if needed
+  //       prescription.providerType = providerType || prescription.providerType;
+  //     }
+  
+  //     await prescription.save();
+  
+  //     // Send email notification to the patient
+  //     const emailSubject = "New Prescription Created";
+  //     const emailMessage = `Dear ${patient.firstName},\n\nYour doctor has created a new prescription for you. Please check your prescription details in the app.\n\nBest regards,\nThe Mobile Doctor Team`;
+  //     await sendNotificationEmail(patient.email, emailSubject, emailMessage);
+  
+  //     // Create in-app notification for the patient
+  //     const notification = new Notification({
+  //       recipient: patient._id, // Set recipient field
+  //       type: "Prescription Created",
+  //       message: `A new prescription has been created for you by Dr. ${doctor.fullName}.`,
+  //       relatedObject: prescription._id,
+  //       relatedModel: "Prescription",
+  //     });
+  //     await notification.save();
+  
+  //     // Respond with a clear message including the prescription ID
+  //     res.status(201).json({
+  //       message: "Prescription created/updated successfully",
+  //       prescriptionId: prescription._id,
+  //       providerType: prescription.providerType,
+  //       status: prescription.status,
+  //     });
+  //   } catch (error) {
+  //     console.error("Failed to create/update prescription:", error);
+  //     res.status(500).json({ message: "Internal server error", error: error.message });
+  //   }
+  // },
   
 
 
@@ -493,6 +590,40 @@ providerSinglePrescription: async (req, res) => {
   }
 },
 
+// Controller function to get the session ID based on patient and doctor details
+getSessionId: async (req, res) => {
+  const { doctorId, patientId } = req.params;
+
+  try {
+      // Log IDs for debugging
+      console.log("Doctor ID:", doctorId);
+      console.log("Patient ID:", patientId);
+
+      // Find the active or latest session for the doctor and patient
+      const session = await ConsultationSession.findOne({
+          doctor: doctorId,
+          patient: patientId,
+          status: { $in: ["in-progress", "pending"] },
+      }).sort({ startTime: -1 });
+
+      if (!session) {
+          return res.status(404).json({ message: "No active session found for this doctor and patient." });
+      }
+
+      res.status(200).json({
+          message: "Session found",
+          sessionId: session._id,
+          status: session.status,
+      });
+  } catch (error) {
+      console.error("Failed to retrieve session:", error);
+      res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+},
+
+
+
+
 
 
 getPrescription: async (req, res) => {
@@ -507,7 +638,7 @@ getPrescription: async (req, res) => {
     // Find the prescription by ID
     const prescription = await Prescription.findById(prescriptionId)
       .populate("doctor", "fullName profilePhoto medicalSpecialty.name")
-      .populate("patient", "firstName lastName");
+      .populate("patient", "firstName lastName address phone ");
 
     if (!prescription) {
       return res.status(404).json({ message: "Prescription not found" });
@@ -526,6 +657,8 @@ getPrescription: async (req, res) => {
         patientId: prescription.patient._id,
         firstName: prescription.patient.firstName,
         lastName: prescription.patient.lastName,
+        address: prescription.patient.address, // Add address
+        phone: prescription.patient.phone // Add phone
       } : null,
       patientAddress: prescription.patientAddress,
       diagnosis: prescription.diagnosis,

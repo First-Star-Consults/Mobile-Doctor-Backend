@@ -49,18 +49,21 @@ const authController = {
 
       const role = determineRole(userType);
 
-       // Validation checks
-    const phoneRegex = /^(\+234|0)?[789]\d{9}$/; // Regex for Nigerian phone numbers
-    if (!phoneRegex.test(phone)) {
-      return res.status(400).json({ 
-        message: "Invalid phone format. Example: +2347012345678 or 07012345678" 
-      });
-    };
+      // Validation checks
+      const phoneRegex = /^(\+234|0)?[789]\d{9}$/; // Regex for Nigerian phone numbers
+      if (!phoneRegex.test(phone)) {
+        return res.status(400).json({
+          message:
+            "Invalid phone format. Example: +2347012345678 or 07012345678",
+        });
+      }
 
-    //check passward lenght
-    if (password.length < 8) {
-      return res.status(400).json({ message: "Password must be at least 8 characters long" });
-    }
+      //check passward lenght
+      if (password.length < 8) {
+        return res
+          .status(400)
+          .json({ message: "Password must be at least 8 characters long" });
+      }
 
       // Create a new user instance
       const newUser = new User({
@@ -171,32 +174,43 @@ const authController = {
   resendVerificationCode: async (req, res) => {
     try {
       const { email } = req.body;
-  
+
       // Find the user by email
       const user = await User.findOne({ email });
-  
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-  
+
       // Check if the user is already verified
       if (user.isVerified) {
         // Set verification code to null since the user is already verified
         user.verificationcode = null;
         await user.save();
-  
-        return res.status(200).json({ message: "User is already verified. No need to resend the verification code." });
+
+        return res
+          .status(200)
+          .json({
+            message:
+              "User is already verified. No need to resend the verification code.",
+          });
       }
-  
+
       // Check if the user has a verification code
       if (!user.verificationcode) {
-        return res.status(400).json({ message: "No verification code found. Please register again." });
+        return res
+          .status(400)
+          .json({
+            message: "No verification code found. Please register again.",
+          });
       }
-  
+
       // Resend the existing verification code via email
       await sendVerificationEmail(user.email, user.verificationcode);
-  
-      res.status(200).json({ message: "Verification code resent successfully" });
+
+      res
+        .status(200)
+        .json({ message: "Verification code resent successfully" });
     } catch (error) {
       console.error(error);
       return res.status(500).json({ message: "Internal Server Error" });
@@ -208,30 +222,32 @@ const authController = {
       username: req.body.email,
       password: req.body.password,
     });
-  
+
     req.login(user, async (err) => {
       if (err) {
         console.log(err);
         return res.status(500).json({ message: "Internal Server Error" });
       }
-  
+
       passport.authenticate("local", (err, user, info) => {
         if (err) {
           console.log(err);
           return res.status(500).json({ message: "Internal Server Error" });
         }
-  
+
         if (!user) {
           // Return a specific message if authentication fails
-          return res.status(401).json({ message: "Username or password is incorrect" });
+          return res
+            .status(401)
+            .json({ message: "Username or password is incorrect" });
         }
-  
+
         req.logIn(user, async (err) => {
           if (err) {
             console.log(err);
             return res.status(500).json({ message: "Internal Server Error" });
           }
-  
+
           // Prepare the response data
           const responseData = {
             message: "Successfully logged in",
@@ -251,7 +267,7 @@ const authController = {
               isApproved: user.isApproved,
             },
           };
-  
+
           // Include kycVerification for health providers
           if (
             ["doctor", "therapist", "pharmacy", "laboratory"].includes(
@@ -273,7 +289,7 @@ const authController = {
                 healthProviderInfo = await Laboratory.findById(user._id);
                 break;
             }
-  
+
             if (
               healthProviderInfo &&
               healthProviderInfo.kycVerification !== undefined
@@ -282,14 +298,12 @@ const authController = {
                 healthProviderInfo.kycVerification;
             }
           }
-  
+
           res.status(201).json(responseData);
         });
       })(req, res);
     });
   },
-  
-  
 
   // login: async (req, res) => {
   //   const user = new User({
@@ -333,7 +347,7 @@ const authController = {
   //                 message: "Alabo, this one na for email verification o",
   //               },
   //               isOnline: user.isOnline,      // Added isOnline status
-  //               isApproved: user.isApproved, 
+  //               isApproved: user.isApproved,
   //             },
   //           };
 
@@ -703,228 +717,287 @@ const authController = {
     }
   },
 
-  
-
   approveWithdrawal: async (req, res) => {
     try {
-        const adminId = req.params.adminId;
-        const { transactionId, accountNumber, bankCode } = req.body;
+      const adminId = req.params.adminId;
+      const { transactionId, accountNumber, bankCode } = req.body;
 
-        const admin = await User.findById(adminId);
-        if (!admin || !admin.isAdmin) {
-            console.log("Unauthorized admin access");
-            return res.status(403).json({
-                success: false,
-                message: "Unauthorized to perform this action",
-            });
-        }
-
-        const transaction = await Transaction.findById(transactionId).populate("user");
-        if (!transaction || transaction.status !== "pending") {
-            console.log(`Invalid or already processed transaction. Transaction ID: ${transactionId}`);
-            return res.status(400).json({
-                success: false,
-                message: "Invalid or already processed transaction",
-            });
-        }
-
-        const user = transaction.user;
-        if (!user) {
-            console.log(`User not found for Transaction ID: ${transactionId}`);
-            return res.status(404).json({ success: false, message: "User not found" });
-        }
-
-        // Validate account number with bank code
-        let accountValidation;
-        try {
-            accountValidation = await validateAccountNumber(accountNumber, bankCode);
-            if (!accountValidation) {
-                throw new Error("Account validation failed");
-            }
-        } catch (error) {
-            console.error("Error during account validation:", error);
-            transaction.status = "failed";
-            await transaction.save();
-            await sendFailureNotification(user, transaction, bankCode, accountNumber, "Account validation failed.");
-            return res.status(400).json({
-                success: false,
-                message: "Invalid account details",
-                transactionId,
-            });
-        }
-
-        // Create transfer recipient
-        const recipientName = accountValidation.account_name;
-        let recipientDetails;
-        try {
-            recipientDetails = await createTransferRecipient(recipientName, accountNumber, bankCode);
-            if (!recipientDetails) {
-                throw new Error("Failed to create transfer recipient");
-            }
-        } catch (error) {
-            console.error("Error during transfer recipient creation:", error);
-            transaction.status = "failed";
-            await transaction.save();
-            await sendFailureNotification(user, transaction, bankCode, accountNumber, "Transfer recipient creation failed.");
-            return res.status(500).json({
-                success: false,
-                message: "Failed to create transfer recipient",
-                transactionId,
-            });
-        }
-
-        // Initiate transfer
-        let transferResponse;
-        try {
-            transferResponse = await initiateTransfer(transaction.amount, recipientDetails.recipient_code);
-            if (!transferResponse) {
-                throw new Error("Failed to initiate transfer");
-            }
-        } catch (error) {
-            console.error("Error during transfer initiation:", error);
-            transaction.status = "failed";
-            await transaction.save();
-            await sendFailureNotification(user, transaction, bankCode, accountNumber, "Transfer initiation failed.");
-            return res.status(500).json({
-                success: false,
-                message: "Failed to initiate transfer",
-                transactionId,
-            });
-        }
-
-        // Notify user to finalize the transfer using OTP
-        res.status(200).json({
-            success: true,
-            message: "Withdrawal approval processing, please finalize by sending OTP",
-            transferDetails: transferResponse,
-            transactionId,
+      const admin = await User.findById(adminId);
+      if (!admin || !admin.isAdmin) {
+        console.log("Unauthorized admin access");
+        return res.status(403).json({
+          success: false,
+          message: "Unauthorized to perform this action",
         });
+      }
+
+      const transaction = await Transaction.findById(transactionId).populate(
+        "user"
+      );
+      if (!transaction || transaction.status !== "pending") {
+        console.log(
+          `Invalid or already processed transaction. Transaction ID: ${transactionId}`
+        );
+        return res.status(400).json({
+          success: false,
+          message: "Invalid or already processed transaction",
+        });
+      }
+
+      const user = transaction.user;
+      if (!user) {
+        console.log(`User not found for Transaction ID: ${transactionId}`);
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      }
+
+      // Validate account number with bank code
+      let accountValidation;
+      try {
+        accountValidation = await validateAccountNumber(
+          accountNumber,
+          bankCode
+        );
+        if (!accountValidation) {
+          throw new Error("Account validation failed");
+        }
+      } catch (error) {
+        console.error("Error during account validation:", error);
+        transaction.status = "failed";
+        await transaction.save();
+        await sendFailureNotification(
+          user,
+          transaction,
+          bankCode,
+          accountNumber,
+          "Account validation failed."
+        );
+        return res.status(400).json({
+          success: false,
+          message: "Invalid account details",
+          transactionId,
+        });
+      }
+
+      // Create transfer recipient
+      const recipientName = accountValidation.account_name;
+      let recipientDetails;
+      try {
+        recipientDetails = await createTransferRecipient(
+          recipientName,
+          accountNumber,
+          bankCode
+        );
+        if (!recipientDetails) {
+          throw new Error("Failed to create transfer recipient");
+        }
+      } catch (error) {
+        console.error("Error during transfer recipient creation:", error);
+        transaction.status = "failed";
+        await transaction.save();
+        await sendFailureNotification(
+          user,
+          transaction,
+          bankCode,
+          accountNumber,
+          "Transfer recipient creation failed."
+        );
+        return res.status(500).json({
+          success: false,
+          message: "Failed to create transfer recipient",
+          transactionId,
+        });
+      }
+
+      // Initiate transfer
+      let transferResponse;
+      try {
+        transferResponse = await initiateTransfer(
+          transaction.amount,
+          recipientDetails.recipient_code
+        );
+        if (!transferResponse) {
+          throw new Error("Failed to initiate transfer");
+        }
+      } catch (error) {
+        console.error("Error during transfer initiation:", error);
+        transaction.status = "failed";
+        await transaction.save();
+        await sendFailureNotification(
+          user,
+          transaction,
+          bankCode,
+          accountNumber,
+          "Transfer initiation failed."
+        );
+        return res.status(500).json({
+          success: false,
+          message: "Failed to initiate transfer",
+          transactionId,
+        });
+      }
+
+      // Notify user to finalize the transfer using OTP
+      res.status(200).json({
+        success: true,
+        message:
+          "Withdrawal approval processing, please finalize by sending OTP",
+        transferDetails: transferResponse,
+        transactionId,
+      });
     } catch (error) {
-        console.error("Error during withdrawal approval:", error);
-        res.status(500).json({
-            success: false,
-            message: "Internal Server Error",
-            transactionId: req.body.transactionId,
-        });
+      console.error("Error during withdrawal approval:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal Server Error",
+        transactionId: req.body.transactionId,
+      });
     }
-},
-
+  },
 
   finalizeWithdrawal: async (req, res) => {
     try {
-        const adminId = req.params.adminId;
-        const { otp, transferCode, transactionId } = req.body;
+      const adminId = req.params.adminId;
+      const { otp, transferCode, transactionId } = req.body;
 
-        const admin = await User.findById(adminId);
-        if (!admin || !admin.isAdmin) {
-            console.log("Unauthorized admin access");
-            return res.status(403).json({
-                success: false,
-                message: "Unauthorized to perform this action",
-            });
+      const admin = await User.findById(adminId);
+      if (!admin || !admin.isAdmin) {
+        console.log("Unauthorized admin access");
+        return res.status(403).json({
+          success: false,
+          message: "Unauthorized to perform this action",
+        });
+      }
+
+      if (!otp || !transferCode) {
+        return res.status(400).json({
+          success: false,
+          message: "OTP and transfer code are required.",
+        });
+      }
+
+      const result = await submitOtpForTransfer(otp, transferCode);
+
+      const transaction = await Transaction.findById(transactionId).populate(
+        "user"
+      );
+      if (!transaction || transaction.status !== "pending") {
+        console.log(
+          `Invalid or already processed transaction. Transaction ID: ${transactionId}`
+        );
+        return res.status(400).json({
+          success: false,
+          message: "Invalid or already processed transaction",
+        });
+      }
+
+      const user = transaction.user;
+      if (!user) {
+        console.log(`User not found for Transaction ID: ${transactionId}`);
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      }
+
+      if (result.success) {
+        const transferConfirmed = await checkTransferStatus(
+          result.data.reference
+        );
+        if (!transferConfirmed) {
+          transaction.status = "failed";
+          await transaction.save();
+          await sendFailureNotification(
+            user,
+            transaction,
+            transaction.bankCode,
+            transaction.accountNumber,
+            "Transfer confirmation failed."
+          );
+          return res.status(500).json({
+            success: false,
+            message: "Transfer confirmation failed",
+            transactionId,
+          });
         }
 
-        if (!otp || !transferCode) {
-            return res.status(400).json({
-                success: false,
-                message: "OTP and transfer code are required.",
-            });
-        }
+        // Deduct the amount from user's wallet balance
+        user.walletBalance -= transaction.amount;
+        await user.save();
 
-        const result = await submitOtpForTransfer(otp, transferCode);
+        transaction.status = "success";
+        await transaction.save();
 
-        const transaction = await Transaction.findById(transactionId).populate("user");
-        if (!transaction || transaction.status !== "pending") {
-            console.log(`Invalid or already processed transaction. Transaction ID: ${transactionId}`);
-            return res.status(400).json({
-                success: false,
-                message: "Invalid or already processed transaction",
-            });
-        }
+        const successNotification = new Notification({
+          recipient: user._id,
+          type: "withdrawal",
+          message: `Your withdrawal request of ₦${transaction.amount} has been approved and processed.`,
+          relatedObject: user._id,
+          relatedModel: "Transaction",
+        });
+        await successNotification.save();
+        await sendNotificationEmail(
+          user.email,
+          "Withdrawal Request Approved",
+          `Your withdrawal request of ₦${transaction.amount} has been approved and processed. The amount will be credited to your account shortly.`
+        );
 
-        const user = transaction.user;
-        if (!user) {
-            console.log(`User not found for Transaction ID: ${transactionId}`);
-            return res.status(404).json({ success: false, message: "User not found" });
-        }
-
-        if (result.success) {
-            const transferConfirmed = await checkTransferStatus(result.data.reference);
-            if (!transferConfirmed) {
-                transaction.status = "failed";
-                await transaction.save();
-                await sendFailureNotification(user, transaction, transaction.bankCode, transaction.accountNumber, "Transfer confirmation failed.");
-                return res.status(500).json({
-                    success: false,
-                    message: "Transfer confirmation failed",
-                    transactionId,
-                });
-            }
-
-            // Deduct the amount from user's wallet balance
-            user.walletBalance -= transaction.amount;
-            await user.save();
-
-            transaction.status = "success";
-            await transaction.save();
-
-            const successNotification = new Notification({
-                recipient: user._id,
-                type: "withdrawal",
-                message: `Your withdrawal request of ₦${transaction.amount} has been approved and processed.`,
-                relatedObject: user._id,
-                relatedModel: "Transaction",
-            });
-            await successNotification.save();
-            await sendNotificationEmail(
-                user.email,
-                "Withdrawal Request Approved",
-                `Your withdrawal request of ₦${transaction.amount} has been approved and processed. The amount will be credited to your account shortly.`
-            );
-
-            return res.status(200).json({
-                success: true,
-                message: "Withdrawal finalized and transfer successful.",
-                data: result.data,
-            });
-        } else {
-          // for result ques transaction is successful
-            return res.status(400).json({ success: true, message: result.message });
-        }
+        return res.status(200).json({
+          success: true,
+          message: "Withdrawal finalized and transfer successful.",
+          data: result.data,
+        });
+      } else {
+        // for result ques transaction is successful
+        return res.status(400).json({ success: true, message: result.message });
+      }
     } catch (error) {
-        console.error("Error finalizing withdrawal:", error);
-        return res.status(500).json({ success: false, message: "Internal server error." });
+      console.error("Error finalizing withdrawal:", error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Internal server error." });
     }
-},
-
-
-  
+  },
 
   startConsultation: async (req, res) => {
     const { patientId, doctorId } = req.body;
-  
+
     try {
       // Check if there is an existing active session for this doctor
       const existingDoctorSession = await ConsultationSession.findOne({
         doctor: doctorId,
         status: { $in: ["scheduled", "in-progress"] },
       });
-  
+
       // If the doctor is already in an active session, return an error
+      // if (existingDoctorSession) {
+      //   return res.status(400).json({
+      //     message:
+      //       "The doctor is currently in an active session with another patient. Please wait until the session is completed or canceled before starting a new one.",
+      //   });
+      // }
+
+      // If the doctor is already in an active session
       if (existingDoctorSession) {
-        return res.status(400).json({
-          message:
-            "The doctor is currently in an active session with another patient. Please wait until the session is completed or canceled before starting a new one.",
-        });
-      }
-  
+        // Check if the session is with the same patient
+        if (existingDoctorSession.patient.toString() === patientId) {
+            return res.status(400).json({
+                message: "You already have an active session with this doctor.",
+            });
+        } else {
+            return res.status(400).json({
+                message: "The doctor is currently in an active session with another patient. Please wait until the session is completed or canceled before starting a new one.",
+            });
+        }
+    }
+
       // Check if there is an existing active session for this patient and doctor
       const existingPatientSession = await ConsultationSession.findOne({
         patient: patientId,
         doctor: doctorId,
         status: { $in: ["scheduled", "in-progress"] },
       });
-  
+
       // If an existing active session is found for the patient and doctor, indicate that a new session can't be started
       if (existingPatientSession) {
         return res.status(400).json({
@@ -932,33 +1005,33 @@ const authController = {
             "An active session already exists for this patient and doctor. Please complete or cancel the existing session before starting a new one.",
         });
       }
-  
+
       // Ensure both patient and doctor exist
       const patient = await User.findById(patientId);
       const doctor = await Doctor.findById(doctorId);
       if (!patient || !doctor) {
         return res.status(404).json({ message: "Patient or Doctor not found" });
       }
-  
+
       // Initialize consultationFee with the default value from doctor.medicalSpecialty
       let consultationFee = doctor.medicalSpecialty.fee; // Use the default fee
       consultationFee = Number(consultationFee);
-  
+
       if (isNaN(consultationFee)) {
         return res.status(400).json({ message: "Invalid consultation fee." });
       }
-  
+
       // Check patient's wallet balance
       if (patient.walletBalance < consultationFee) {
         return res.status(400).json({
           message: "Insufficient wallet balance for this consultation.",
         });
       }
-  
+
       // Deduct consultation fee from patient's wallet
       patient.walletBalance -= consultationFee;
       await patient.save();
-  
+
       // Record the transaction as held in escrow
       const transaction = new Transaction({
         user: patientId,
@@ -969,7 +1042,7 @@ const authController = {
         amount: consultationFee,
       });
       await transaction.save();
-  
+
       // Find or create a conversation between patient and doctor
       let conversation = await Conversation.findOne({
         participants: { $all: [patientId, doctorId] },
@@ -980,7 +1053,7 @@ const authController = {
         });
         await conversation.save();
       }
-  
+
       // Create the consultation session
       const newSession = new ConsultationSession({
         doctor: doctorId,
@@ -990,13 +1063,13 @@ const authController = {
         startTime: new Date(),
       });
       await newSession.save();
-  
+
       // Notify the doctor about the new consultation session
       io.to(doctorId).emit("consultationStarted", {
         message: "A new consultation has started!",
         sessionId: newSession._id,
       });
-  
+
       // Create an in-app notification for the doctor
       const notification = new Notification({
         recipient: doctorId,
@@ -1006,7 +1079,7 @@ const authController = {
         relatedModel: "Consultation",
       });
       await notification.save();
-  
+
       // Retrieve the doctor's email from the User schema
       const doctorUser = await User.findById(doctorId);
       if (doctorUser && doctorUser.email) {
@@ -1017,7 +1090,7 @@ const authController = {
           `You have a new consultation session scheduled with patient ${patient.username}. Please check your dashboard for more details.`
         );
       }
-  
+
       // Return success response with session details and conversation ID
       res.status(200).json({
         message: "New consultation session started successfully.",
@@ -1032,7 +1105,6 @@ const authController = {
       });
     }
   },
-  
 
   // getActiveSession: async (req, res) => {
   //   const { patientId, doctorId } = req.params;
@@ -1084,66 +1156,64 @@ const authController = {
   //   }
   // },
 
-
   getActiveSession: async (req, res) => {
     const { patientId, doctorId } = req.params;
 
     try {
-        // First, find the conversation ID for the patient and doctor
-        const conversation = await Conversation.findOne({
-            participants: { $all: [patientId, doctorId] },
-        }).select("_id");
+      // First, find the conversation ID for the patient and doctor
+      const conversation = await Conversation.findOne({
+        participants: { $all: [patientId, doctorId] },
+      }).select("_id");
 
-        if (!conversation) {
-            return res.status(404).json({ message: "Conversation not found." });
-        }
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found." });
+      }
 
-        // Find the active session
-        const activeSession = await ConsultationSession.findOne({
-            patient: patientId,
-            doctor: doctorId,
-            status: { $in: ["scheduled", "in-progress"] },
-        })
-            .sort({ createdAt: -1 })
-            .populate("patient", "firstName lastName profilePhoto isOnline")
-            .populate({
-                path: 'doctor', // Fetch the doctor profilePhoto from Doctor schema
-                select: 'images.profilePhoto',
-                populate: {
-                    path: '_id', // Populate User schema data for isOnline status
-                    model: 'User',
-                    select: 'isOnline',
-                }
-            });
-
-        if (!activeSession) {
-            return res.status(404).json({ message: "Active session not found." });
-        }
-
-        // Fetch the User document to get the isOnline status of the doctor
-        const doctorUser = await User.findById(doctorId).select("isOnline");
-
-        // Return the session info including the conversation ID
-        res.status(200).json({
-            sessionId: activeSession._id,
-            conversationId: conversation._id,
-            patientFirstName: activeSession.patient.firstName,
-            patientLastName: activeSession.patient.lastName,
-            patientProfilePhoto: activeSession.patient.profilePhoto,
-            patientIsOnline: activeSession.patient.isOnline,
-            doctorProfilePhoto: activeSession.doctor.images.profilePhoto,
-            doctorIsOnline: doctorUser ? doctorUser.isOnline : null,
-            startTime: activeSession.startTime,
+      // Find the active session
+      const activeSession = await ConsultationSession.findOne({
+        patient: patientId,
+        doctor: doctorId,
+        status: { $in: ["scheduled", "in-progress"] },
+      })
+        .sort({ createdAt: -1 })
+        .populate("patient", "firstName lastName profilePhoto isOnline")
+        .populate({
+          path: "doctor", // Fetch the doctor profilePhoto from Doctor schema
+          select: "images.profilePhoto",
+          populate: {
+            path: "_id", // Populate User schema data for isOnline status
+            model: "User",
+            select: "isOnline",
+          },
         });
+
+      if (!activeSession) {
+        return res.status(404).json({ message: "Active session not found." });
+      }
+
+      // Fetch the User document to get the isOnline status of the doctor
+      const doctorUser = await User.findById(doctorId).select("isOnline");
+
+      // Return the session info including the conversation ID
+      res.status(200).json({
+        sessionId: activeSession._id,
+        conversationId: conversation._id,
+        patientFirstName: activeSession.patient.firstName,
+        patientLastName: activeSession.patient.lastName,
+        patientProfilePhoto: activeSession.patient.profilePhoto,
+        patientIsOnline: activeSession.patient.isOnline,
+        doctorProfilePhoto: activeSession.doctor.images.profilePhoto,
+        doctorIsOnline: doctorUser ? doctorUser.isOnline : null,
+        startTime: activeSession.startTime,
+      });
     } catch (error) {
-        console.error("Error retrieving active session:", error);
-        res.status(500).json({
-            message: "Failed to retrieve active session.",
-            error: error.message,
-        });
+      console.error("Error retrieving active session:", error);
+      res.status(500).json({
+        message: "Failed to retrieve active session.",
+        error: error.message,
+      });
     }
-},
-
+  },
 
   getMostRecentActiveSession: async (req, res) => {
     const userId = req.params.userId;
@@ -1304,122 +1374,200 @@ const authController = {
     }
   },
 
+  // completeConsultation: async (req, res) => {
+  //   const { sessionId } = req.body;
+  //   let consultationComplete = false;
+
+  //   try {
+  //     const session = await ConsultationSession.findById(sessionId).populate(
+  //       "patient doctor"
+  //     ); // Populate patient and doctor details
+  //     if (!session) {
+  //       return res
+  //         .status(404)
+  //         .json({ message: "Consultation session not found" });
+  //     }
+
+  //     // Check if the session is already completed to avoid repeated completions
+  //     if (session.status === "completed") {
+  //       return res.status(400).json({
+  //         message: "Consultation session is already marked as completed.",
+  //       });
+  //     }
+
+  //     // Check the providerType in the associated prescription
+  //     const prescription = await Prescription.findOne({
+  //       patient: session.patient,
+  //       status: "complete",
+  //     });
+
+  //     if (prescription && prescription.providerType === "laboratory") {
+  //       // Set session status to "in-progress" if providerType is laboratory
+  //       session.status = "pending";
+  //     } else {
+  //       // Otherwise, mark the session as completed
+  //       session.status = "completed";
+  //     }
+
+  //     session.endTime = new Date();
+  //     await session.save();
+
+  //     // Release the escrow to the doctor
+  //     const transaction = await Transaction.findById(session.escrowTransaction);
+  //     if (transaction && transaction.escrowStatus === "held") {
+  //       // Fetch the User document for the doctor
+  //       const doctorUser = await User.findById(session.doctor);
+  //       if (doctorUser) {
+  //         // Update the wallet balance
+  //         doctorUser.walletBalance += transaction.amount;
+  //         try {
+  //           await doctorUser.save(); // Save the updated User document
+  //         } catch (error) {
+  //           console.error("Error saving user wallet balance:", error);
+  //           return res
+  //             .status(500)
+  //             .json({ message: "Error updating doctor's wallet balance" });
+  //         }
+
+  //         // Update the transaction status
+  //         transaction.escrowStatus = "released";
+  //         await transaction.save();
+
+  //         consultationComplete = true;
+  //       } else {
+  //         return res.status(404).json({ message: "Doctor user not found" });
+  //       }
+  //     }
+
+  //     // Create notification for the patient
+  //     const patient = session.patient;
+  //     const doctor = session.doctor;
+
+  //     if (patient) {
+  //       const patientNotification = new Notification({
+  //         recipient: patient._id,
+  //         type: "Consultation Completed",
+  //         message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} has been completed.`,
+  //         relatedObject: session,
+  //         relatedModel: "Consultation",
+  //       });
+  //       await patientNotification.save();
+  //     }
+
+  //     // Create notification for the doctor
+
+  //     if (doctor) {
+  //       const doctorNotification = new Notification({
+  //         recipient: doctor._id,
+  //         type: "Consultation Completed",
+  //         message: `The consultation with ${patient.firstName} ${patient.lastName} has been completed.`,
+  //         relatedObject: session,
+  //         relatedModel: "Consultation",
+  //       });
+  //       await doctorNotification.save();
+  //     }
+
+  //     res.status(200).json({
+  //       message: "Consultation completed, funds released to doctor",
+  //       consultationComplete,
+  //     });
+  //   } catch (error) {
+  //     console.error("Error during consultation completion:", error);
+  //     res.status(500).json({
+  //       message: "Error completing consultation",
+  //       error: error.toString(),
+  //       consultationComplete,
+  //     });
+  //   }
+  // },
   completeConsultation: async (req, res) => {
     const { sessionId } = req.body;
     let consultationComplete = false;
 
     try {
-      const session = await ConsultationSession.findById(sessionId).populate(
-        "patient doctor"
-      ); // Populate patient and doctor details
-      if (!session) {
-        return res
-          .status(404)
-          .json({ message: "Consultation session not found" });
-      }
-
-      // Check if the session is already completed to avoid repeated completions
-      if (session.status === "completed") {
-        return res.status(400).json({
-          message: "Consultation session is already marked as completed.",
-        });
-      }
-
-      // Check the providerType in the associated prescription
-      const prescription = await Prescription.findOne({ patient: session.patient, status: "complete" });
-
-      if (prescription && prescription.providerType === "laboratory") {
-          // Set session status to "in-progress" if providerType is laboratory
-          session.status = "pending";
-      } else {
-          // Otherwise, mark the session as completed
-          session.status = "completed";
-      }
-
-      session.endTime = new Date();
-      await session.save();
-
-      // Release the escrow to the doctor
-      // const transaction = await Transaction.findById(session.escrowTransaction);
-      // if (transaction && transaction.escrowStatus === "held") {
-      //   const doctor = session.doctor;
-      //   if (doctor) {
-      //     doctor.walletBalance += transaction.amount; // Release funds to the doctor
-      //     await doctor.save();
-
-      //     transaction.escrowStatus = "released";
-      //     await transaction.save();
-      //     consultationComplete = true;
-      //   }
-      // }
-
-
-      // Release the escrow to the doctor
-const transaction = await Transaction.findById(session.escrowTransaction);
-if (transaction && transaction.escrowStatus === "held") {
-    // Fetch the User document for the doctor
-    const doctorUser = await User.findById(session.doctor);
-    if (doctorUser) {
-        // Update the wallet balance
-        doctorUser.walletBalance += transaction.amount;
-        try {
-            await doctorUser.save(); // Save the updated User document
-        } catch (error) {
-            console.error("Error saving user wallet balance:", error);
-            return res.status(500).json({ message: "Error updating doctor's wallet balance" });
+        const session = await ConsultationSession.findById(sessionId).populate("patient doctor");
+        if (!session) {
+            return res.status(404).json({ message: "Consultation session not found" });
         }
 
-        // Update the transaction status
-        transaction.escrowStatus = "released";
-        await transaction.save();
+        // Check if the session is already completed to avoid repeated completions
+        if (session.status === "completed") {
+            return res.status(400).json({
+                message: "Consultation session is already marked as completed.",
+            });
+        }
 
-        consultationComplete = true;
-    } else {
-        return res.status(404).json({ message: "Doctor user not found" });
-    }
-}
+        // Find the latest prescription related to this session
+        const prescription = await Prescription.findOne({ session: sessionId }).sort({ createdAt: -1 });
 
-      // Create notification for the patient
-      const patient = session.patient;
-      const doctor = session.doctor;
+        if (prescription && prescription.providerType === "laboratory" && prescription.status === "pending") {
+            // If there's a pending lab test prescription, set session status to "pending"
+            session.status = "pending";
+        } else {
+            // Otherwise, mark the session as completed
+            session.status = "completed";
+        }
 
-      if (patient) {
-        const patientNotification = new Notification({
-          recipient: patient._id,
-          type: "Consultation Completed",
-          message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} has been completed.`,
-          relatedObject: session,
-          relatedModel: "Consultation",
+        session.endTime = new Date();
+        await session.save();
+
+        // Release the escrow to the doctor (with error handling for wallet balance)
+        const transaction = await Transaction.findById(session.escrowTransaction);
+        if (transaction && transaction.escrowStatus === "held") {
+            const doctorUser = await User.findById(session.doctor);
+            if (doctorUser) {
+                doctorUser.walletBalance += transaction.amount;
+                await doctorUser.save();
+
+                transaction.escrowStatus = "released";
+                await transaction.save();
+
+                consultationComplete = true;
+            } else {
+                return res.status(404).json({ message: "Doctor user not found" });
+            }
+        }
+
+        // Create notifications for patient and doctor
+        const patient = session.patient;
+        const doctor = session.doctor;
+
+        if (patient) {
+            const patientNotification = new Notification({
+                recipient: patient._id,
+                type: "Consultation Completed",
+                message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} has been completed.`,
+                relatedObject: session,
+                relatedModel: "Consultation",
+            });
+            await patientNotification.save();
+        }
+
+        if (doctor) {
+            const doctorNotification = new Notification({
+                recipient: doctor._id,
+                type: "Consultation Completed",
+                message: `The consultation with ${patient.firstName} ${patient.lastName} has been completed.`,
+                relatedObject: session,
+                relatedModel: "Consultation",
+            });
+            await doctorNotification.save();
+        }
+
+        res.status(200).json({
+            message: "Consultation completed, funds released to doctor",
+            consultationComplete,
         });
-        await patientNotification.save();
-      }
-
-      // Create notification for the doctor
-
-      if (doctor) {
-        const doctorNotification = new Notification({
-          recipient: doctor._id,
-          type: "Consultation Completed",
-          message: `The consultation with ${patient.firstName} ${patient.lastName} has been completed.`,
-          relatedObject: session,
-          relatedModel: "Consultation",
-        });
-        await doctorNotification.save();
-      }
-
-      res.status(200).json({
-        message: "Consultation completed, funds released to doctor",
-        consultationComplete,
-      });
     } catch (error) {
-      console.error("Error during consultation completion:", error);
-      res.status(500).json({
-        message: "Error completing consultation",
-        error: error.toString(),
-        consultationComplete,
-      });
+        console.error("Error during consultation completion:", error);
+        res.status(500).json({
+            message: "Error completing consultation",
+            error: error.toString(),
+            consultationComplete,
+        });
     }
-  },
+},
+
 };
 
 export default authController;

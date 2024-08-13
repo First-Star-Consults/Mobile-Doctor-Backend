@@ -29,5 +29,7 @@ router.post('/providerSingle-prescriptions/:providerId', prescriptionController.
 // patient to get their prescription
 router.get('/prescriptions/patient/:patientId', prescriptionController.getPatientPrescriptions);
 router.get('/get-prescription/:prescriptionId', prescriptionController.getPrescription)
+// seearch to get session Id
+router.get('/get-sessionid/:doctorId/:patientId', prescriptionController.getSessionId)
 
 export default router;

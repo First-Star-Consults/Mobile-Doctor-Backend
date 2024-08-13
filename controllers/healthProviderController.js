@@ -620,7 +620,7 @@ getPatientsOfDoctor: async (req, res) => {
     const sessions = await ConsultationSession.find({ doctor: doctorId })
       .populate({
         path: 'patient',
-        select: 'firstName lastName',
+        select: 'firstName lastName profilePhoto',
       })
       .populate({
         path: 'prescription',

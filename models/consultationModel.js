@@ -29,7 +29,7 @@ const consultationSessionSchema = new mongoose.Schema({
   },
   status: { 
     type: String, 
-    enum: ['scheduled', 'in-progress', 'completed', 'cancelled'], 
+    enum: ['scheduled', 'in-progress', 'completed', 'cancelled', 'pending'], 
     default: 'scheduled' 
   },
   escrowTransaction: { 
