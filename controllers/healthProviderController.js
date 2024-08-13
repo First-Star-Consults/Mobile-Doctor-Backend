@@ -632,11 +632,9 @@ getPatientsOfDoctor: async (req, res) => {
       })
       .exec();
 
-    console.log('Sessions:', sessions); // Debugging line
 
     // Extract patient IDs
     const patientIds = [...new Set(sessions.map(session => session.patient._id.toString()))];
-    console.log('Patient IDs:', patientIds); // Debugging line
 
     // Fetch prescriptions for these patients and doctor
     const prescriptions = await Prescription.find({ patient: { $in: patientIds }, doctor: doctorId })
@@ -646,7 +644,6 @@ getPatientsOfDoctor: async (req, res) => {
       })
       .exec();
 
-    console.log('Prescriptions:', prescriptions); // Debugging line
 
     // Fetch test results for prescriptions
     const prescriptionIds = [...new Set(prescriptions.map(prescription => prescription._id.toString()))];
@@ -657,13 +654,11 @@ getPatientsOfDoctor: async (req, res) => {
       })
       .exec();
 
-    console.log('Test Results:', testResults); // Debugging line
 
     // Fetch medical records for these patients
     const medicalRecords = await MedicalRecord.find({ _id: { $in: patientIds } })
       .exec();
 
-    console.log('Medical Records:', medicalRecords); // Debugging line
 
     // Format the result
     const result = sessions.map(session => {
