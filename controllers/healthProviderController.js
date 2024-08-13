@@ -7,6 +7,7 @@ import { Reviews, Prescription, TestResult } from "../models/services.js";
 import { upload } from "../config/cloudinary.js";
 import moment from 'moment';
 import ConsultationSession from "../models/consultationModel.js";
+import MedicalRecord from "../models/medicalRecordModel.js";
 
 const healthProviderControllers = {
 
@@ -610,8 +611,6 @@ getDoctorReviews: async (req, res) => {
     }
 },
 
-
-
 getPatientsOfDoctor: async (req, res) => {
   try {
     const doctorId = req.params.doctorId;
@@ -631,9 +630,6 @@ getPatientsOfDoctor: async (req, res) => {
           { path: 'provider', select: 'name' },
         ],
       })
-      .populate({
-        path: 'medicalRecord', // Populate the medical record
-      })
       .exec();
 
     console.log('Sessions:', sessions); // Debugging line
@@ -643,7 +639,7 @@ getPatientsOfDoctor: async (req, res) => {
     console.log('Patient IDs:', patientIds); // Debugging line
 
     // Fetch prescriptions for these patients and doctor
-    const prescriptions = await Prescription.find({ patient: { $in: patientIds }, doctor: doctorId }) // Ensure prescriptions are filtered by doctorId
+    const prescriptions = await Prescription.find({ patient: { $in: patientIds }, doctor: doctorId })
       .populate({
         path: 'provider',
         select: 'name',
@@ -663,19 +659,26 @@ getPatientsOfDoctor: async (req, res) => {
 
     console.log('Test Results:', testResults); // Debugging line
 
+    // Fetch medical records for these patients
+    const medicalRecords = await MedicalRecord.find({ patient: { $in: patientIds } })
+      .exec();
+
+    console.log('Medical Records:', medicalRecords); // Debugging line
+
     // Format the result
     const result = sessions.map(session => {
       const patientPrescriptions = prescriptions.filter(prescription => prescription.patient.toString() === session.patient._id.toString());
       const patientResults = testResults.filter(result => patientPrescriptions.some(prescription => prescription._id.toString() === result.prescription.toString()));
+      const patientMedicalRecord = medicalRecords.find(record => record.patient.toString() === session.patient._id.toString()) || null;
 
       return {
         patient: {
           ...session.patient.toObject(),
-          medicalRecord: session.medicalRecord || null // Include medical record or null if not available
+          medicalRecord: patientMedicalRecord, // Include medical record or null if not available
+          status: session.status,
+          prescriptions: patientPrescriptions,
+          testResults: patientResults,
         },
-        status: session.status,
-        prescriptions: patientPrescriptions,
-        testResults: patientResults,
       };
     });
 
@@ -685,6 +688,8 @@ getPatientsOfDoctor: async (req, res) => {
     return res.status(500).json({ error: 'Error fetching data' });
   }
 }
+
+
 
 
 
