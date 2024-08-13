@@ -1536,7 +1536,7 @@ const authController = {
             const patientNotification = new Notification({
                 recipient: patient._id,
                 type: "Consultation Completed",
-                message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} has been completed.`,
+                message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} has been completed. If you require a labtest, please do and send result to doctor`,
                 relatedObject: session,
                 relatedModel: "Consultation",
             });
@@ -1547,7 +1547,7 @@ const authController = {
             const doctorNotification = new Notification({
                 recipient: doctor._id,
                 type: "Consultation Completed",
-                message: `The consultation with ${patient.firstName} ${patient.lastName} has been completed.`,
+                message: `The consultation with ${patient.firstName} ${patient.lastName} has been completed. If the patient require a labtest, upon complettion please make a pharmacy presciption for the patient is required.`,
                 relatedObject: session,
                 relatedModel: "Consultation",
             });
