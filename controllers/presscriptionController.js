@@ -607,7 +607,7 @@ getSessionId: async (req, res) => {
       }).sort({ startTime: -1 });
 
       if (!session) {
-          return res.status(404).json({ message: "No active session found for this doctor and patient." });
+          return res.status(404).json({ message: "No pending session found for this doctor and patient." });
       }
 
       res.status(200).json({
