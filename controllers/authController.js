@@ -29,6 +29,7 @@ import {
 import { Transaction } from "../models/services.js";
 import ConsultationSession from "../models/consultationModel.js";
 import Conversation from "../models/conversationModel.js";
+import { sendSystemMessage } from "../utils/sendSystemMessage.js";
 
 //i am wondering why am getting 500 when i from heroku
 
@@ -1362,6 +1363,10 @@ const authController = {
       });
       await doctorNotification.save();
 
+      // Send system message
+      const content = `The consultation session between ${doctor.firstName} and ${patient.firstName} has been canceled.`;
+      await sendSystemMessage(session.conversationId, doctor._id, patient._id, content);
+
       return res.status(200).json({
         message: "Consultation cancelled and fee refunded to patient",
       });
@@ -1374,112 +1379,6 @@ const authController = {
     }
   },
 
-  // completeConsultation: async (req, res) => {
-  //   const { sessionId } = req.body;
-  //   let consultationComplete = false;
-
-  //   try {
-  //     const session = await ConsultationSession.findById(sessionId).populate(
-  //       "patient doctor"
-  //     ); // Populate patient and doctor details
-  //     if (!session) {
-  //       return res
-  //         .status(404)
-  //         .json({ message: "Consultation session not found" });
-  //     }
-
-  //     // Check if the session is already completed to avoid repeated completions
-  //     if (session.status === "completed") {
-  //       return res.status(400).json({
-  //         message: "Consultation session is already marked as completed.",
-  //       });
-  //     }
-
-  //     // Check the providerType in the associated prescription
-  //     const prescription = await Prescription.findOne({
-  //       patient: session.patient,
-  //       status: "complete",
-  //     });
-
-  //     if (prescription && prescription.providerType === "laboratory") {
-  //       // Set session status to "in-progress" if providerType is laboratory
-  //       session.status = "pending";
-  //     } else {
-  //       // Otherwise, mark the session as completed
-  //       session.status = "completed";
-  //     }
-
-  //     session.endTime = new Date();
-  //     await session.save();
-
-  //     // Release the escrow to the doctor
-  //     const transaction = await Transaction.findById(session.escrowTransaction);
-  //     if (transaction && transaction.escrowStatus === "held") {
-  //       // Fetch the User document for the doctor
-  //       const doctorUser = await User.findById(session.doctor);
-  //       if (doctorUser) {
-  //         // Update the wallet balance
-  //         doctorUser.walletBalance += transaction.amount;
-  //         try {
-  //           await doctorUser.save(); // Save the updated User document
-  //         } catch (error) {
-  //           console.error("Error saving user wallet balance:", error);
-  //           return res
-  //             .status(500)
-  //             .json({ message: "Error updating doctor's wallet balance" });
-  //         }
-
-  //         // Update the transaction status
-  //         transaction.escrowStatus = "released";
-  //         await transaction.save();
-
-  //         consultationComplete = true;
-  //       } else {
-  //         return res.status(404).json({ message: "Doctor user not found" });
-  //       }
-  //     }
-
-  //     // Create notification for the patient
-  //     const patient = session.patient;
-  //     const doctor = session.doctor;
-
-  //     if (patient) {
-  //       const patientNotification = new Notification({
-  //         recipient: patient._id,
-  //         type: "Consultation Completed",
-  //         message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} has been completed.`,
-  //         relatedObject: session,
-  //         relatedModel: "Consultation",
-  //       });
-  //       await patientNotification.save();
-  //     }
-
-  //     // Create notification for the doctor
-
-  //     if (doctor) {
-  //       const doctorNotification = new Notification({
-  //         recipient: doctor._id,
-  //         type: "Consultation Completed",
-  //         message: `The consultation with ${patient.firstName} ${patient.lastName} has been completed.`,
-  //         relatedObject: session,
-  //         relatedModel: "Consultation",
-  //       });
-  //       await doctorNotification.save();
-  //     }
-
-  //     res.status(200).json({
-  //       message: "Consultation completed, funds released to doctor",
-  //       consultationComplete,
-  //     });
-  //   } catch (error) {
-  //     console.error("Error during consultation completion:", error);
-  //     res.status(500).json({
-  //       message: "Error completing consultation",
-  //       error: error.toString(),
-  //       consultationComplete,
-  //     });
-  //   }
-  // },
   completeConsultation: async (req, res) => {
     const { sessionId } = req.body;
     let consultationComplete = false;
@@ -1553,6 +1452,10 @@ const authController = {
             });
             await doctorNotification.save();
         }
+
+        // Send system message
+        const content = `The consultation session between ${doctor.firstName} and ${patient.firstName} has been completed.`;
+        await sendSystemMessage(session.conversationId, doctor._id, patient._id, content);
 
         res.status(200).json({
             message: "Consultation completed, funds released to doctor",
