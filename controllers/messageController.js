@@ -5,6 +5,7 @@ import User from '../models/user.js';
 import {Doctor, Pharmacy, Laboratory, Therapist} from '../models/healthProviders.js';
 import ConsultationSession from '../models/consultationModel.js';
 import { io } from '../server.js'; 
+import { upload } from '../config/cloudinary.js'; // Cloudinary upload function
 
 
 // Custom function to populate participants from various collections
@@ -30,9 +31,17 @@ const messageController = {
   sendMessage: async (req, res) => {
     try {
       const { conversationId, sender, receiver, content } = req.body;
+      let fileUrl = null;
+
+      // Check if a file is attached
+      if (req.files && req.files.attachment) {
+        const file = req.files.attachment;
+        const uploadResult = await upload(file.tempFilePath, `messages/${conversationId}`);
+        fileUrl = uploadResult.secure_url;
+      }
 
       const activeSession = await ConsultationSession.findOne({
-        $or: [{ doctor: sender, patient: receiver }, { doctor: receiver, patient: sender }], 
+        $or: [{ doctor: sender, patient: receiver }, { doctor: receiver, patient: sender }],
         status: { $in: ['scheduled', 'in-progress'] }
       });
 
@@ -44,7 +53,8 @@ const messageController = {
         conversationId,
         sender,
         receiver,
-        content
+        content,
+        fileUrl 
       });
 
       io.to(conversationId).emit('newMessage', newMessage);
@@ -69,6 +79,49 @@ const messageController = {
       return res.status(500).json({ error: error.message });
     }
   },
+
+  // sendMessage: async (req, res) => {
+  //   try {
+  //     const { conversationId, sender, receiver, content } = req.body;
+
+  //     const activeSession = await ConsultationSession.findOne({
+  //       $or: [{ doctor: sender, patient: receiver }, { doctor: receiver, patient: sender }], 
+  //       status: { $in: ['scheduled', 'in-progress'] }
+  //     });
+
+  //     if (!activeSession) {
+  //       return res.status(403).json({ message: 'No active consultation session found between the users.' });
+  //     }
+
+  //     const newMessage = await Message.create({
+  //       conversationId,
+  //       sender,
+  //       receiver,
+  //       content
+  //     });
+
+  //     io.to(conversationId).emit('newMessage', newMessage);
+
+  //     await Conversation.findByIdAndUpdate(conversationId, {
+  //       $set: { lastMessage: newMessage._id },
+  //       $currentDate: { updatedAt: true }
+  //     });
+
+  //     return res.status(201).json(newMessage);
+  //   } catch (error) {
+  //     return res.status(500).json({ error: error.message });
+  //   }
+  // },
+
+  // getMessages: async (req, res) => {
+  //   try {
+  //     const { conversationId } = req.params;
+  //     const messages = await Message.find({ conversationId }).sort('timestamp');
+  //     return res.status(200).json(messages);
+  //   } catch (error) {
+  //     return res.status(500).json({ error: error.message });
+  //   }
+  // },
 
   listConversations: async (req, res) => {
     const userId = req.params.userId;

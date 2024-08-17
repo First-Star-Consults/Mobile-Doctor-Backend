@@ -7,7 +7,9 @@ const messageSchema = new mongoose.Schema({
   receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   content: { type: String, required: true },
   timestamp: { type: Date, default: Date.now },
+  fileUrl: { type: String }, 
   seen: { type: Boolean, default: false }
+  
 });
 
 const Message = mongoose.model('Message', messageSchema);
