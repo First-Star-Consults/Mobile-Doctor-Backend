@@ -1364,7 +1364,7 @@ const authController = {
       await doctorNotification.save();
 
       // Send system message
-      const content = `The consultation session between ${doctor.firstName} and ${patient.firstName} has been canceled.`;
+      const content = `Your consultation session has been canceled.`;
       await sendSystemMessage(session.conversationId, doctor._id, patient._id, content);
 
       return res.status(200).json({
@@ -1454,7 +1454,7 @@ const authController = {
         }
 
         // Send system message
-        const content = `The consultation session between ${doctor.firstName} and ${patient.firstName} has been completed.`;
+        const content = `Your consultation session is completed.`;
         await sendSystemMessage(session.conversationId, doctor._id, patient._id, content);
 
         res.status(200).json({

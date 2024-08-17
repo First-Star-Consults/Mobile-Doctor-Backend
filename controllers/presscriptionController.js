@@ -12,6 +12,7 @@ import { upload } from "../config/cloudinary.js";
 import { sendNotificationEmail } from "../utils/nodeMailer.js";
 import Notification from "../models/notificationModel.js";
 import ConsultationSession from '../models/consultationModel.js';
+import { sendSystemMessage } from '../utils/sendSystemMessage.js';
 
 // Assuming you have an admin user with a fixed ID for receiving fees
 const adminId = "669c4f6f78766d19d1d3230b";
@@ -48,6 +49,8 @@ const prescriptionController = {
             status: { $in: ["completed", "pending"] },
         });
 
+        
+
         if (!prescription) {
             // Create a new prescription
             prescription = new Prescription({
@@ -60,6 +63,7 @@ const prescriptionController = {
                 providerType: providerType || "",
                 status: providerType === "laboratory" ? "pending" : "completed",
             });
+           
         } else {
             // Update existing prescription
             if (medicines) {
@@ -100,6 +104,12 @@ const prescriptionController = {
             relatedModel: "Prescription",
         });
         await notification.save();
+
+        
+
+        // Send system message
+        const content = `A prescription has been made for you, please go to home and view your prescription.`;
+        await sendSystemMessage(session.conversationId, doctor._id, patient._id, content);
 
         res.status(201).json({
             message: "Prescription created/updated successfully",
