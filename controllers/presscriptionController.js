@@ -12,7 +12,7 @@ import { upload } from "../config/cloudinary.js";
 import { sendNotificationEmail } from "../utils/nodeMailer.js";
 import Notification from "../models/notificationModel.js";
 import ConsultationSession from '../models/consultationModel.js';
-import { sendSystemMessage } from '../utils/sendSystemMessage.js';
+
 
 // Assuming you have an admin user with a fixed ID for receiving fees
 const adminId = "669c4f6f78766d19d1d3230b";
@@ -90,10 +90,7 @@ const prescriptionController = {
 
         await prescription.save();
 
-        // Send email notification to the patient
-        const emailSubject = "New Prescription Created";
-        const emailMessage = `Dear ${patient.firstName},\n\nYour doctor has created a new prescription for you. Please check your prescription details in the app.\n\nBest regards,\nThe Mobile Doctor Team`;
-        await sendNotificationEmail(patient.email, emailSubject, emailMessage);
+       
 
         // Create in-app notification for the patient
         const notification = new Notification({

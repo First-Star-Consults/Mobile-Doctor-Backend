@@ -29,7 +29,7 @@ import {
 import { Transaction } from "../models/services.js";
 import ConsultationSession from "../models/consultationModel.js";
 import Conversation from "../models/conversationModel.js";
-import { sendSystemMessage } from "../utils/sendSystemMessage.js";
+
 
 //i am wondering why am getting 500 when i from heroku
 
@@ -1363,9 +1363,7 @@ const authController = {
       });
       await doctorNotification.save();
 
-      // Send system message
-      const content = `Your consultation session has been canceled.`;
-      await sendSystemMessage(session.conversationId, doctor._id, patient._id, content);
+      
 
       return res.status(200).json({
         message: "Consultation cancelled and fee refunded to patient",
@@ -1453,9 +1451,7 @@ const authController = {
             await doctorNotification.save();
         }
 
-        // Send system message
-        const content = `Your consultation session is completed.`;
-        await sendSystemMessage(session.conversationId, doctor._id, patient._id, content);
+       
 
         res.status(200).json({
             message: "Consultation completed, funds released to doctor",
