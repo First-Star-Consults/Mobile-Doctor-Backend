@@ -69,13 +69,13 @@ const healthProviderControllers = {
       for (const key in req.files) {
         const image = req.files[key];
         const fileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-        const imageSize = 1024; // assuming you want to use 1 MB = 1024 KB
+        const imageSize = 9024; // assuming you want to use 8.81 MB = 9024 KB
   
         if (!fileTypes.includes(image.mimetype)) {
           return res.status(400).json({ success: false, error: 'Image formats supported: JPG, PNG, JPEG' });
         }
   
-        if (image.size / 1024 > imageSize) { // assuming size is in bytes, you need to convert to KB
+        if (image.size / 9024 > imageSize) { // assuming size is in bytes, you need to convert to KB
           return res.status(400).json({ success: false, error: `Image size should be less than ${imageSize}kb` });
         }
   
@@ -170,13 +170,13 @@ const healthProviderControllers = {
       for (const key in req.files) {
         const image = req.files[key];
         const fileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-        const imageSize = 1024; // assuming you want to use 1 MB = 1024 KB
+        const imageSize = 9024; // assuming you want to use 8.81 MB = 9024 KB
   
         if (!fileTypes.includes(image.mimetype)) {
           return res.status(400).json({ success: false, error: 'Image formats supported: JPG, PNG, JPEG' });
         }
   
-        if (image.size / 1024 > imageSize) { // assuming size is in bytes, you need to convert to KB
+        if (image.size / 9024 > imageSize) { // assuming size is in bytes, you need to convert to KB
           return res.status(400).json({ success: false, error: `Image size should be less than ${imageSize}kb` });
         }
   
