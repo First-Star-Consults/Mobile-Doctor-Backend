@@ -3,11 +3,11 @@ import 'dotenv/config.js';
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-  host: 'server122.web-hosting.com',
-  port: 465,  
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT,
   auth: {
-    user: 'noreply@mobiledoctor.firststarconsults.online',
-    pass: 'mobiledoctor$1', 
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
 });
 

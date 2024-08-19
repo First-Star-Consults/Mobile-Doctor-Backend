@@ -20,13 +20,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 const app = express();
 
-// const server = http.createServer(app); 
-// const io = new SocketIOServer(server, { 
-//   cors: {
-//     origin: "*", 
-//     methods: ["GET", "POST"]
-//   }
-// });
+
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -79,32 +73,7 @@ app.get("/", (req, res) => {
 });
 
 
-// Socket.IO logic
-// io.on('connection', (socket) => {
-//   console.log('A user connected', socket.id);
 
-//   // Join a conversation room
-//   socket.on('joinRoom', (roomId) => {
-//     socket.join(roomId);
-//     console.log(`User ${socket.id} joined room ${roomId}`);
-//   });
-
-//   // Listen for typing started
-//   socket.on('typingStarted', (roomId) => {
-//     socket.to(roomId).emit('typing', { userId: socket.id, typing: true });
-//     console.log(`User ${socket.id} is typing in room ${roomId}`);
-//   });
-
-//   // Listen for typing stopped
-//   socket.on('typingStopped', (roomId) => {
-//     socket.to(roomId).emit('typing', { userId: socket.id, typing: false });
-//     console.log(`User ${socket.id} stopped typing in room ${roomId}`);
-//   });
-
-//   socket.on('disconnect', () => {
-//     console.log('User disconnected', socket.id);
-//   });
-// });
 
 
 
