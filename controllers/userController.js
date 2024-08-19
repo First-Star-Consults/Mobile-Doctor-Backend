@@ -1,5 +1,4 @@
 // userController.js
-import crypto from 'crypto';
 import User from "../models/user.js";
 import Configuration from '../models/configModel.js';
 import { Doctor, Pharmacy, Laboratory, Therapist } from "../models/healthProviders.js";
@@ -7,6 +6,7 @@ import DeletedUser from '../models/deleteModel.js';
 // import nodemailer from 'nodemailer';
 import { upload } from "../config/cloudinary.js";
 import { sendForgetPasswordEmail } from "../utils/nodeMailer.js";
+import { generateVerificationCode } from "../utils/verficationCodeGenerator.js";
 
 const userController = {
 
@@ -180,56 +180,54 @@ const userController = {
       if (!user) {
         return res.status(404).json({ message: 'No account with that email address exists.' });
       }
-
-      // Generate a token
-      const token = crypto.randomBytes(20).toString('hex');
-
-      // Set token and expiry on user model
-      user.resetPasswordToken = token;
-      user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
-
+  
+      // Generate an OTP
+      const otp = generateVerificationCode();
+  
+      // Set OTP and expiry on user model
+      user.resetPasswordOtp = otp;
+      user.resetPasswordOtpExpires = Date.now() + 3600000; // 1 hour
+  
       await user.save();
-
-      // Prepare reset link
-      const resetLink = `http://${req.headers.host}/api/user/reset-password/${token}`;
-
-      // Use your sendVerificationEmail function
-      await sendForgetPasswordEmail(user.email, token);
-
-      res.status(200).json({ message: 'An e-mail has been sent to ' + user.email + ' with further instructions.', token: token });
+  
+      // Send the OTP to the user's email
+      await sendForgetPasswordEmail(user.email, otp);
+  
+      res.status(200).json({ message: 'An OTP has been sent to ' + user.email + ' with further instructions.' });
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: 'Unexpected error during the forgot password process' });
     }
   },
 
-  resetPasswordWithToken: async (req, res) => {
+
+  resetPasswordWithOtp: async (req, res) => {
     try {
-      const { token, newPassword } = req.body;
-
-      // Check if token and new password are provided
-      if (!token || !newPassword) {
-        return res.status(400).json({ message: 'Token and new password are required.' });
+      const { otp, newPassword } = req.body;
+  
+      // Check if OTP and new password are provided
+      if (!otp || !newPassword) {
+        return res.status(400).json({ message: 'OTP and new password are required.' });
       }
-
-      // Find user by token and check if the token is expired
-      const user = await User.findOne({ resetPasswordToken: token, resetPasswordExpires: { $gt: Date.now() } });
-
+  
+      // Find user by OTP and check if the OTP is expired
+      const user = await User.findOne({ resetPasswordOtp: otp, resetPasswordOtpExpires: { $gt: Date.now() } });
+  
       if (!user) {
-        return res.status(400).json({ message: 'Password reset token is invalid or has expired.' });
+        return res.status(400).json({ message: 'OTP is invalid or has expired.' });
       }
-
+  
       // Reset the password
       user.setPassword(newPassword, async (err) => {
         if (err) {
           console.error(err);
           return res.status(500).json({ message: 'Error resetting password' });
         }
-
-        // Clear the reset token and expiry
-        user.resetPasswordToken = undefined;
-        user.resetPasswordExpires = undefined;
-
+  
+        // Clear the OTP and expiry
+        user.resetPasswordOtp = undefined;
+        user.resetPasswordOtpExpires = undefined;
+  
         await user.save();
         res.status(200).json({ message: 'Password has been reset successfully' });
       });
@@ -238,6 +236,43 @@ const userController = {
       res.status(500).json({ message: 'Unexpected error during the password reset process' });
     }
   },
+  
+
+  // resetPasswordWithToken: async (req, res) => {
+  //   try {
+  //     const { token, newPassword } = req.body;
+
+  //     // Check if token and new password are provided
+  //     if (!token || !newPassword) {
+  //       return res.status(400).json({ message: 'Token and new password are required.' });
+  //     }
+
+  //     // Find user by token and check if the token is expired
+  //     const user = await User.findOne({ resetPasswordToken: token, resetPasswordExpires: { $gt: Date.now() } });
+
+  //     if (!user) {
+  //       return res.status(400).json({ message: 'Password reset token is invalid or has expired.' });
+  //     }
+
+  //     // Reset the password
+  //     user.setPassword(newPassword, async (err) => {
+  //       if (err) {
+  //         console.error(err);
+  //         return res.status(500).json({ message: 'Error resetting password' });
+  //       }
+
+  //       // Clear the reset token and expiry
+  //       user.resetPasswordToken = undefined;
+  //       user.resetPasswordExpires = undefined;
+
+  //       await user.save();
+  //       res.status(200).json({ message: 'Password has been reset successfully' });
+  //     });
+  //   } catch (error) {
+  //     console.error(error);
+  //     res.status(500).json({ message: 'Unexpected error during the password reset process' });
+  //   }
+  // },
 
   // To update online status
   updateOnlineStatus: async (req, res) => {

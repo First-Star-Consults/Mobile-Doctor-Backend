@@ -31,12 +31,15 @@ router.post('/map/patient/update-location', userController.updateLocation)
 router.put("/updateProfile/:userId",  userController.upDateprofile);
 // reset password and reset pasword with token
 router.post("/reset-password/:userId", userController.resetPassword);
-router.post("/resetWithToken", userController.resetPasswordWithToken);
+// router.post("/resetWithToken", userController.resetPasswordWithToken);
 //update Online Status
 router.post('/updateOnlineStatus/:userId', userController.updateOnlineStatus)
 
+
 router.post('/forgot-password', userController.forgotPassword);
-router.post('/reset-password', userController.resetPasswordWithToken);
+router.post('/reset-password-with-otp', userController.resetPasswordWithOtp);
+
+// router.post('/reset-password', userController.resetPasswordWithToken);
 
 router.delete('/:userId', userController.deleteUser);
 

@@ -1,3 +1,5 @@
+//utils/verificationGenerator.js
+
 
 export const generateVerificationCode = () => {
     // Generate a 6-digit code

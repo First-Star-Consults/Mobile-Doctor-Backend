@@ -38,21 +38,19 @@ export const sendVerificationEmail = async (to, code) => {
 
 
 
-export const sendForgetPasswordEmail = async (to, token) => {
-  const frontend_url = "https://linkProvidedByAlabo.com" 
-  const resetLink = `http://${frontend_url}/reset-password?token=${token}`;
-  
+export const sendForgetPasswordEmail = async (to, otp) => {
   const mailOptions = {
     from: '"Mobile Doctor" <noreply@mobiledoctor.firststarconsults.online>', // Updated line
     to,
-    subject: 'Password Reset',
-    text: `You have requested a password reset. Please click the following link to reset your password: ${resetLink}`,
-    html: `<p>You have requested a password reset. Please click the following link to reset your password:</p>
-           <a href="${resetLink}">Reset Password</a>`,
+    subject: 'Password Reset OTP',
+    text: `You have requested a password reset. Use the following OTP to reset your password: ${otp}`,
+    html: `<p>You have requested a password reset. Use the following OTP to reset your password:</p>
+           <h3>${otp}</h3>`, // Display the OTP in a prominent way
   };
 
   return transporter.sendMail(mailOptions);
 };
+
 
 
 export const sendNotificationEmail = async (to, subject, message) => {

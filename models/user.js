@@ -89,6 +89,12 @@ const userSchema = new mongoose.Schema({
   underInsurrance: { type: Boolean, default: false },
   verificationcode: String,
   googleId: String,
+   // ...forget password token  fields
+   resetPasswordToken: String,
+   resetPasswordExpires: Date,
+   resetPasswordOtp: String,       // New field for OTP
+   resetPasswordOtpExpires: Date,  // New field for OTP expiration
+   // ...other fields
   date: { type: Date, default: Date.now },
 });
 
