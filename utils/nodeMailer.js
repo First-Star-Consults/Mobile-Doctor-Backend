@@ -2,6 +2,16 @@
 import 'dotenv/config.js';
 import nodemailer from 'nodemailer';
 
+// const transporter = nodemailer.createTransport({
+//   host: 'server122.web-hosting.com',
+//   port: 465,  
+//   auth: {
+//     user: 'noreply@mobiledoctor.firststarconsults.online',
+//     pass: 'mobiledoctor$1', 
+//   },
+// });
+
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: process.env.SMTP_PORT,
@@ -26,7 +36,7 @@ transporter.verify(function(error, success) {
 
 export const sendVerificationEmail = async (to, code) => {
   const mailOptions = {
-    from: '"Mobile Doctor" <noreply@mobiledoctor.firststarconsults.online>',
+    from: '"Mobile Doctor" <no-reply@mobiledoctor.health>',
     to,
     subject: 'Mobile-Doctor Verification Code',
     text: `Dear Mobile Doctor User,\n\nYour verification code is: ${code}\n\nThank you for choosing Mobile Doctor.\n\nBest regards,\nMobile Doctor Team`,
@@ -40,7 +50,7 @@ export const sendVerificationEmail = async (to, code) => {
 
 export const sendForgetPasswordEmail = async (to, otp) => {
   const mailOptions = {
-    from: '"Mobile Doctor" <noreply@mobiledoctor.firststarconsults.online>', // Updated line
+    from: '"Mobile Doctor" <no-reply@mobiledoctor.health>', // Updated line
     to,
     subject: 'Password Reset OTP',
     text: `You have requested a password reset. Use the following OTP to reset your password: ${otp}`,
@@ -55,7 +65,7 @@ export const sendForgetPasswordEmail = async (to, otp) => {
 
 export const sendNotificationEmail = async (to, subject, message) => {
   const mailOptions = {
-    from: '"Mobile Doctor" <noreply@mobiledoctor.firststarconsults.online>',
+    from: '"Mobile Doctor" <no-reply@mobiledoctor.health>',
     to,
     subject,
     text: message,
