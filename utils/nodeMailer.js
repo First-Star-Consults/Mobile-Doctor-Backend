@@ -7,7 +7,7 @@ const transporter = nodemailer.createTransport({
   port: 465,  
   auth: {
     user: 'noreply@mobiledoctor.firststarconsults.online',
-    pass: 'mobiledoctor$1', // Password set directly here
+    pass: 'mobiledoctor$1', 
   },
 });
 
