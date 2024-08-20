@@ -14,7 +14,12 @@ const connect = async () => {
   console.log("Database connecting...");
 
   try {
-    await mongoose.connect(`mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.rl4rlvq.mongodb.net/`);
+    await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      dbName: 'mbdb'
+    });
+
     
 
     connectionState.connected = true;
