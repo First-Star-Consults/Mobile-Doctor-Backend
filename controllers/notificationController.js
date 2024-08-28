@@ -39,6 +39,27 @@ const notificationController = {
       res.status(500).json({ error: error.message });
     }
   },
+
+  setIsNotified: async (req, res) => {
+    try {
+      const { notificationId } = req.params;
+
+      // Find the notification and update its isNotified field
+      const updatedNotification = await Notification.findByIdAndUpdate(
+        notificationId,
+        { isNotified: true },
+        { new: true }
+      );
+
+      if (!updatedNotification) {
+        return res.status(404).json({ message: 'Notification not found' });
+      }
+
+      res.status(200).json({ message: 'Notification marked as notified', notification: updatedNotification });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
 };
 
 export default notificationController;

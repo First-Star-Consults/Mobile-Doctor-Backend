@@ -15,6 +15,7 @@ const notificationSchema = new mongoose.Schema({
     type: String, // Model name of the related object (e.g., 'Consultation', 'Prescription')
     enum: ['Consultation', 'Prescription', 'Review', 'Transaction'], // Add other relevant models here
   },
+  isNotified: { type: Boolean, default: false }
 });
 
 const Notification = mongoose.model('Notification', notificationSchema);
