@@ -79,6 +79,9 @@ router.get('/get-active-session/:patientId/:doctorId', authController.getActiveS
 //get most recent active session
 router.get('/mostRecentActiveSession/:userId', authController.getMostRecentActiveSession);
 
+// Route to check if a doctor is available
+router.get('/is-doctor-available/:doctorId', authController.checkDoctorAvailability);
+
 
 
 // Registration and login routes

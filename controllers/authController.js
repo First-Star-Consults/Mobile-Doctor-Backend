@@ -29,6 +29,7 @@ import {
 import { Transaction } from "../models/services.js";
 import ConsultationSession from "../models/consultationModel.js";
 import Conversation from "../models/conversationModel.js";
+import { isDoctorAvailable } from "../utils/isDoctorAvailableFunction.js";
 
 
 //i am wondering why am getting 500 when i from heroku
@@ -1019,27 +1020,12 @@ const authController = {
     const { patientId, doctorId } = req.body;
 
     try {
-      // Check if there is an existing active session for this doctor
-      const existingDoctorSession = await ConsultationSession.findOne({
-        doctor: doctorId,
-        status: { $in: ["scheduled", "in-progress"] },
-      });
-
       
-
-      // If the doctor is already in an active session
-      if (existingDoctorSession) {
-        // Check if the session is with the same patient
-        if (existingDoctorSession.patient.toString() === patientId) {
-            return res.status(400).json({
-                message: "You already have an active session with this doctor.",
-            });
-        } else {
-            return res.status(400).json({
-                message: "The doctor is currently in an active session with another patient. Please wait until the session is completed or canceled before starting a new one.",
-            });
+        // Check if the doctor is available or engaged in an "in-progress" session for lab results
+        const available = isDoctorAvailable(doctorId);
+        if (!available) {
+            return res.status(400).json({ message: "Doctor is currently engaged in another consultation." });
         }
-    }
 
       // Check if there is an existing active session for this patient and doctor
       const existingPatientSession = await ConsultationSession.findOne({
@@ -1153,6 +1139,23 @@ const authController = {
         message: "Error starting consultation",
         error: error.toString(),
       });
+    }
+  },
+
+  checkDoctorAvailability: async (req, res) => {
+    const { doctorId } = req.params;
+
+    try {
+      const available = isDoctorAvailable(doctorId);
+
+      if (available) {
+        return res.status(200).json({ available: true, message: "Doctor is available for a consultation." });
+      } else {
+        return res.status(400).json({ available: false, message: "Doctor is currently engaged in another consultation." });
+      }
+    } catch (error) {
+      console.error("Failed to check doctor availability:", error);
+      return res.status(500).json({ message: "Error checking doctor availability.", error: error.toString() });
     }
   },
 
@@ -1439,6 +1442,85 @@ const authController = {
  * This is the refine version of the above version
  */
 
+// completeConsultation: async (req, res) => {
+//   const { sessionId } = req.body;
+//   let consultationComplete = false;
+
+//   try {
+//       const session = await ConsultationSession.findById(sessionId).populate("patient doctor");
+//       if (!session) {
+//           return res.status(404).json({ message: "Consultation session not found" });
+//       }
+
+//       // Prevent repeated completions
+//       if (session.status === "completed") {
+//           return res.status(400).json({ message: "Consultation session is already completed." });
+//       }
+
+//       // Find the latest prescription related to this session
+//       const prescription = await Prescription.findOne({ session: sessionId }).sort({ createdAt: -1 });
+
+//       if (prescription) {
+//           if (prescription.providerType === "laboratory" && prescription.status === "pending") {
+//               // Mark session as "in-progress" for lab tests
+//               session.status = "in-progress";
+//           } else {
+//               // Complete session for pharmacy prescriptions or other cases
+//               session.status = "completed";
+//           }
+//       } else {
+//           // No prescription found, mark session as "completed"
+//           session.status = "completed";
+//       }
+
+//       session.endTime = new Date();
+//       await session.save();
+
+//       // Release escrow funds to the doctor
+//       const transaction = await Transaction.findById(session.escrowTransaction);
+//       if (transaction && transaction.escrowStatus === "held") {
+//           const doctorUser = await User.findById(session.doctor);
+//           if (doctorUser) {
+//               doctorUser.walletBalance += transaction.amount;
+//               await doctorUser.save();
+//               transaction.escrowStatus = "released";
+//               await transaction.save();
+//               consultationComplete = true;
+//           } else {
+//               return res.status(404).json({ message: "Doctor user not found" });
+//           }
+//       }
+
+//       // Notify patient and doctor
+//       const { patient, doctor } = session;
+
+//       if (patient) {
+//           await new Notification({
+//               recipient: patient._id,
+//               type: "Consultation Completed",
+//               message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} has ended. If lab tests are required, please complete them and share the results with the doctor.`,
+//               relatedObject: session,
+//               relatedModel: "Consultation",
+//           }).save();
+//       }
+
+//       if (doctor) {
+//           await new Notification({
+//               recipient: doctor._id,
+//               type: "Consultation Completed",
+//               message: `The consultation with ${patient.firstName} ${patient.lastName} is complete. If lab tests are pending, please follow up with the patient once results are received.`,
+//               relatedObject: session,
+//               relatedModel: "Consultation",
+//           }).save();
+//       }
+
+//       res.status(200).json({ message: "Consultation processed", consultationComplete });
+//   } catch (error) {
+//       console.error("Error completing consultation:", error);
+//       res.status(500).json({ message: "Error processing consultation", error: error.toString() });
+//   }
+// },
+
 completeConsultation: async (req, res) => {
   const { sessionId } = req.body;
   let consultationComplete = false;
@@ -1449,31 +1531,25 @@ completeConsultation: async (req, res) => {
           return res.status(404).json({ message: "Consultation session not found" });
       }
 
-      // Prevent repeated completions
       if (session.status === "completed") {
           return res.status(400).json({ message: "Consultation session is already completed." });
       }
 
-      // Find the latest prescription related to this session
       const prescription = await Prescription.findOne({ session: sessionId }).sort({ createdAt: -1 });
 
       if (prescription) {
           if (prescription.providerType === "laboratory" && prescription.status === "pending") {
-              // Mark session as "in-progress" for lab tests
-              session.status = "in-progress";
+              session.status = "in-progress"; // Continue the session for lab results
           } else {
-              // Complete session for pharmacy prescriptions or other cases
-              session.status = "completed";
+              session.status = "completed"; // Complete the session for pharmacy prescriptions
           }
       } else {
-          // No prescription found, mark session as "completed"
-          session.status = "completed";
+          session.status = "completed"; // No prescription found, mark session as completed
       }
 
       session.endTime = new Date();
       await session.save();
 
-      // Release escrow funds to the doctor
       const transaction = await Transaction.findById(session.escrowTransaction);
       if (transaction && transaction.escrowStatus === "held") {
           const doctorUser = await User.findById(session.doctor);
@@ -1488,7 +1564,6 @@ completeConsultation: async (req, res) => {
           }
       }
 
-      // Notify patient and doctor
       const { patient, doctor } = session;
 
       if (patient) {
@@ -1516,8 +1591,58 @@ completeConsultation: async (req, res) => {
       console.error("Error completing consultation:", error);
       res.status(500).json({ message: "Error processing consultation", error: error.toString() });
   }
-},
+}
 
+
+
+// completeConsultation: async (req, res) => {
+//   const { sessionId } = req.body;
+//   let consultationComplete = false;
+
+//   try {
+//       // Find the consultation session
+//       const session = await ConsultationSession.findById(sessionId).populate("patient doctor");
+//       if (!session) {
+//           return res.status(404).json({ message: "Consultation session not found" });
+//       }
+
+//       // Prevent repeated completions
+//       if (session.status === "completed") {
+//           return res.status(400).json({ message: "Consultation session is already completed." });
+//       }
+
+//       // Find the latest prescription related to this session
+//       const prescription = await Prescription.findOne({ session: sessionId }).sort({ createdAt: -1 });
+
+//       if (prescription) {
+//           if (prescription.providerType === "laboratory" && prescription.status === "pending") {
+//               // If laboratory request is pending, keep session in-progress
+//               session.status = "in-progress";
+//               // Release escrow funds to the doctor even if the session is not completed
+//               const transaction = await Transaction.findById(session.escrowTransaction);
+//               if (transaction && transaction.escrowStatus === "held") {
+//                   const doctorUser = await User.findById(session.doctor);
+//                   if (doctorUser) {
+//                       doctorUser.walletBalance += transaction.amount;
+//                       await doctorUser.save();
+//                       transaction.escrowStatus = "released";
+//                       await transaction.save();
+//                       consultationComplete = true;
+//                   } else {
+//                       return res.status(404).json({ message: "Doctor user not found" });
+//                   }
+//               }
+//           } else {
+//               // Complete session for pharmacy prescriptions or other cases
+//               session.status = "completed";
+//           }
+//       } else {
+//           // No prescription found, mark session as "completed"
+//           session.status = "completed";
+//       }
+
+//       session.endTime = new Date();
+//       await session
 
 
 };
