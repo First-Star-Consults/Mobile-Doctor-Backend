@@ -31,7 +31,6 @@ import ConsultationSession from "../models/consultationModel.js";
 import Conversation from "../models/conversationModel.js";
 import { isDoctorAvailable } from "../utils/isDoctorAvailableFunction.js";
 
-
 //i am wondering why am getting 500 when i from heroku
 
 const verificationcode = generateVerificationCode();
@@ -190,21 +189,17 @@ const authController = {
         user.verificationcode = null;
         await user.save();
 
-        return res
-          .status(200)
-          .json({
-            message:
-              "User is already verified. No need to resend the verification code.",
-          });
+        return res.status(200).json({
+          message:
+            "User is already verified. No need to resend the verification code.",
+        });
       }
 
       // Check if the user has a verification code
       if (!user.verificationcode) {
-        return res
-          .status(400)
-          .json({
-            message: "No verification code found. Please register again.",
-          });
+        return res.status(400).json({
+          message: "No verification code found. Please register again.",
+        });
       }
 
       // Resend the existing verification code via email
@@ -306,8 +301,6 @@ const authController = {
       })(req, res);
     });
   },
-
-  
 
   logout: async function (req, res) {
     // Check if the user is authenticated
@@ -879,7 +872,6 @@ const authController = {
     }
   },
 
-
   getActiveSession: async (req, res) => {
     const { patientId, doctorId } = req.params;
 
@@ -1020,12 +1012,13 @@ const authController = {
     const { patientId, doctorId } = req.body;
 
     try {
-      
-        // Check if the doctor is available or engaged in an "in-progress" session for lab results
-        const available = isDoctorAvailable(doctorId);
-        if (!available) {
-            return res.status(400).json({ message: "Doctor is currently engaged in another consultation." });
-        }
+      // Check if the doctor is available or engaged in an "in-progress" session for lab results
+      const available = isDoctorAvailable(doctorId);
+      if (!available) {
+        return res.status(400).json({
+          message: "Doctor is currently engaged in another consultation.",
+        });
+      }
 
       // Check if there is an existing active session for this patient and doctor
       const existingPatientSession = await ConsultationSession.findOne({
@@ -1149,18 +1142,24 @@ const authController = {
       const available = isDoctorAvailable(doctorId);
 
       if (available) {
-        return res.status(200).json({ available: true, message: "Doctor is available for a consultation." });
+        return res.status(200).json({
+          available: true,
+          message: "Doctor is available for a consultation.",
+        });
       } else {
-        return res.status(400).json({ available: false, message: "Doctor is currently engaged in another consultation." });
+        return res.status(400).json({
+          available: false,
+          message: "Doctor is currently engaged in another consultation.",
+        });
       }
     } catch (error) {
       console.error("Failed to check doctor availability:", error);
-      return res.status(500).json({ message: "Error checking doctor availability.", error: error.toString() });
+      return res.status(500).json({
+        message: "Error checking doctor availability.",
+        error: error.toString(),
+      });
     }
   },
-
-  
-  
 
   cancelConsultation: async (req, res) => {
     const { sessionId } = req.body;
@@ -1232,7 +1231,13 @@ const authController = {
       });
       await doctorNotification.save();
 
-      
+      // Emit system message to notify about consultation cancellation
+      io.emit("systemMessage", {
+        type: "cancellation",
+        message: `The consultation between Dr. ${doctor.firstName} ${doctor.lastName} and ${patient.firstName} ${patient.lastName} has been canceled.`,
+        consultationId: session._id,
+        timestamp: new Date(),
+      });
 
       return res.status(200).json({
         message: "Consultation cancelled and fee refunded to patient",
@@ -1246,305 +1251,41 @@ const authController = {
     }
   },
 
-//   completeConsultation: async (req, res) => {
-//     const { sessionId } = req.body;
-//     let consultationComplete = false;
+  completeConsultation: async (req, res) => {
+    const { sessionId } = req.body;
+    let consultationComplete = false;
 
-//     try {
-//         const session = await ConsultationSession.findById(sessionId).populate("patient doctor");
-//         if (!session) {
-//             return res.status(404).json({ message: "Consultation session not found" });
-//         }
-
-//         // Check if the session is already completed to avoid repeated completions
-//         if (session.status === "completed") {
-//             return res.status(400).json({
-//                 message: "Consultation session is already marked as completed.",
-//             });
-//         }
-
-//         // Find the latest prescription related to this session
-//         const prescription = await Prescription.findOne({ session: sessionId }).sort({ createdAt: -1 });
-
-//         if (prescription && prescription.providerType === "laboratory" && prescription.status === "pending") {
-//             // If there's a pending lab test prescription, set session status to "in-progress"
-//             session.status = "in-progress";
-//         } else {
-//             // Otherwise, mark the session as completed
-//             session.status = "completed";
-//         }
-
-//         session.endTime = new Date();
-//         await session.save();
-
-//         // Release the escrow to the doctor (with error handling for wallet balance)
-//         const transaction = await Transaction.findById(session.escrowTransaction);
-//         if (transaction && transaction.escrowStatus === "held") {
-//             const doctorUser = await User.findById(session.doctor);
-//             if (doctorUser) {
-//                 doctorUser.walletBalance += transaction.amount;
-//                 await doctorUser.save();
-
-//                 transaction.escrowStatus = "released";
-//                 await transaction.save();
-
-//                 consultationComplete = true;
-//             } else {
-//                 return res.status(404).json({ message: "Doctor user not found" });
-//             }
-//         }
-
-//         // Create notifications for patient and doctor
-//         const patient = session.patient;
-//         const doctor = session.doctor;
-
-//         if (patient) {
-//             const patientNotification = new Notification({
-//                 recipient: patient._id,
-//                 type: "Consultation Completed",
-//                 message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} has been completed. If you require a labtest, please do and send result to doctor`,
-//                 relatedObject: session,
-//                 relatedModel: "Consultation",
-//             });
-//             await patientNotification.save();
-//         }
-
-//         if (doctor) {
-//             const doctorNotification = new Notification({
-//                 recipient: doctor._id,
-//                 type: "Consultation Completed",
-//                 message: `The consultation with ${patient.firstName} ${patient.lastName} has been completed. If the patient require a labtest, upon complettion please make a pharmacy presciption for the patient is required.`,
-//                 relatedObject: session,
-//                 relatedModel: "Consultation",
-//             });
-//             await doctorNotification.save();
-//         }
-
-       
-
-//         res.status(200).json({
-//             message: "Consultation completed, funds released to doctor",
-//             consultationComplete,
-//         });
-//     } catch (error) {
-//         console.error("Error during consultation completion:", error);
-//         res.status(500).json({
-//             message: "Error completing consultation",
-//             error: error.toString(),
-//             consultationComplete,
-//         });
-//     }
-// },
-
-/**
- * 
- * this version below handles senerio where the doctor can make lab prescription and still get a new consultation while waiting for the patient to return result
- */
-
-// completeConsultation: async (req, res) => {
-//   const { sessionId } = req.body;
-//   let consultationComplete = false;
-
-//   try {
-//       const session = await ConsultationSession.findById(sessionId).populate("patient doctor");
-//       if (!session) {
-//           return res.status(404).json({ message: "Consultation session not found" });
-//       }
-
-//       // Prevent repeated completions
-//       if (session.status === "completed") {
-//           return res.status(400).json({
-//               message: "Consultation session is already marked as completed.",
-//           });
-//       }
-
-//       // Find the latest prescription related to this session
-//       const prescription = await Prescription.findOne({ session: sessionId }).sort({ createdAt: -1 });
-
-//       if (prescription) {
-//           if (prescription.providerType === "laboratory" && prescription.status === "pending") {
-//               // Mark the session as "in-progress" if there is a pending lab test
-//               session.status = "in-progress";
-//           } else if (prescription.providerType === "pharmacy" && prescription.status === "completed") {
-//               // Mark the session as "completed" if it is a pharmacy prescription
-//               session.status = "completed";
-//           } else {
-//               // Handle other cases, possibly setting a default status
-//               session.status = "completed";
-//           }
-//       } else {
-//           // If no prescription is found, assume the session can be completed
-//           session.status = "completed";
-//       }
-
-//       session.endTime = new Date();
-//       await session.save();
-
-//       // Release the escrow to the doctor (with error handling for wallet balance)
-//       const transaction = await Transaction.findById(session.escrowTransaction);
-//       if (transaction && transaction.escrowStatus === "held") {
-//           const doctorUser = await User.findById(session.doctor);
-//           if (doctorUser) {
-//               doctorUser.walletBalance += transaction.amount;
-//               await doctorUser.save();
-
-//               transaction.escrowStatus = "released";
-//               await transaction.save();
-
-//               consultationComplete = true;
-//           } else {
-//               return res.status(404).json({ message: "Doctor user not found" });
-//           }
-//       }
-
-//       // Create notifications for patient and doctor
-//       const patient = session.patient;
-//       const doctor = session.doctor;
-
-//       if (patient) {
-//           const patientNotification = new Notification({
-//               recipient: patient._id,
-//               type: "Consultation Completed",
-//               message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} has been completed. If you require a lab test, please proceed and send the results to the doctor.`,
-//               relatedObject: session,
-//               relatedModel: "Consultation",
-//           });
-//           await patientNotification.save();
-//       }
-
-//       if (doctor) {
-//           const doctorNotification = new Notification({
-//               recipient: doctor._id,
-//               type: "Consultation Completed",
-//               message: `The consultation with ${patient.firstName} ${patient.lastName} has been completed. If the patient requires a lab test, please follow up once the results are available.`,
-//               relatedObject: session,
-//               relatedModel: "Consultation",
-//           });
-//           await doctorNotification.save();
-//       }
-
-//       res.status(200).json({
-//           message: "Consultation completed, funds released to doctor",
-//           consultationComplete,
-//       });
-//   } catch (error) {
-//       console.error("Error during consultation completion:", error);
-//       res.status(500).json({
-//           message: "Error completing consultation",
-//           error: error.toString(),
-//           consultationComplete,
-//       });
-//   }
-// },
-
-/**
- * 
- * This is the refine version of the above version
- */
-
-// completeConsultation: async (req, res) => {
-//   const { sessionId } = req.body;
-//   let consultationComplete = false;
-
-//   try {
-//       const session = await ConsultationSession.findById(sessionId).populate("patient doctor");
-//       if (!session) {
-//           return res.status(404).json({ message: "Consultation session not found" });
-//       }
-
-//       // Prevent repeated completions
-//       if (session.status === "completed") {
-//           return res.status(400).json({ message: "Consultation session is already completed." });
-//       }
-
-//       // Find the latest prescription related to this session
-//       const prescription = await Prescription.findOne({ session: sessionId }).sort({ createdAt: -1 });
-
-//       if (prescription) {
-//           if (prescription.providerType === "laboratory" && prescription.status === "pending") {
-//               // Mark session as "in-progress" for lab tests
-//               session.status = "in-progress";
-//           } else {
-//               // Complete session for pharmacy prescriptions or other cases
-//               session.status = "completed";
-//           }
-//       } else {
-//           // No prescription found, mark session as "completed"
-//           session.status = "completed";
-//       }
-
-//       session.endTime = new Date();
-//       await session.save();
-
-//       // Release escrow funds to the doctor
-//       const transaction = await Transaction.findById(session.escrowTransaction);
-//       if (transaction && transaction.escrowStatus === "held") {
-//           const doctorUser = await User.findById(session.doctor);
-//           if (doctorUser) {
-//               doctorUser.walletBalance += transaction.amount;
-//               await doctorUser.save();
-//               transaction.escrowStatus = "released";
-//               await transaction.save();
-//               consultationComplete = true;
-//           } else {
-//               return res.status(404).json({ message: "Doctor user not found" });
-//           }
-//       }
-
-//       // Notify patient and doctor
-//       const { patient, doctor } = session;
-
-//       if (patient) {
-//           await new Notification({
-//               recipient: patient._id,
-//               type: "Consultation Completed",
-//               message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} has ended. If lab tests are required, please complete them and share the results with the doctor.`,
-//               relatedObject: session,
-//               relatedModel: "Consultation",
-//           }).save();
-//       }
-
-//       if (doctor) {
-//           await new Notification({
-//               recipient: doctor._id,
-//               type: "Consultation Completed",
-//               message: `The consultation with ${patient.firstName} ${patient.lastName} is complete. If lab tests are pending, please follow up with the patient once results are received.`,
-//               relatedObject: session,
-//               relatedModel: "Consultation",
-//           }).save();
-//       }
-
-//       res.status(200).json({ message: "Consultation processed", consultationComplete });
-//   } catch (error) {
-//       console.error("Error completing consultation:", error);
-//       res.status(500).json({ message: "Error processing consultation", error: error.toString() });
-//   }
-// },
-
-completeConsultation: async (req, res) => {
-  const { sessionId } = req.body;
-  let consultationComplete = false;
-
-  try {
-      const session = await ConsultationSession.findById(sessionId).populate("patient doctor");
+    try {
+      const session = await ConsultationSession.findById(sessionId).populate(
+        "patient doctor"
+      );
       if (!session) {
-          return res.status(404).json({ message: "Consultation session not found" });
+        return res
+          .status(404)
+          .json({ message: "Consultation session not found" });
       }
 
       if (session.status === "completed") {
-          return res.status(400).json({ message: "Consultation session is already completed." });
+        return res
+          .status(400)
+          .json({ message: "Consultation session is already completed." });
       }
 
-      const prescription = await Prescription.findOne({ session: sessionId }).sort({ createdAt: -1 });
+      const prescription = await Prescription.findOne({
+        session: sessionId,
+      }).sort({ createdAt: -1 });
 
       if (prescription) {
-          if (prescription.providerType === "laboratory" && prescription.status === "pending") {
-              session.status = "in-progress"; // Continue the session for lab results
-          } else {
-              session.status = "completed"; // Complete the session for pharmacy prescriptions
-          }
+        if (
+          prescription.providerType === "laboratory" &&
+          prescription.status === "pending"
+        ) {
+          session.status = "in-progress"; // Continue the session for lab results
+        } else {
+          session.status = "completed"; // Complete the session for pharmacy prescriptions
+        }
       } else {
-          session.status = "completed"; // No prescription found, mark session as completed
+        session.status = "completed"; // No prescription found, mark session as completed
       }
 
       session.endTime = new Date();
@@ -1552,99 +1293,59 @@ completeConsultation: async (req, res) => {
 
       const transaction = await Transaction.findById(session.escrowTransaction);
       if (transaction && transaction.escrowStatus === "held") {
-          const doctorUser = await User.findById(session.doctor);
-          if (doctorUser) {
-              doctorUser.walletBalance += transaction.amount;
-              await doctorUser.save();
-              transaction.escrowStatus = "released";
-              await transaction.save();
-              consultationComplete = true;
-          } else {
-              return res.status(404).json({ message: "Doctor user not found" });
-          }
+        const doctorUser = await User.findById(session.doctor);
+        if (doctorUser) {
+          doctorUser.walletBalance += transaction.amount;
+          await doctorUser.save();
+          transaction.escrowStatus = "released";
+          await transaction.save();
+          consultationComplete = true;
+        } else {
+          return res.status(404).json({ message: "Doctor user not found" });
+        }
       }
 
       const { patient, doctor } = session;
 
       if (patient) {
-          await new Notification({
-              recipient: patient._id,
-              type: "Consultation Completed",
-              message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} has ended. If lab tests are required, please complete them and share the results with the doctor.`,
-              relatedObject: session,
-              relatedModel: "Consultation",
-          }).save();
+        await new Notification({
+          recipient: patient._id,
+          type: "Consultation Completed",
+          message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} has ended. If lab tests are required, please complete them and share the results with the doctor.`,
+          relatedObject: session,
+          relatedModel: "Consultation",
+        }).save();
       }
 
       if (doctor) {
-          await new Notification({
-              recipient: doctor._id,
-              type: "Consultation Completed",
-              message: `The consultation with ${patient.firstName} ${patient.lastName} is complete. If lab tests are pending, please follow up with the patient once results are received.`,
-              relatedObject: session,
-              relatedModel: "Consultation",
-          }).save();
+        await new Notification({
+          recipient: doctor._id,
+          type: "Consultation Completed",
+          message: `The consultation with ${patient.firstName} ${patient.lastName} is complete. If lab tests are pending, please follow up with the patient once results are received.`,
+          relatedObject: session,
+          relatedModel: "Consultation",
+        }).save();
       }
 
-      res.status(200).json({ message: "Consultation processed", consultationComplete });
-  } catch (error) {
+      // Emit the system message via Socket.IO to notify about consultation completion
+      io.emit("systemMessage", {
+        type: "completion",
+        message: `The consultation with Dr. ${doctor.firstName} ${doctor.lastName} is now complete.`,
+        consultationId: session._id,
+        timestamp: new Date(),
+      });
+
+      res
+        .status(200)
+        .json({ message: "Consultation processed", consultationComplete });
+    } catch (error) {
       console.error("Error completing consultation:", error);
-      res.status(500).json({ message: "Error processing consultation", error: error.toString() });
-  }
-}
-
-
-
-// completeConsultation: async (req, res) => {
-//   const { sessionId } = req.body;
-//   let consultationComplete = false;
-
-//   try {
-//       // Find the consultation session
-//       const session = await ConsultationSession.findById(sessionId).populate("patient doctor");
-//       if (!session) {
-//           return res.status(404).json({ message: "Consultation session not found" });
-//       }
-
-//       // Prevent repeated completions
-//       if (session.status === "completed") {
-//           return res.status(400).json({ message: "Consultation session is already completed." });
-//       }
-
-//       // Find the latest prescription related to this session
-//       const prescription = await Prescription.findOne({ session: sessionId }).sort({ createdAt: -1 });
-
-//       if (prescription) {
-//           if (prescription.providerType === "laboratory" && prescription.status === "pending") {
-//               // If laboratory request is pending, keep session in-progress
-//               session.status = "in-progress";
-//               // Release escrow funds to the doctor even if the session is not completed
-//               const transaction = await Transaction.findById(session.escrowTransaction);
-//               if (transaction && transaction.escrowStatus === "held") {
-//                   const doctorUser = await User.findById(session.doctor);
-//                   if (doctorUser) {
-//                       doctorUser.walletBalance += transaction.amount;
-//                       await doctorUser.save();
-//                       transaction.escrowStatus = "released";
-//                       await transaction.save();
-//                       consultationComplete = true;
-//                   } else {
-//                       return res.status(404).json({ message: "Doctor user not found" });
-//                   }
-//               }
-//           } else {
-//               // Complete session for pharmacy prescriptions or other cases
-//               session.status = "completed";
-//           }
-//       } else {
-//           // No prescription found, mark session as "completed"
-//           session.status = "completed";
-//       }
-
-//       session.endTime = new Date();
-//       await session
-
-
+      res.status(500).json({
+        message: "Error processing consultation",
+        error: error.toString(),
+      });
+    }
+  },
 };
 
 export default authController;

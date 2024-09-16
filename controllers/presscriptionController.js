@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 import User from "../models/user.js";
 import { Prescription, Transaction, TestResult } from "../models/services.js";
 import { calculateFeesAndTransfer } from "../utils/inAppTransferService.js";
@@ -11,113 +11,122 @@ import {
 import { upload } from "../config/cloudinary.js";
 import { sendNotificationEmail } from "../utils/nodeMailer.js";
 import Notification from "../models/notificationModel.js";
-import ConsultationSession from '../models/consultationModel.js';
+import ConsultationSession from "../models/consultationModel.js";
+import { io } from "../server.js";
 
 
 // Assuming you have an admin user with a fixed ID for receiving fees
 const adminId = "669c4f6f78766d19d1d3230b";
 
 const prescriptionController = {
-
-
   makePrescriptions: async (req, res) => {
     const { doctorId } = req.params;
-    const { patientId, sessionId, medicines, labTests, diagnosis, providerType } = req.body;
+    const {
+      patientId,
+      sessionId,
+      medicines,
+      labTests,
+      diagnosis,
+      providerType,
+    } = req.body;
 
     try {
-        const doctor = await Doctor.findById(doctorId);
-        const patient = await User.findById(patientId);
-        const session = await ConsultationSession.findById(sessionId);
+      const doctor = await Doctor.findById(doctorId);
+      const patient = await User.findById(patientId);
+      const session = await ConsultationSession.findById(sessionId);
 
-        if (!doctor) {
-            return res.status(404).json({ message: "Doctor not found." });
-        }
-        if (doctor.kycVerification !== true) {
-            return res.status(403).json({ message: "Doctor not verified." });
-        }
-        if (!patient) {
-            return res.status(404).json({ message: "Patient not found." });
-        }
-        if (!session) {
-            return res.status(404).json({ message: "Consultation session not found." });
-        }
+      if (!doctor) {
+        return res.status(404).json({ message: "Doctor not found." });
+      }
+      if (doctor.kycVerification !== true) {
+        return res.status(403).json({ message: "Doctor not verified." });
+      }
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found." });
+      }
+      if (!session) {
+        return res
+          .status(404)
+          .json({ message: "Consultation session not found." });
+      }
 
-        // Find or create a new prescription
-        let prescription = await Prescription.findOne({
-            patient: patientId,
-            session: sessionId,
-            status: { $in: ["completed", "pending"] },
+      // Find or create a new prescription
+      let prescription = await Prescription.findOne({
+        patient: patientId,
+        session: sessionId,
+        status: { $in: ["completed", "pending"] },
+      });
+
+      if (!prescription) {
+        // Create a new prescription
+        prescription = new Prescription({
+          doctor: doctorId,
+          patient: patientId,
+          session: sessionId,
+          medicines: medicines || [],
+          labTests: labTests || [],
+          diagnosis: diagnosis || "",
+          providerType: providerType || "",
+          status: providerType === "laboratory" ? "pending" : "completed",
         });
-
-        
-
-        if (!prescription) {
-            // Create a new prescription
-            prescription = new Prescription({
-                doctor: doctorId,
-                patient: patientId,
-                session: sessionId,
-                medicines: medicines || [],
-                labTests: labTests || [],
-                diagnosis: diagnosis || "",
-                providerType: providerType || "",
-                status: providerType === "laboratory" ? "pending" : "completed",
-            });
-           
-        } else {
-            // Update existing prescription
-            if (medicines) {
-                prescription.medicines = medicines;
-            }
-            if (labTests) {
-                prescription.labTests = labTests;
-            }
-            if (diagnosis) {
-                prescription.diagnosis = diagnosis;
-            }
-
-            // Set the correct status based on providerType
-            if (providerType === "pharmacy") {
-                prescription.status = "completed";
-                session.status = "completed"; // Complete the session when a pharmacy prescription is made
-                await session.save();
-            } else if (providerType === "laboratory") {
-                prescription.status = "pending"; // Keep the status pending for laboratory
-            }
-
-            prescription.providerType = providerType || prescription.providerType;
+      } else {
+        // Update existing prescription
+        if (medicines) {
+          prescription.medicines = medicines;
+        }
+        if (labTests) {
+          prescription.labTests = labTests;
+        }
+        if (diagnosis) {
+          prescription.diagnosis = diagnosis;
         }
 
-        await prescription.save();
+        // Set the correct status based on providerType
+        if (providerType === "pharmacy") {
+          prescription.status = "completed";
+          session.status = "completed"; // Complete the session when a pharmacy prescription is made
+          await session.save();
+        } else if (providerType === "laboratory") {
+          prescription.status = "pending"; // Keep the status pending for laboratory
+        }
 
-       
+        prescription.providerType = providerType || prescription.providerType;
+      }
 
-        // Create in-app notification for the patient
-        const notification = new Notification({
-            recipient: patient._id,
-            type: "Prescription Created",
-            message: `A new prescription has been created for you by Dr. ${doctor.fullName}.`,
-            relatedObject: prescription._id,
-            relatedModel: "Prescription",
-        });
-        await notification.save();
+      await prescription.save();
 
-        
+      // Create in-app notification for the patient
+      const notification = new Notification({
+        recipient: patient._id,
+        type: "Prescription Created",
+        message: `A new prescription has been created for you by Dr. ${doctor.fullName}.`,
+        relatedObject: prescription._id,
+        relatedModel: "Prescription",
+      });
+      await notification.save();
 
-        res.status(201).json({
-            message: "Prescription created/updated successfully",
-            prescriptionId: prescription._id,
-            providerType: prescription.providerType,
-            status: prescription.status,
-        });
+      // Emit the system message to notify about the prescription creation
+      io.emit("systemMessage", {
+        type: "prescription",
+        message: `Dr. ${doctor.firstName} ${doctor.lastName} has created a prescription for ${patient.firstName} ${patient.lastName}.`,
+        prescriptionId: prescription._id,
+        consultationId: session._id,
+        timestamp: new Date(),
+      });
+
+      res.status(201).json({
+        message: "Prescription created/updated successfully",
+        prescriptionId: prescription._id,
+        providerType: prescription.providerType,
+        status: prescription.status,
+      });
     } catch (error) {
-        console.error("Failed to create/update prescription:", error);
-        res.status(500).json({ message: "Internal server error", error: error.message });
+      console.error("Failed to create/update prescription:", error);
+      res
+        .status(500)
+        .json({ message: "Internal server error", error: error.message });
     }
-},
-
-
-  
+  },
 
   sharePrescription: async (req, res) => {
     const { prescriptionId, providerId, providerType, deliveryOption } =
@@ -125,9 +134,14 @@ const prescriptionController = {
     const patientId = req.params.patientId;
 
     // Validate inputs
-  if (!mongoose.isValidObjectId(prescriptionId) || !mongoose.isValidObjectId(providerId)) {
-    return res.status(400).json({ message: "Invalid prescription or provider ID" });
-  }
+    if (
+      !mongoose.isValidObjectId(prescriptionId) ||
+      !mongoose.isValidObjectId(providerId)
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Invalid prescription or provider ID" });
+    }
 
     try {
       const prescription = await Prescription.findById(prescriptionId);
@@ -139,22 +153,24 @@ const prescriptionController = {
         return res.status(404).json({ message: "Patient not found" });
 
       // Perform update using findByIdAndUpdate
-    const updatedPrescription = await Prescription.findByIdAndUpdate(
-      prescriptionId,
-      {
-        $set: {
-          patientAddress: patient.address,
-          deliveryOption: deliveryOption,
-          providerType: providerType, 
-          provider: providerId, // Set provider reference
-        }
-      },
-      { new: true } // Return the updated document
-    );
+      const updatedPrescription = await Prescription.findByIdAndUpdate(
+        prescriptionId,
+        {
+          $set: {
+            patientAddress: patient.address,
+            deliveryOption: deliveryOption,
+            providerType: providerType,
+            provider: providerId, // Set provider reference
+          },
+        },
+        { new: true } // Return the updated document
+      );
 
-    if (!updatedPrescription) {
-      return res.status(500).json({ message: "Failed to update prescription" });
-    }
+      if (!updatedPrescription) {
+        return res
+          .status(500)
+          .json({ message: "Failed to update prescription" });
+      }
 
       const sharedPrescription = {
         prescription: prescription._id,
@@ -229,18 +245,18 @@ const prescriptionController = {
 
   getPatientPrescriptions: async (req, res) => {
     const patientId = req.params.patientId;
-  
+
     try {
       const prescriptions = await Prescription.find({ patient: patientId })
         .populate("doctor", "fullName profilePhoto medicalSpecialty.name")
         .sort({ createdAt: -1 });
-  
+
       if (!prescriptions.length) {
-        return res.status(404).json({ message: "No prescriptions found for this patient" });
+        return res
+          .status(404)
+          .json({ message: "No prescriptions found for this patient" });
       }
-  
-    
-  
+
       const prescriptionsWithDetails = prescriptions.map((prescription) => ({
         prescriptionId: prescription._id,
         doctorId: prescription.doctor._id,
@@ -255,246 +271,255 @@ const prescriptionController = {
         createdAt: prescription.createdAt,
         status: prescription.status,
         providerType: prescription.providerType, // Ensure providerType is included
-        providerId: prescription.provider 
+        providerId: prescription.provider,
       }));
-  
+
       // Log the transformed prescriptions
-      console.log("Transformed prescriptions with details:", prescriptionsWithDetails);
-  
+      console.log(
+        "Transformed prescriptions with details:",
+        prescriptionsWithDetails
+      );
+
       res.status(200).json(prescriptionsWithDetails);
     } catch (error) {
       console.error("Failed to fetch prescriptions:", error);
       res.status(500).json({ message: error.message });
     }
   },
-  
-  
 
   // for provider to get presction
-getProviderPrescriptions: async (req, res) => {
-  const providerId = req.params.providerId;
-  const providerType = req.body.providerType;
+  getProviderPrescriptions: async (req, res) => {
+    const providerId = req.params.providerId;
+    const providerType = req.body.providerType;
 
-  try {
-    let ProviderModel;
-    
-    switch (providerType) {
-      case "doctor":
-        ProviderModel = Doctor;
-        break;
-      case "pharmacy":
-        ProviderModel = Pharmacy;
-        break;
-      case "therapist":
-        ProviderModel = Therapist;
-        break;
-      case "laboratory":
-        ProviderModel = Laboratory;
-        break;
-      default:
-        return res.status(400).json({ message: "Invalid provider type" });
-    }
+    try {
+      let ProviderModel;
 
-    const provider = await ProviderModel.findById(providerId).populate({
-      path: 'prescriptions.prescription',
-      populate: [
-        {
-          path: 'patient',
-          model: 'User',
-          select: 'firstName lastName profilePhoto', // Populating patient details
-        },
-        {
-          path: 'doctor',
-          model: 'Doctor',
-          select: 'fullName', // Populating doctor details
+      switch (providerType) {
+        case "doctor":
+          ProviderModel = Doctor;
+          break;
+        case "pharmacy":
+          ProviderModel = Pharmacy;
+          break;
+        case "therapist":
+          ProviderModel = Therapist;
+          break;
+        case "laboratory":
+          ProviderModel = Laboratory;
+          break;
+        default:
+          return res.status(400).json({ message: "Invalid provider type" });
+      }
+
+      const provider = await ProviderModel.findById(providerId).populate({
+        path: "prescriptions.prescription",
+        populate: [
+          {
+            path: "patient",
+            model: "User",
+            select: "firstName lastName profilePhoto", // Populating patient details
+          },
+          {
+            path: "doctor",
+            model: "Doctor",
+            select: "fullName", // Populating doctor details
+          },
+        ],
+      });
+
+      if (!provider) {
+        return res.status(404).json({ message: "Provider not found" });
+      }
+
+      const prescriptionsWithDetails = provider.prescriptions.map(
+        (prescription) => {
+          const prescriptionDoc = prescription.prescription.toObject();
+          return {
+            ...prescriptionDoc,
+            prescriptionId: prescriptionDoc._id,
+            providerName: provider.name || provider.fullName, // Ensure provider name is assigned
+            patientFirstName: prescriptionDoc.patient.firstName,
+            patientLastName: prescriptionDoc.patient.lastName,
+            patientProfilePhoto: prescriptionDoc.patient.profilePhoto,
+            patientAddress: prescriptionDoc.patientAddress,
+            diagnosis: prescriptionDoc.diagnosis,
+            medicines: prescriptionDoc.medicines,
+            doctorName: prescriptionDoc.doctor.fullName,
+            createdAt: prescriptionDoc.createdAt,
+          };
         }
-      ]
-    });
+      );
 
-    if (!provider) {
-      return res.status(404).json({ message: "Provider not found" });
+      res.status(200).json(prescriptionsWithDetails);
+    } catch (error) {
+      console.error("Failed to get prescriptions:", error);
+      res.status(500).json({ message: error.message });
     }
+  },
 
-    const prescriptionsWithDetails = provider.prescriptions.map((prescription) => {
-      const prescriptionDoc = prescription.prescription.toObject();
-      return {
+  providerSinglePrescription: async (req, res) => {
+    const providerId = req.params.providerId;
+    const providerType = req.body.providerType;
+
+    try {
+      let ProviderModel;
+
+      switch (providerType.toLowerCase()) {
+        case "doctor":
+          ProviderModel = Doctor;
+          break;
+        case "pharmacy":
+          ProviderModel = Pharmacy;
+          break;
+        case "therapist":
+          ProviderModel = Therapist;
+          break;
+        case "laboratory":
+          ProviderModel = Laboratory;
+          break;
+        default:
+          return res.status(400).json({ message: "Invalid provider type" });
+      }
+
+      const provider = await ProviderModel.findById(providerId).populate({
+        path: "prescriptions.prescription",
+        populate: {
+          path: "patient",
+          model: "User",
+          select: "firstName lastName", // Populating patient details
+        },
+      });
+
+      if (!provider) {
+        return res.status(404).json({ message: "Provider not found" });
+      }
+
+      if (provider.prescriptions.length === 0) {
+        return res
+          .status(404)
+          .json({ message: "No prescriptions found for this provider" });
+      }
+
+      // Sort prescriptions by createdAt in descending order and take the first one
+      const recentPrescription = provider.prescriptions.sort(
+        (a, b) => b.prescription.createdAt - a.prescription.createdAt
+      )[0];
+
+      const prescriptionDoc = recentPrescription.prescription.toObject();
+
+      const recentPrescriptionDetails = {
         ...prescriptionDoc,
-        prescriptionId: prescriptionDoc._id,
-        providerName: provider.name || provider.fullName, // Ensure provider name is assigned
+        providerName: provider.name || provider.fullName,
         patientFirstName: prescriptionDoc.patient.firstName,
         patientLastName: prescriptionDoc.patient.lastName,
-        patientProfilePhoto: prescriptionDoc.patient.profilePhoto,
         patientAddress: prescriptionDoc.patientAddress,
         diagnosis: prescriptionDoc.diagnosis,
         medicines: prescriptionDoc.medicines,
-        doctorName: prescriptionDoc.doctor.fullName,
         createdAt: prescriptionDoc.createdAt,
       };
-    });
 
-    res.status(200).json(prescriptionsWithDetails);
-  } catch (error) {
-    console.error("Failed to get prescriptions:", error);
-    res.status(500).json({ message: error.message });
-  }
-},
-
-
-providerSinglePrescription: async (req, res) => {
-  const providerId = req.params.providerId;
-  const providerType = req.body.providerType;
-
-  try {
-    let ProviderModel;
-    
-    switch (providerType.toLowerCase()) {
-      case "doctor":
-        ProviderModel = Doctor;
-        break;
-      case "pharmacy":
-        ProviderModel = Pharmacy;
-        break;
-      case "therapist":
-        ProviderModel = Therapist;
-        break;
-      case "laboratory":
-        ProviderModel = Laboratory;
-        break;
-      default:
-        return res.status(400).json({ message: "Invalid provider type" });
+      res.status(200).json(recentPrescriptionDetails);
+    } catch (error) {
+      console.error("Failed to get the recent prescription:", error);
+      res.status(500).json({ message: error.message });
     }
+  },
 
-    const provider = await ProviderModel.findById(providerId).populate({
-      path: 'prescriptions.prescription',
-      populate: {
-        path: 'patient',
-        model: 'User',
-        select: 'firstName lastName' // Populating patient details
-      }
-    });
+  // Controller function to get the session ID based on patient and doctor details
+  getSessionId: async (req, res) => {
+    const { doctorId, patientId } = req.params;
 
-    if (!provider) {
-      return res.status(404).json({ message: "Provider not found" });
-    }
-
-    if (provider.prescriptions.length === 0) {
-      return res.status(404).json({ message: "No prescriptions found for this provider" });
-    }
-
-    // Sort prescriptions by createdAt in descending order and take the first one
-    const recentPrescription = provider.prescriptions
-      .sort((a, b) => b.prescription.createdAt - a.prescription.createdAt)[0];
-
-    const prescriptionDoc = recentPrescription.prescription.toObject();
-
-    const recentPrescriptionDetails = {
-      ...prescriptionDoc,
-      providerName: provider.name || provider.fullName,
-      patientFirstName: prescriptionDoc.patient.firstName,
-      patientLastName: prescriptionDoc.patient.lastName,
-      patientAddress: prescriptionDoc.patientAddress,
-      diagnosis: prescriptionDoc.diagnosis,
-      medicines: prescriptionDoc.medicines,
-      createdAt: prescriptionDoc.createdAt,
-    };
-
-    res.status(200).json(recentPrescriptionDetails);
-  } catch (error) {
-    console.error("Failed to get the recent prescription:", error);
-    res.status(500).json({ message: error.message });
-  }
-},
-
-// Controller function to get the session ID based on patient and doctor details
-getSessionId: async (req, res) => {
-  const { doctorId, patientId } = req.params;
-
-  try {
+    try {
       // Log IDs for debugging
       console.log("Doctor ID:", doctorId);
       console.log("Patient ID:", patientId);
 
       // Find the active or latest session for the doctor and patient
       const session = await ConsultationSession.findOne({
-          doctor: doctorId,
-          patient: patientId,
-          status: { $in: ["in-progress", "pending"] },
+        doctor: doctorId,
+        patient: patientId,
+        status: { $in: ["in-progress", "pending"] },
       }).sort({ startTime: -1 });
 
       if (!session) {
-          return res.status(404).json({ message: "No pending session found for this doctor and patient." });
+        return res
+          .status(404)
+          .json({
+            message: "No pending session found for this doctor and patient.",
+          });
       }
 
       res.status(200).json({
-          message: "Session found",
-          sessionId: session._id,
-          status: session.status,
+        message: "Session found",
+        sessionId: session._id,
+        status: session.status,
       });
-  } catch (error) {
+    } catch (error) {
       console.error("Failed to retrieve session:", error);
-      res.status(500).json({ message: "Internal server error", error: error.message });
-  }
-},
+      res
+        .status(500)
+        .json({ message: "Internal server error", error: error.message });
+    }
+  },
 
+  getPrescription: async (req, res) => {
+    const { prescriptionId } = req.params;
 
-
-
-
-
-getPrescription: async (req, res) => {
-  const { prescriptionId } = req.params;
-
-  // Validate the prescriptionId
-  if (!mongoose.isValidObjectId(prescriptionId)) {
-    return res.status(400).json({ message: "Invalid prescription ID" });
-  }
-
-  try {
-    // Find the prescription by ID
-    const prescription = await Prescription.findById(prescriptionId)
-      .populate("doctor", "fullName profilePhoto medicalSpecialty.name")
-      .populate("patient", "firstName lastName address phone ");
-
-    if (!prescription) {
-      return res.status(404).json({ message: "Prescription not found" });
+    // Validate the prescriptionId
+    if (!mongoose.isValidObjectId(prescriptionId)) {
+      return res.status(400).json({ message: "Invalid prescription ID" });
     }
 
-    // Return the found prescription
-    res.status(200).json({
-      prescriptionId: prescription._id,
-      doctor: prescription.doctor ? {
-        doctorId: prescription.doctor._id,
-        fullName: prescription.doctor.fullName,
-        profilePhoto: prescription.doctor.profilePhoto,
-        medicalSpecialty: prescription.doctor.medicalSpecialty.name,
-      } : null,
-      patient: prescription.patient ? {
-        patientId: prescription.patient._id,
-        firstName: prescription.patient.firstName,
-        lastName: prescription.patient.lastName,
-        address: prescription.patient.address, // Add address
-        phone: prescription.patient.phone // Add phone
-      } : null,
-      patientAddress: prescription.patientAddress,
-      diagnosis: prescription.diagnosis,
-      medicines: prescription.medicines,
-      labTests: prescription.labTests,
-      deliveryOption: prescription.deliveryOption,
-      createdAt: prescription.createdAt,
-      status: prescription.status,
-      approved: prescription.approved,
-      totalCost: prescription.totalCost,
-      providerType: prescription.providerType,
-      provider: prescription.provider
-    });
-  } catch (error) {
-    console.error("Failed to fetch prescription:", error);
-    res.status(500).json({ message: "Internal server error", error: error.message });
-  }
-},
+    try {
+      // Find the prescription by ID
+      const prescription = await Prescription.findById(prescriptionId)
+        .populate("doctor", "fullName profilePhoto medicalSpecialty.name")
+        .populate("patient", "firstName lastName address phone ");
 
+      if (!prescription) {
+        return res.status(404).json({ message: "Prescription not found" });
+      }
 
-
+      // Return the found prescription
+      res.status(200).json({
+        prescriptionId: prescription._id,
+        doctor: prescription.doctor
+          ? {
+              doctorId: prescription.doctor._id,
+              fullName: prescription.doctor.fullName,
+              profilePhoto: prescription.doctor.profilePhoto,
+              medicalSpecialty: prescription.doctor.medicalSpecialty.name,
+            }
+          : null,
+        patient: prescription.patient
+          ? {
+              patientId: prescription.patient._id,
+              firstName: prescription.patient.firstName,
+              lastName: prescription.patient.lastName,
+              address: prescription.patient.address, // Add address
+              phone: prescription.patient.phone, // Add phone
+            }
+          : null,
+        patientAddress: prescription.patientAddress,
+        diagnosis: prescription.diagnosis,
+        medicines: prescription.medicines,
+        labTests: prescription.labTests,
+        deliveryOption: prescription.deliveryOption,
+        createdAt: prescription.createdAt,
+        status: prescription.status,
+        approved: prescription.approved,
+        totalCost: prescription.totalCost,
+        providerType: prescription.providerType,
+        provider: prescription.provider,
+      });
+    } catch (error) {
+      console.error("Failed to fetch prescription:", error);
+      res
+        .status(500)
+        .json({ message: "Internal server error", error: error.message });
+    }
+  },
 
   // Function to add costing details
   addCosting: async (req, res) => {
@@ -685,24 +710,23 @@ getPrescription: async (req, res) => {
 
       const healthProvider = await User.findById(providerId);
 
-      
-
-
       // Find the prescription and populate the provider
-    const prescription = await Prescription.findById(prescriptionId)
-    .populate('provider');
+      const prescription = await Prescription.findById(prescriptionId).populate(
+        "provider"
+      );
 
-    if (!prescription) {
-      return res.status(404).json({ message: "Prescription not found" });
-      
-    }
+      if (!prescription) {
+        return res.status(404).json({ message: "Prescription not found" });
+      }
 
-    let providerName = null;
-    if (prescription.provider) {
-      const providerId = prescription.provider._id;
-      const provider = await Pharmacy.findById(providerId) || await Laboratory.findById(providerId);
-      providerName = provider ? provider.name : null;
-    }
+      let providerName = null;
+      if (prescription.provider) {
+        const providerId = prescription.provider._id;
+        const provider =
+          (await Pharmacy.findById(providerId)) ||
+          (await Laboratory.findById(providerId));
+        providerName = provider ? provider.name : null;
+      }
 
       // Handle file upload
       if (!req.files || !req.files.testResult) {
@@ -780,21 +804,21 @@ getPrescription: async (req, res) => {
   // Function to update the status of a prescription
   updatePrescriptionStatus: async (req, res) => {
     const { prescriptionId, status } = req.body;
-  
+
     if (!["approved", "declined", "completed"].includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
-  
+
     try {
       // Fetch the prescription
       const prescription = await Prescription.findById(prescriptionId);
       if (!prescription)
         return res.status(404).json({ message: "Prescription not found" });
-  
+
       // Update the status of the prescription
       prescription.status = status;
       await prescription.save();
-  
+
       // Handle transaction state if needed
       const transaction = await Transaction.findOne({
         prescription: prescriptionId,
@@ -803,12 +827,12 @@ getPrescription: async (req, res) => {
         transaction.status = status === "completed" ? "success" : "pending";
         await transaction.save();
       }
-  
+
       // Fetch the patient details for notification
       const patient = await User.findById(prescription.patient);
       if (!patient)
         return res.status(404).json({ message: "Patient not found" });
-  
+
       // Create an in-app notification for the patient
       const notification = new Notification({
         recipient: patient._id,
@@ -816,10 +840,10 @@ getPrescription: async (req, res) => {
         message: `The status of your prescription has been updated to "${status}". Please check your prescription details for more information.`,
         timestamp: new Date(),
         relatedObject: prescription._id,
-        relatedModel: 'Prescription',
+        relatedModel: "Prescription",
       });
       await notification.save();
-  
+
       res.status(200).json({ message: `Prescription ${status} successfully` });
     } catch (error) {
       console.error("Error updating prescription status:", error);
