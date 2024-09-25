@@ -8,6 +8,7 @@ import {
   Pharmacy,
   Laboratory,
 } from "../models/healthProviders.js";
+import Message from "../models/messageModel.js";
 import { upload } from "../config/cloudinary.js";
 import { sendNotificationEmail } from "../utils/nodeMailer.js";
 import Notification from "../models/notificationModel.js";
@@ -104,6 +105,21 @@ const prescriptionController = {
         relatedModel: "Prescription",
       });
       await notification.save();
+
+       // Retrieve or create the conversation between the doctor and patient
+    let conversation = await Conversation.findOne({
+      participants: { $all: [doctorId, patientId] },
+    });
+
+
+    // Send automatic message within the conversation
+    const message = new Message({
+      conversationId: conversation._id, // Use conversation._id instead of sessionId
+      sender: doctorId,
+      receiver: patientId,
+      content: 'Your doctor has issued a new prescription.',
+    });
+    await message.save();
 
       // Emit the system message to notify about the prescription creation
       io.emit("systemMessage", {

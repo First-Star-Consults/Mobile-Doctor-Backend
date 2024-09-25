@@ -8,7 +8,8 @@ const messageSchema = new mongoose.Schema({
   content: { type: String},
   timestamp: { type: Date, default: Date.now },
   fileUrl: { type: String }, 
-  seen: { type: Boolean, default: false }
+  seen: { type: Boolean, default: false },
+  isSystemMessage: { type: Boolean, default: false }
   
 });
 

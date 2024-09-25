@@ -4,6 +4,7 @@ import { io } from "../server.js";
 import { sendNotificationEmail } from "../utils/nodeMailer.js";
 import Notification from "../models/notificationModel.js";
 import { Prescription } from "../models/services.js";
+import Message from "../models/messageModel.js";
 
 import passport from "passport";
 import User from "../models/user.js";
@@ -1109,6 +1110,16 @@ const authController = {
       });
       await notification.save();
 
+      // Send system message in chat
+      const systemMessage = new Message({
+        conversationId: conversation._id,
+        sender: doctorId,
+        receiver: patientId,
+        content: "Your consultation has started.",
+        isSystemMessage: true,
+      });
+      await systemMessage.save();
+
       // Retrieve the doctor's email from the User schema
       const doctorUser = await User.findById(doctorId);
       if (doctorUser && doctorUser.email) {
@@ -1177,6 +1188,15 @@ const authController = {
 
       console.log("Session found with escrowTransaction:", session);
 
+      // Assuming conversationId is part of the session model
+      const conversationId = session.conversationId;
+
+      if (!conversationId) {
+        return res
+          .status(400)
+          .json({ message: "Conversation ID not found for this session" });
+      }
+
       // Ensure that the escrowTransaction exists and is in the 'held' state
       if (
         !session.escrowTransaction ||
@@ -1231,6 +1251,16 @@ const authController = {
       });
       await doctorNotification.save();
 
+      // System message notification in chat:
+      const systemMessage = new Message({
+        sender: null, // or system ID if needed
+        receiver: patient._id,
+        content: "Your consultation has been canceled.",
+        conversationId: session.conversationId, // Now using the actual conversationId from the session
+        isSystemMessage: true, // Mark as system message
+      });
+      await systemMessage.save();
+
       // Emit system message to notify about consultation cancellation
       io.emit("systemMessage", {
         type: "cancellation",
@@ -1269,6 +1299,15 @@ const authController = {
         return res
           .status(400)
           .json({ message: "Consultation session is already completed." });
+      }
+
+      // Assuming conversationId is part of the session model
+      const conversationId = session.conversationId;
+
+      if (!conversationId) {
+        return res
+          .status(400)
+          .json({ message: "Conversation ID not found for this session" });
       }
 
       const prescription = await Prescription.findOne({
@@ -1326,6 +1365,16 @@ const authController = {
           relatedModel: "Consultation",
         }).save();
       }
+
+      // Send a message in the correct conversation
+      const systemMessage = new Message({
+        sender: doctor._id,
+        recipient: patient._id,
+        content: "Your consultation has been completed.",
+        conversationId: conversationId,
+        isSystemMessage: true,
+      });
+      await systemMessage.save();
 
       // Emit the system message via Socket.IO to notify about consultation completion
       io.emit("systemMessage", {

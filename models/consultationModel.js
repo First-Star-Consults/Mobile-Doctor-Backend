@@ -45,6 +45,11 @@ const consultationSessionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Prescription',
     required: false // Reference to a Prescription model if you have one
+  },
+  conversationId: { // New field to track conversation associated with the session
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Conversation',
+    required: false // Assuming conversation isn't always necessary
   }
 }, {
   timestamps: true // Automatically manage createdAt and updatedAt timestamps
