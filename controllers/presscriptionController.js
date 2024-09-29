@@ -13,6 +13,7 @@ import { upload } from "../config/cloudinary.js";
 import { sendNotificationEmail } from "../utils/nodeMailer.js";
 import Notification from "../models/notificationModel.js";
 import ConsultationSession from "../models/consultationModel.js";
+import Conversation from "../models/conversationModel.js";
 import { io } from "../server.js";
 
 
