@@ -118,7 +118,7 @@ const prescriptionController = {
       conversationId: conversation._id, // Use conversation._id instead of sessionId
       sender: doctorId,
       receiver: patientId,
-      content: 'Your doctor has issued a new prescription.',
+      content: 'A new prescription has been issued',
     });
     await message.save();
 

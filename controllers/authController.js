@@ -1308,6 +1308,7 @@ const authController = {
           .json({ message: "Consultation session is already completed." });
       }
 
+      const { patient, doctor } = session;
 
       // Assuming conversationId is part of the session model
       const conversationId = session.conversationId;
@@ -1364,7 +1365,7 @@ const authController = {
         }
       }
 
-      const { patient, doctor } = session;
+      
 
       if (patient) {
         await new Notification({
