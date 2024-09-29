@@ -1338,9 +1338,9 @@ const authController = {
       if (prescription) {
         if (
           prescription.providerType === "laboratory" &&
-          prescription.status === "pending"
+          prescription.status === "in-progress"
         ) {
-          session.status = "in-progress"; // Continue the session for lab results
+          session.status = "pending"; // Continue the session for lab results
         } else {
           session.status = "completed"; // Complete the session for pharmacy prescriptions
         }

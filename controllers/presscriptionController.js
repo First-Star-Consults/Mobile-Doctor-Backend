@@ -89,7 +89,7 @@ const prescriptionController = {
           session.status = "completed"; // Complete the session when a pharmacy prescription is made
           await session.save();
         } else if (providerType === "laboratory") {
-          prescription.status = "pending"; // Keep the status pending for laboratory
+          session.status = "in-progress"; // Keep the status pending for laboratory
         }
 
         prescription.providerType = providerType || prescription.providerType;

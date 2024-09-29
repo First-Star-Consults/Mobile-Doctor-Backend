@@ -563,7 +563,7 @@ getDoctorReviews: async (req, res) => {
             { 
                 $match: { 
                     doctor: new mongoose.Types.ObjectId(doctorId), 
-                    status: 'completed', 
+                    status: 'completed' || 'in-progress', 
                     createdAt: { $gte: startOfDay, $lt: endOfDay }
                 }
             },
@@ -582,7 +582,7 @@ getDoctorReviews: async (req, res) => {
         // Count today's patients attended to
         const todayPatientsCount = await ConsultationSession.countDocuments({
             doctor: doctorId,
-            status: 'completed',
+            status: 'completed' || 'in-progress',
             createdAt: { $gte: startOfDay, $lt: endOfDay }
         });
 
