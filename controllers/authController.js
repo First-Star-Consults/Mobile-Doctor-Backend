@@ -1090,6 +1090,7 @@ const authController = {
         patient: patientId,
         status: "scheduled",
         escrowTransaction: transaction._id,
+        conversationId: conversation._id,
         startTime: new Date(),
       });
       await newSession.save();
@@ -1188,14 +1189,7 @@ const authController = {
 
       console.log("Session found with escrowTransaction:", session);
 
-      // Assuming conversationId is part of the session model
-      const conversationId = session.conversationId;
-
-      if (!conversationId) {
-        return res
-          .status(400)
-          .json({ message: "Conversation ID not found for this session" });
-      }
+      
 
       // Ensure that the escrowTransaction exists and is in the 'held' state
       if (
@@ -1251,6 +1245,15 @@ const authController = {
       });
       await doctorNotification.save();
 
+      // Assuming conversationId is part of the session model
+      const conversationId = session.conversationId;
+
+      if (!conversationId) {
+        return res
+          .status(400)
+          .json({ message: "Conversation ID not found for this session, System Message won't show in chat" });
+      }
+
       // System message notification in chat:
       const systemMessage = new Message({
         sender: null, // or system ID if needed
@@ -1301,14 +1304,7 @@ const authController = {
           .json({ message: "Consultation session is already completed." });
       }
 
-      // Assuming conversationId is part of the session model
-      const conversationId = session.conversationId;
-
-      if (!conversationId) {
-        return res
-          .status(400)
-          .json({ message: "Conversation ID not found for this session" });
-      }
+      
 
       const prescription = await Prescription.findOne({
         session: sessionId,
@@ -1364,6 +1360,15 @@ const authController = {
           relatedObject: session,
           relatedModel: "Consultation",
         }).save();
+      }
+
+      // Assuming conversationId is part of the session model
+      const conversationId = session.conversationId;
+
+      if (!conversationId) {
+        return res
+          .status(400)
+          .json({ message: "Conversation ID not found for this session. System Message wont show in chat" });
       }
 
       // Send a message in the correct conversation
