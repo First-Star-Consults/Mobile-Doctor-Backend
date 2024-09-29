@@ -1212,6 +1212,25 @@ const authController = {
           .json({ message: "Patient not found for refund" });
       }
 
+       // Assuming conversationId is part of the session model
+       const conversationId = session.conversationId;
+
+       if (!conversationId) {
+         return res
+           .status(400)
+           .json({ message: "Conversation ID not found for this session, System Message won't show in chat" });
+       }
+
+       // System message notification in chat:
+      const systemMessage = new Message({
+        sender: null, // or system ID if needed
+        receiver: patient._id,
+        content: "Your consultation has been canceled.",
+        conversationId: session.conversationId, // Now using the actual conversationId from the session
+        isSystemMessage: true, // Mark as system message
+      });
+      await systemMessage.save();
+
       // Refund the consultation fee to the patient's wallet
       patient.walletBalance += session.escrowTransaction.amount;
       await patient.save();
@@ -1245,24 +1264,9 @@ const authController = {
       });
       await doctorNotification.save();
 
-      // Assuming conversationId is part of the session model
-      const conversationId = session.conversationId;
+     
 
-      if (!conversationId) {
-        return res
-          .status(400)
-          .json({ message: "Conversation ID not found for this session, System Message won't show in chat" });
-      }
-
-      // System message notification in chat:
-      const systemMessage = new Message({
-        sender: null, // or system ID if needed
-        receiver: patient._id,
-        content: "Your consultation has been canceled.",
-        conversationId: session.conversationId, // Now using the actual conversationId from the session
-        isSystemMessage: true, // Mark as system message
-      });
-      await systemMessage.save();
+      
 
       // Emit system message to notify about consultation cancellation
       io.emit("systemMessage", {
@@ -1303,6 +1307,26 @@ const authController = {
           .status(400)
           .json({ message: "Consultation session is already completed." });
       }
+
+
+      // Assuming conversationId is part of the session model
+      const conversationId = session.conversationId;
+
+      if (!conversationId) {
+        return res
+          .status(400)
+          .json({ message: "Conversation ID not found for this session. System Message wont show in chat" });
+      }
+
+      // Send a message in the correct conversation
+      const systemMessage = new Message({
+        sender: doctor._id,
+        recipient: patient._id,
+        content: "Your consultation has been completed.",
+        conversationId: conversationId,
+        isSystemMessage: true,
+      });
+      await systemMessage.save();
 
       
 
@@ -1362,24 +1386,7 @@ const authController = {
         }).save();
       }
 
-      // Assuming conversationId is part of the session model
-      const conversationId = session.conversationId;
-
-      if (!conversationId) {
-        return res
-          .status(400)
-          .json({ message: "Conversation ID not found for this session. System Message wont show in chat" });
-      }
-
-      // Send a message in the correct conversation
-      const systemMessage = new Message({
-        sender: doctor._id,
-        recipient: patient._id,
-        content: "Your consultation has been completed.",
-        conversationId: conversationId,
-        isSystemMessage: true,
-      });
-      await systemMessage.save();
+      
 
       // Emit the system message via Socket.IO to notify about consultation completion
       io.emit("systemMessage", {
