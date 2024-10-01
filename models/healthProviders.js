@@ -78,6 +78,7 @@ const pharmacySchema = new mongoose.Schema({
   kycVerification: { type: Boolean, default: false },
   location: locationSchema,
   address: { type: String, default: null },
+  phone: { type: String, default: null },
   recommendations: [
     {
       doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
@@ -117,6 +118,7 @@ const therapistSchema = new mongoose.Schema({
   kycVerification: { type: Boolean, default: false },
   location: locationSchema,
   address: { type: String, default: null },
+  phone: { type: String, default: null },
   recommendations: [
     {
       doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
@@ -155,6 +157,7 @@ const laboratorySchema = new mongoose.Schema({
   sponsored: { type: Boolean, default: false },
   location: locationSchema,
   address: { type: String, default: null },
+  phone: { type: String, default: null },
   recommendations: [
     {
       doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },

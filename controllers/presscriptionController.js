@@ -260,42 +260,60 @@ const prescriptionController = {
     }
   },
 
+
+  //at this point prescription has been share with a particular provider and patient should be able to get provider details
   getPatientPrescriptions: async (req, res) => {
     const patientId = req.params.patientId;
 
     try {
-      const prescriptions = await Prescription.find({ patient: patientId })
-        .populate("doctor", "fullName profilePhoto medicalSpecialty.name")
-        .sort({ createdAt: -1 });
+       // Fetch prescriptions, populate doctor details
+       const prescriptions = await Prescription.find({ patient: patientId })
+       .populate("doctor", "fullName profilePhoto medicalSpecialty.name")
+       .sort({ createdAt: -1 });
 
-      if (!prescriptions.length) {
-        return res
-          .status(404)
-          .json({ message: "No prescriptions found for this patient" });
-      }
+   if (!prescriptions.length) {
+       return res.status(404).json({ message: "No prescriptions found for this patient" });
+   }
 
-      const prescriptionsWithDetails = prescriptions.map((prescription) => ({
-        prescriptionId: prescription._id,
-        doctorId: prescription.doctor._id,
-        doctor: {
-          fullName: prescription.doctor.fullName,
-          profilePhoto: prescription.doctor.profilePhoto,
-          medicalSpecialty: prescription.doctor.medicalSpecialty,
-        },
-        diagnosis: prescription.diagnosis,
-        medicines: prescription.medicines,
-        labTests: prescription.labTests,
-        createdAt: prescription.createdAt,
-        status: prescription.status,
-        providerType: prescription.providerType, // Ensure providerType is included
-        providerId: prescription.provider,
-      }));
 
-      // Log the transformed prescriptions
-      console.log(
-        "Transformed prescriptions with details:",
-        prescriptionsWithDetails
-      );
+      // Prepare an array to hold transformed prescriptions with provider details
+      const prescriptionsWithDetails = await Promise.all(
+        prescriptions.map(async (prescription) => {
+            let providerDetails = null;
+
+            // Fetch the provider based on the providerType
+            if (prescription.providerType === 'pharmacy') {
+                providerDetails = await Pharmacy.findById(prescription.provider)
+                    .select('name address phone');
+            } else if (prescription.providerType === 'laboratory') {
+                providerDetails = await Laboratory.findById(prescription.provider)
+                    .select('name address phone');
+            }
+
+            // Transform the prescription data with provider and doctor details
+            return {
+                prescriptionId: prescription._id,
+                doctorId: prescription.doctor._id,
+                doctor: {
+                    fullName: prescription.doctor.fullName,
+                    profilePhoto: prescription.doctor.profilePhoto,
+                    medicalSpecialty: prescription.doctor.medicalSpecialty,
+                },
+                diagnosis: prescription.diagnosis,
+                medicines: prescription.medicines,
+                labTests: prescription.labTests,
+                createdAt: prescription.createdAt,
+                status: prescription.status,
+                providerType: prescription.providerType,
+                provider: providerDetails ? {
+                    name: providerDetails.name,
+                    address: providerDetails.address,
+                    phoneNumber: providerDetails.phone,
+                } : null
+            };
+        })
+    );
+
 
       res.status(200).json(prescriptionsWithDetails);
     } catch (error) {

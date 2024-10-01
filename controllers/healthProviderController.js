@@ -117,12 +117,10 @@ const healthProviderControllers = {
         registrationCouncil,
         country,
         address,
+        phone,
         about,
       } = req.body;
   
-      // Log providerType and providerId
-      console.log('Provider Type:', providerType);
-      console.log('Provider ID:', providerId);
   
       // Determine the appropriate model based on providerType
       let Model;
@@ -157,6 +155,7 @@ const healthProviderControllers = {
       foundUser.registrationCouncil = registrationCouncil || foundUser.registrationCouncil;
       foundUser.country = country || foundUser.country;
       foundUser.address = address || foundUser.address;
+      foundUser.phone = phone || foundUser.phone;
       foundUser.about = about || foundUser.about;
   
       // Save the updated user profile
@@ -563,7 +562,7 @@ getDoctorReviews: async (req, res) => {
             { 
                 $match: { 
                     doctor: new mongoose.Types.ObjectId(doctorId), 
-                    status: 'completed' || 'in-progress', 
+                    status: 'completed' || 'in-progressn', 
                     createdAt: { $gte: startOfDay, $lt: endOfDay }
                 }
             },
