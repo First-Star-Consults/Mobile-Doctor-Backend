@@ -268,7 +268,7 @@ const prescriptionController = {
     try {
        // Fetch prescriptions, populate doctor details
        const prescriptions = await Prescription.find({ patient: patientId })
-       .populate("doctor", "fullName profilePhoto medicalSpecialty.name")
+       .populate("doctor", "fullName images.profilePhoto medicalSpecialty.name")
        .sort({ createdAt: -1 });
 
    if (!prescriptions.length) {
@@ -296,7 +296,7 @@ const prescriptionController = {
                 doctorId: prescription.doctor._id,
                 doctor: {
                     fullName: prescription.doctor.fullName,
-                    profilePhoto: prescription.doctor.profilePhoto,
+                    profilePhoto: prescription.doctor.images.profilePhoto,
                     medicalSpecialty: prescription.doctor.medicalSpecialty,
                 },
                 diagnosis: prescription.diagnosis,
