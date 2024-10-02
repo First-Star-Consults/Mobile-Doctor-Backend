@@ -18,7 +18,7 @@ import { io } from "../server.js";
 
 
 // Assuming you have an admin user with a fixed ID for receiving fees
-const adminId = "669c4f6f78766d19d1d3230b";
+const adminId = process.env.ADMIN_ID;
 
 const prescriptionController = {
   makePrescriptions: async (req, res) => {

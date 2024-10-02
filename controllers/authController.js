@@ -1258,7 +1258,7 @@ const authController = {
       const doctorNotification = new Notification({
         recipient: doctor,
         type: "Canceled Consultation",
-        message: `Your consultation session with patient: ${patient.firstName} has been canceled.`,
+        message: `Your consultation session with ${patient.firstName} has been canceled.`,
         relatedObject: session,
         relatedModel: "Consultation",
       });
