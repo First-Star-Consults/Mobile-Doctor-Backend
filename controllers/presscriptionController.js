@@ -119,6 +119,7 @@ const prescriptionController = {
       sender: doctorId,
       receiver: patientId,
       content: 'A new prescription has been issued',
+      isSystemMessage: true,
     });
     await message.save();
 

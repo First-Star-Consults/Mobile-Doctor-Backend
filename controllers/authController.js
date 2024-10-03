@@ -1105,7 +1105,7 @@ const authController = {
       const notification = new Notification({
         recipient: doctorId,
         type: "Consultation",
-        message: `Dear Doctor,\n\n You have a new consultation session scheduled with patient ${patient.username}.`,
+        message: `Dear Doctor,\n\n You have a new consultation session scheduled with patient ${patient.firstName} ${patient.lastName}.`,
         relatedObject: doctorId,
         relatedModel: "Consultation",
       });
