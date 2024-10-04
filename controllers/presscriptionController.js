@@ -644,6 +644,7 @@ const prescriptionController = {
           adminFee,
           totalAmount,
         },
+        approved: prescription.approved,
       });
     } catch (error) {
       console.error("Error fetching costing details:", error);
