@@ -33,6 +33,7 @@ const prescriptionSchema = new mongoose.Schema({
 const reviewSchema = new mongoose.Schema({
   doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  consultationSession: { type: mongoose.Schema.Types.ObjectId, ref: 'ConsultationSession'},
   rating: { type: Number },
   comment: { type: String },
 });

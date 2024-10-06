@@ -224,10 +224,29 @@ const healthProviderControllers = {
         return res.status(404).json({ success: false, message: "Doctor not found" });
       }
 
+      // Find the most recent completed consultation session for this doctor and patient
+    const session = await ConsultationSession.findOne({
+      doctor: doctorId,
+      patient: patientId,
+      status: 'completed', // Only find sessions that have been completed
+    }).sort({ endTime: -1 }); // Sort by endTime to get the most recent session
+
+    if (!session) {
+      return res.status(404).json({ success: false, message: "No completed consultation session found between this doctor and patient." });
+    }
+
+
+    // Check if a review already exists for this session
+    const existingReview = await Reviews.findOne({ consultationSession: session._id });
+    if (existingReview) {
+      return res.status(400).json({ success: false, message: "Review already submitted for this session." });
+    }
+
       // Create a new review
       const review = await Reviews.create({
         doctor: doctorId,
         patient: patientId,
+        consultationSession: session._id,
         rating,
         comment,
       });
