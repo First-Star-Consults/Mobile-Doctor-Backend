@@ -659,15 +659,6 @@ const prescriptionController = {
 
     try {
       const prescription = await Prescription.findById(prescriptionId);
-      const patient = await User.findById(patientId);
-
-
-       // Check patient's wallet balance
-       if (patient.walletBalance < consultationFee) {
-        return res.status(400).json({
-          message: "Insufficient wallet balance.",
-        });
-      }
 
       if (!prescription)
         return res.status(404).json({ message: "Prescription not found" });
@@ -678,9 +669,6 @@ const prescriptionController = {
           .status(400)
           .json({ error: "This prescription has already been approved." });
       }
-
-
-      
 
       const amount = prescription.totalCost;
 
