@@ -1371,7 +1371,7 @@ const authController = {
         await new Notification({
           recipient: patient._id,
           type: "Consultation Completed",
-          message: `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} has ended. If lab tests are required, please complete them and share the results with the doctor.`,
+          message: `Your consultation with Dr. ${doctor.fullName} has ended. If lab tests are required, please complete them and share the results with the doctor.`,
           relatedObject: session,
           relatedModel: "Consultation",
         }).save();
@@ -1381,7 +1381,7 @@ const authController = {
         await new Notification({
           recipient: doctor._id,
           type: "Consultation Completed",
-          message: `The consultation with ${patient.firstName} ${patient.lastName} is complete. If lab tests are pending, please follow up with the patient once results are received.`,
+          message: `The consultation with ${patient.firstName} ${patient.lastName} is completed. If lab test ir required, please follow up.`,
           relatedObject: session,
           relatedModel: "Consultation",
         }).save();
