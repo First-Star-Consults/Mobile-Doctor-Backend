@@ -1,9 +1,12 @@
 import Notification from '../models/notificationModel.js';
+import User from '../models/user.js';
+import { sendPushNotification } from '../utils/pushNotification.js';
 
 const notificationController = {
     
   createNotification: async (recipient, sender, type, message, relatedObject, relatedModel) => {
     try {
+      const user = User.find({_id: recipient})
       const notification = new Notification({
         recipient,
         sender,
@@ -13,6 +16,7 @@ const notificationController = {
         relatedModel,
       });
       await notification.save();
+      sendPushNotification(user.pushToken, notification);
       return notification;
     } catch (error) {
       console.error('Error creating notification:', error);
@@ -56,6 +60,24 @@ const notificationController = {
       }
 
       res.status(200).json({ message: 'Notification marked as notified', notification: updatedNotification });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+
+  storeNotificationToken: async (req, res) => {
+    
+    try{
+      const userId = req.params.id
+      const {pushToken} = req.body
+      const updateToken = User.findByIdAndUpdate(
+        userId,
+      {
+        pushToken
+      })
+      return res.status(200).json({ message: 'Push Token Stored' });
+
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

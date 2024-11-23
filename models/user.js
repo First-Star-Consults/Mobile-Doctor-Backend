@@ -87,6 +87,7 @@ const userSchema = new mongoose.Schema({
   isApproved: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
   underInsurrance: { type: Boolean, default: false },
+  pushToken: String,
   verificationcode: String,
   googleId: String,
    // ...forget password token  fields
