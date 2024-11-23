@@ -9,6 +9,6 @@ router.patch('/:notificationId/read', notificationController.markAsRead);
 // Route to set isNotified to true
 router.patch('/:notificationId/set-is-notified', notificationController.setIsNotified);
 // store token
-router.put('/:notificationId/token', notificationController.storeNotificationToken)
+router.put('/:id/token', notificationController.storeNotificationToken)
 
 export default router;
