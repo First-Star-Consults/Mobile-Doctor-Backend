@@ -16,7 +16,7 @@ const notificationController = {
         relatedModel,
       });
       await notification.save();
-      sendPushNotification(user.pushToken, notification);
+      await sendPushNotification(user.pushToken, notification);
       return notification;
     } catch (error) {
       console.error('Error creating notification:', error);
@@ -71,7 +71,7 @@ const notificationController = {
     try{
       const userId = req.params.id
       const {pushToken} = req.body
-      const updateToken = User.findByIdAndUpdate(
+      const updateToken = await User.findByIdAndUpdate(
         userId,
       {
         pushToken
