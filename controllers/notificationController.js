@@ -74,8 +74,16 @@ const notificationController = {
       const updateToken = await User.findByIdAndUpdate(
         userId,
       {
-        pushToken
+        pushToken: pushToken
       })
+
+      
+     
+      const token = updateToken.pushToken;
+
+      token.save();
+
+
       return res.status(200).json({ message: 'Push Token Stored' });
 
     } catch (error) {
