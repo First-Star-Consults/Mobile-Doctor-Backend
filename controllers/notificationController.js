@@ -65,31 +65,32 @@ const notificationController = {
     }
   },
 
-
   storeNotificationToken: async (req, res) => {
-    
-    try{
-      const userId = req.params.id
-      const {pushToken} = req.body
-      const updateToken = await User.findByIdAndUpdate(
+    try {
+      const userId = req.params.id;
+      const { pushToken } = req.body;
+  
+      if (!pushToken) {
+        return res.status(400).json({ error: 'Push Token is required' });
+      }
+  
+      // Update the user's pushToken
+      const updatedUser = await User.findByIdAndUpdate(
         userId,
-      {
-        pushToken: pushToken
-      })
-
-      
-     
-      const token = updateToken.pushToken;
-
-      token.save();
-
-
-      return res.status(200).json({ message: 'Push Token Stored' });
-
+        { pushToken: pushToken },
+        { new: true } // Return the updated document
+      );
+  
+      if (!updatedUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+  
+      return res.status(200).json({ message: 'Push Token Stored successfully' });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: error.message });
     }
   }
+  
 };
 
 export default notificationController;
