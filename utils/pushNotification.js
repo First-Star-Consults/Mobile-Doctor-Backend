@@ -1,6 +1,5 @@
 
 
-
 export async function sendPushNotification(expoPushToken, notification) {
   const message = {
     to: expoPushToken,
