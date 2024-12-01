@@ -6,6 +6,7 @@ import {Doctor, Pharmacy, Laboratory, Therapist} from '../models/healthProviders
 import ConsultationSession from '../models/consultationModel.js';
 import { io } from '../server.js'; 
 import { upload } from '../config/cloudinary.js'; // Cloudinary upload function
+import { sendNotificationEmail } from "../utils/nodeMailer.js";
 
 
 // Custom function to populate participants from various collections
@@ -63,6 +64,25 @@ const messageController = {
         $set: { lastMessage: newMessage._id },
         $currentDate: { updatedAt: true }
       });
+
+     // Fetch the sender's firstName from the User model
+     const senderUser = await User.findById(sender);
+     if (!senderUser) {
+       return res.status(404).json({ message: 'Sender not found.' });
+     }
+
+     // Fetch the receiver's email from the User model
+     const receiverUser = await User.findById(receiver);
+     if (!receiverUser) {
+       return res.status(404).json({ message: 'Receiver not found.' });
+     }
+
+     // Prepare email content
+     const message = `Hello,\n\nYou have received a new message from ${senderUser.firstName}. Here is the content of the message:\n\n"${newMessage.content}"\n\nPlease log into the app to chat with ${senderUser.firstName} ,\nYour Healthcare Team`;
+
+     console.log("Sending email to:", receiverUser.email);
+     await sendNotificationEmail(receiverUser.email, 'New Message Received', message);
+     console.log("Email sent successfully to:", receiverUser.email);
 
       return res.status(201).json(newMessage);
     } catch (error) {

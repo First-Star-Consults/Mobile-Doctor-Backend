@@ -11,11 +11,10 @@ import {
 import Message from "../models/messageModel.js";
 import { upload } from "../config/cloudinary.js";
 import { sendNotificationEmail } from "../utils/nodeMailer.js";
-import Notification from "../models/notificationModel.js";
 import ConsultationSession from "../models/consultationModel.js";
 import Conversation from "../models/conversationModel.js";
 import { io } from "../server.js";
-
+import notificationController from "./notificationController.js";
 
 // Assuming you have an admin user with a fixed ID for receiving fees
 const adminId = process.env.ADMIN_ID;
@@ -97,31 +96,30 @@ const prescriptionController = {
 
       await prescription.save();
 
-      // Create in-app notification for the patient
-      const notification = new Notification({
-        recipient: patient._id,
-        type: "Prescription Created",
-        message: `A new prescription has been created for you by Dr. ${doctor.fullName}.`,
-        relatedObject: prescription._id,
-        relatedModel: "Prescription",
+      // Use createNotification
+      await notificationController.createNotification(
+        patient._id,
+        doctor._id,
+        "Prescription Created",
+        `A new prescription has been created for you by Dr. ${doctor.fullName}.`,
+        prescription._id,
+        "Prescription"
+      );
+
+      // Retrieve or create the conversation between the doctor and patient
+      let conversation = await Conversation.findOne({
+        participants: { $all: [doctorId, patientId] },
       });
-      await notification.save();
 
-       // Retrieve or create the conversation between the doctor and patient
-    let conversation = await Conversation.findOne({
-      participants: { $all: [doctorId, patientId] },
-    });
-
-
-    // Send automatic message within the conversation
-    const message = new Message({
-      conversationId: conversation._id, // Use conversation._id instead of sessionId
-      sender: doctorId,
-      receiver: patientId,
-      content: 'A new prescription has been issued',
-      isSystemMessage: true,
-    });
-    await message.save();
+      // Send automatic message within the conversation
+      const message = new Message({
+        conversationId: conversation._id, // Use conversation._id instead of sessionId
+        sender: doctorId,
+        receiver: patientId,
+        content: "A new prescription has been issued",
+        isSystemMessage: true,
+      });
+      await message.save();
 
       // Emit the system message to notify about the prescription creation
       io.emit("systemMessage", {
@@ -236,15 +234,15 @@ const prescriptionController = {
       const message = `A new prescription has been shared with you by patient ${patient.firstName} ${patient.lastName}. Please review it as soon as possible.`;
       await sendNotificationEmail(providerUser.email, subject, message);
 
-      // Create in-app notification
-      const inAppNotification = new Notification({
-        recipient: providerUser._id,
-        type: "Prescription Shared",
-        message: `A new prescription has been shared with you by patient ${patient.firstName} ${patient.lastName}.`,
-        relatedObject: prescriptionId,
-        relatedModel: "Prescription",
-      });
-      await inAppNotification.save();
+      // Use createNotification
+      await notificationController.createNotification(
+        providerUser._id,
+        patient._id,
+        "Prescription Shared",
+        `A new prescription has been shared with you by patient ${patient.firstName} ${patient.lastName}.`,
+        prescriptionId,
+        "Prescription"
+      );
 
       res.status(200).json({
         message: "Prescription shared successfully",
@@ -261,60 +259,66 @@ const prescriptionController = {
     }
   },
 
-
   //at this point prescription has been share with a particular provider and patient should be able to get provider details
   getPatientPrescriptions: async (req, res) => {
     const patientId = req.params.patientId;
 
     try {
-       // Fetch prescriptions, populate doctor details
-       const prescriptions = await Prescription.find({ patient: patientId })
-       .populate("doctor", "fullName images.profilePhoto medicalSpecialty.name")
-       .sort({ createdAt: -1 });
+      // Fetch prescriptions, populate doctor details
+      const prescriptions = await Prescription.find({ patient: patientId })
+        .populate(
+          "doctor",
+          "fullName images.profilePhoto medicalSpecialty.name"
+        )
+        .sort({ createdAt: -1 });
 
-   if (!prescriptions.length) {
-       return res.status(404).json({ message: "No prescriptions found for this patient" });
-   }
-
+      if (!prescriptions.length) {
+        return res
+          .status(404)
+          .json({ message: "No prescriptions found for this patient" });
+      }
 
       // Prepare an array to hold transformed prescriptions with provider details
       const prescriptionsWithDetails = await Promise.all(
         prescriptions.map(async (prescription) => {
-            let providerDetails = null;
+          let providerDetails = null;
 
-            // Fetch the provider based on the providerType
-            if (prescription.providerType === 'pharmacy') {
-                providerDetails = await Pharmacy.findById(prescription.provider)
-                    .select('name address phone');
-            } else if (prescription.providerType === 'laboratory') {
-                providerDetails = await Laboratory.findById(prescription.provider)
-                    .select('name address phone');
-            }
+          // Fetch the provider based on the providerType
+          if (prescription.providerType === "pharmacy") {
+            providerDetails = await Pharmacy.findById(
+              prescription.provider
+            ).select("name address phone");
+          } else if (prescription.providerType === "laboratory") {
+            providerDetails = await Laboratory.findById(
+              prescription.provider
+            ).select("name address phone");
+          }
 
-            // Transform the prescription data with provider and doctor details
-            return {
-                prescriptionId: prescription._id,
-                doctorId: prescription.doctor._id,
-                doctor: {
-                    fullName: prescription.doctor.fullName,
-                    profilePhoto: prescription.doctor.images.profilePhoto,
-                    medicalSpecialty: prescription.doctor.medicalSpecialty,
-                },
-                diagnosis: prescription.diagnosis,
-                medicines: prescription.medicines,
-                labTests: prescription.labTests,
-                createdAt: prescription.createdAt,
-                status: prescription.status,
-                providerType: prescription.providerType,
-                provider: providerDetails ? {
-                    name: providerDetails.name,
-                    address: providerDetails.address,
-                    phoneNumber: providerDetails.phone,
-                } : null
-            };
+          // Transform the prescription data with provider and doctor details
+          return {
+            prescriptionId: prescription._id,
+            doctorId: prescription.doctor._id,
+            doctor: {
+              fullName: prescription.doctor.fullName,
+              profilePhoto: prescription.doctor.images.profilePhoto,
+              medicalSpecialty: prescription.doctor.medicalSpecialty,
+            },
+            diagnosis: prescription.diagnosis,
+            medicines: prescription.medicines,
+            labTests: prescription.labTests,
+            createdAt: prescription.createdAt,
+            status: prescription.status,
+            providerType: prescription.providerType,
+            provider: providerDetails
+              ? {
+                  name: providerDetails.name,
+                  address: providerDetails.address,
+                  phoneNumber: providerDetails.phone,
+                }
+              : null,
+          };
         })
-    );
-
+      );
 
       res.status(200).json(prescriptionsWithDetails);
     } catch (error) {
@@ -479,11 +483,9 @@ const prescriptionController = {
       }).sort({ startTime: -1 });
 
       if (!session) {
-        return res
-          .status(404)
-          .json({
-            message: "No pending session found for this doctor and patient.",
-          });
+        return res.status(404).json({
+          message: "No pending session found for this doctor and patient.",
+        });
       }
 
       res.status(200).json({
@@ -590,18 +592,18 @@ const prescriptionController = {
 
       await transaction.save();
 
-      // Create an in-app notification for the patient
+      // Create an in-app and push notification for the patient
       const patient = await User.findById(prescription.patient);
-      if (patient) {
-        const notification = new Notification({
-          recipient: patient._id,
-          type: "Costing Added",
-          message: `The provider has added a cost of ${amount} to your prescription. Please review and approve the cost.`,
-          relatedObject: prescriptionId,
-          relatedModel: "Prescription",
-        });
 
-        await notification.save();
+      if (patient) {
+        await notificationController.createNotification(
+          patient._id,
+          null,
+          "Costing Added",
+          `The provider has added a cost of ${amount} to your prescription. Please review and approve the cost.`,
+          prescriptionId,
+          "Prescription"
+        );
       }
 
       res
@@ -715,16 +717,14 @@ const prescriptionController = {
       prescription.approved = true;
       await prescription.save();
 
-      // Create an in-app notification for the provider
-      const providerNotification = new Notification({
-        recipient: provider._id,
-        type: "Costing Approved",
-        message: `The patient has approved the cost of ${amount} for the prescription.`,
-        relatedObject: prescriptionId,
-        relatedModel: "Prescription",
-      });
-
-      await providerNotification.save();
+      await notificationController.createNotification(
+        provider._id,
+        null,
+        "Costing Approved",
+        `The patient has approved the cost of ${amount} for the prescription.`,
+        prescriptionId,
+        "Prescription"
+      );
 
       res
         .status(200)
@@ -755,6 +755,11 @@ const prescriptionController = {
       if (!prescription) {
         return res.status(404).json({ message: "Prescription not found" });
       }
+
+      // Get the doctor's email from the prescription
+      const doctor = prescription.doctor;
+      const doctorUser = await User.findById(doctor);
+      const doctorEmail = doctorUser ? doctorUser.email : null;
 
       let providerName = null;
       if (prescription.provider) {
@@ -787,22 +792,60 @@ const prescriptionController = {
 
       await testResultEntry.save();
 
-      // Create an in-app notification for the patient
-      const patientNotification = new Notification({
-        recipient: patient._id,
-        type: "Test Result Uploaded",
-        message: `A new test result for ${testName} has been uploaded by ${healthProvider.firstName}.`,
-        relatedObject: prescriptionId,
-        relatedModel: "Prescription",
-      });
+      await notificationController.createNotification(
+        patient._id,
+        null,
+        "Test Result Uploaded",
+        `A new test result for ${testName} has been uploaded by ${healthProvider.firstName}.`,
+        prescriptionId,
+        "Prescription"
+      );
 
-      await patientNotification.save();
+      // Notify the health provider
+      await notificationController.createNotification(
+        healthProvider._id,
+        null,
+        "Test Result Sent to Patient", // Type
+        `The test result for ${testName} has been sent to ${patient.firstName} ${patient.lastName}.`,
+        prescriptionId,
+        "Prescription"
+      );
+
+      // Notify the doctor about the new test result
+      if (doctorEmail) {
+        await notificationController.createNotification(
+          doctor._id,
+          null,
+          "New Test Result for Your Patient",
+          `A new test result for your patient, ${patient.firstName} ${patient.lastName}, has been uploaded. You can review patient portal.`,
+          prescriptionId,
+          "Prescription"
+        );
+      }
 
       // Send email notification to the patient
       const subject = "New Test Result Uploaded";
       const message = `Dear ${patient.firstName},\n\nA new test result for ${testName} has been uploaded by your provider. log into the mobile doctor app to download your result.\n\nBest regards,\nYour Healthcare Team`;
 
       await sendNotificationEmail(patient.email, subject, message);
+
+      // Send email notification to the health provider
+      const providerSubject = "Test Result Sent to Patient";
+      const providerMessage = `Dear Dr. ${healthProvider.firstName},\n\nThe test result for ${testName} has been uploaded and sent to ${patient.firstName} ${patient.lastName}. You can now review the result in your provider portal.\n\nBest regards,\nYour Healthcare Team`;
+
+      await sendNotificationEmail(
+        healthProvider.email,
+        providerSubject,
+        providerMessage
+      );
+
+      // Send email notification to the doctor (if email exists)
+      if (doctorEmail) {
+        const doctorSubject = "New Test Result for Your Patient";
+        const doctorMessage = `Dear Dr.,\n\nA new test result for your patient, ${patient.firstName} ${patient.lastName}, has been uploaded. You can review it in the provider portal.\n\nBest regards,\nYour Healthcare Team`;
+
+        await sendNotificationEmail(doctorEmail, doctorSubject, doctorMessage);
+      }
 
       res.status(201).json({
         message: "Test result uploaded successfully",
@@ -871,15 +914,14 @@ const prescriptionController = {
         return res.status(404).json({ message: "Patient not found" });
 
       // Create an in-app notification for the patient
-      const notification = new Notification({
-        recipient: patient._id,
-        type: "Prescription Status Updated",
-        message: `The status of your prescription has been updated to "${status}". Please check your prescription details for more information.`,
-        timestamp: new Date(),
-        relatedObject: prescription._id,
-        relatedModel: "Prescription",
-      });
-      await notification.save();
+      await notificationController.createNotification(
+        patient._id,
+        null,
+        "Prescription Status Updated",
+        `The status of your prescription has been updated to "${status}". Please check your prescription details for more information.`, // message
+        prescription._id,
+        "Prescription"
+      );
 
       res.status(200).json({ message: `Prescription ${status} successfully` });
     } catch (error) {
