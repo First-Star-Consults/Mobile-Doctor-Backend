@@ -393,6 +393,8 @@ const authController = {
   },
 
   handlePaystackWebhook: async (req, res) => {
+    console.log("Webhook received:", req.body);
+
     try {
       const event = req.body;
 
@@ -402,19 +404,29 @@ const authController = {
         .createHmac("sha512", secret)
         .update(JSON.stringify(req.body))
         .digest("hex");
+
+        console.log("Received signature:", req.headers["x-paystack-signature"]);
+        console.log("Calculated hash:", hash);
+
       if (req.headers["x-paystack-signature"] !== hash) {
         return res.status(401).send("Invalid signature");
       }
+
+      console.log("Paystack webhook event:", JSON.stringify(event, null, 2));
 
       // Handle the successful payment event
       if (event.event === "charge.success") {
         const reference = event.data.reference;
         const verificationResult = await verifyTransaction(reference);
 
+        console.log("Verification result:", verificationResult);
+
         if (verificationResult.success) {
           // Extract email and amount from the verified transaction
           const email = verificationResult.data.customer.email;
           const amount = verificationResult.data.amount / 100; // Convert from kobo to naira
+
+          console.log("Email from transaction:", email);
 
           // Find the user by email and update their wallet balance
           const user = await User.findOne({ email: email });
@@ -432,15 +444,20 @@ const authController = {
             });
             await transaction.save();
 
-            // Use createNotification function
-            await notificationController.createNotification(
-              user._id,
-              null,
-              "wallet funding",
-              `Your account has been successfully funded with ₦${amount}. Your new wallet balance is ₦${user.walletBalance}.`, // message
-              transaction._id,
-              "Transaction"
-            );
+            console.log("Wallet updated. New balance:", user.walletBalance);
+
+            try {
+              await notificationController.createNotification(
+                  user._id,
+                  null,
+                  "wallet funding",
+                  `Your account has been successfully funded with ₦${amount}. Your new wallet balance is ₦${user.walletBalance}.`,
+                  transaction._id,
+                  "Transaction"
+              );
+          } catch (error) {
+              console.error("Error creating notification:", error);
+          }
 
             res
               .status(200)

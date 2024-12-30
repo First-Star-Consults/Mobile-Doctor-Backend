@@ -7,27 +7,43 @@ const SearchControllers = {
 
   getVerifiedDoctors: async (req, res) => {
     try {
-      // Find all doctors with kycVerification set to true
-      const verifiedDoctors = await Doctor.find({ kycVerification: true });
-
+      const verifiedDoctors = await Doctor.aggregate([
+        {
+          $lookup: {
+            from: "users", // Join with the "users" collection (which is the User model)
+            localField: "_id", // Doctor's _id
+            foreignField: "_id", // User's _id
+            as: "userDetails" // Store the matched user details in userDetails
+          }
+        },
+        {
+          $unwind: "$userDetails" // Flatten the userDetails array to access user fields directly
+        },
+        {
+          $match: {
+            "userDetails.kycVerificationStatus": "Verified", // Filter based on KYC status
+            "userDetails.isApproved": "Approved" // Filter based on approval status
+          }
+        }
+      ]);
+  
       if (verifiedDoctors.length === 0) {
         return res.status(404).json({
           success: false,
           message: 'No verified doctors found',
         });
       }
-
+  
       res.status(200).json({
         success: true,
         message: 'Verified doctors retrieved successfully',
         verifiedDoctors,
       });
     } catch (error) {
-      console.error('Error retrieving verified doctors:', error);
-      res.status(500).json({ success: false, error: 'Error retrieving verified doctors' });
+      console.error('Error retrieving verified doctors:', error); // For better error tracking
+      res.status(500).json({ success: false, error: 'Error retrieving verified doctors', details: error });
     }
   },
-
 
   
 

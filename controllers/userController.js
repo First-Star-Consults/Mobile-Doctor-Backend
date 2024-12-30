@@ -33,7 +33,9 @@ const userController = {
         gender: user.gender,
         country: user.country,
         state: user.state,
-        emailVerification: user.isVerified
+        emailVerification: user.isVerified,
+        isApproved: user.isApproved,
+        kycVerificationStatus: user.kycVerificationStatus
       };
 
       // Attempt to fetch additional details based on the user's role
@@ -85,17 +87,16 @@ const userController = {
 
   //To update user profile
   upDateprofile: async (req, res) => {
-
     try {
       const userId = req.params.userId;
-
+  
       // Check if the user exists
       const existingUser = await User.findById(userId);
-
+  
       if (!existingUser) {
         return res.status(404).json({ message: 'User not found' });
       }
-
+  
       // Update user profile information
       existingUser.firstName = req.body.firstName || existingUser.firstName;
       existingUser.lastName = req.body.lastName || existingUser.lastName;
@@ -104,37 +105,40 @@ const userController = {
       existingUser.country = req.body.country || existingUser.country;
       existingUser.state = req.body.state || existingUser.state;
       existingUser.address = req.body.address || existingUser.address;
+  
+      // Check if an image is uploaded
+      if (req.files && req.files.image) {
+        const { image } = req.files;
+        const fileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        const imageSize = 1024;
+  
+        // Validate image type
+        if (!fileTypes.includes(image.mimetype)) {
+          return res.status(400).json({ success: false, error: 'Image formats supported: JPG, PNG, JPEG' });
+        }
+  
+        // Validate image size
+        if (image.size / 1024 > imageSize) {
+          return res.status(400).json({ success: false, error: `Image size should be less than ${imageSize}kb` });
+        }
+  
+        // Upload image to Cloudinary
+        const cloudFile = await upload(image.tempFilePath, userId); // Pass the user ID as the folderName
+  
+        // Update user model with the Cloudinary URL for the specific image type
+        existingUser.profilePhoto = cloudFile.url;
+      }
+  
       // Save the updated user profile
       await existingUser.save();
-
-
-
-      const { image } = req.files;
-      const fileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-      const imageSize = 1024;
-
-      if (!req.files || !req.files.image) {
-        return res.status(400).json({ success: false, error: 'Please upload an image' });
-      }
-
-      if (!fileTypes.includes(image.mimetype)) return res.send('Image formats supported: JPG, PNG, JPEG');
-
-      if (image.size / 1024 > imageSize) return res.send(`Image size should be less than ${imageSize}kb`);
-
-      // Upload image to Cloudinary
-      const cloudFile = await upload(image.tempFilePath, userId); // Pass the user ID as the folderName
-
-      // Update user model with the Cloudinary URL for the specific image type
-      existingUser.profilePhoto = cloudFile.url; // Update the profilePicture field directly
-
-      await existingUser.save(); // Save the user model again
-
+  
       return res.status(200).json({ message: 'Profile information updated successfully', user: existingUser });
     } catch (error) {
       console.error(error);
       return res.status(500).json({ message: 'Unexpected error during profile update' });
     }
   },
+  
 
 
 
@@ -238,41 +242,7 @@ const userController = {
   },
   
 
-  // resetPasswordWithToken: async (req, res) => {
-  //   try {
-  //     const { token, newPassword } = req.body;
-
-  //     // Check if token and new password are provided
-  //     if (!token || !newPassword) {
-  //       return res.status(400).json({ message: 'Token and new password are required.' });
-  //     }
-
-  //     // Find user by token and check if the token is expired
-  //     const user = await User.findOne({ resetPasswordToken: token, resetPasswordExpires: { $gt: Date.now() } });
-
-  //     if (!user) {
-  //       return res.status(400).json({ message: 'Password reset token is invalid or has expired.' });
-  //     }
-
-  //     // Reset the password
-  //     user.setPassword(newPassword, async (err) => {
-  //       if (err) {
-  //         console.error(err);
-  //         return res.status(500).json({ message: 'Error resetting password' });
-  //       }
-
-  //       // Clear the reset token and expiry
-  //       user.resetPasswordToken = undefined;
-  //       user.resetPasswordExpires = undefined;
-
-  //       await user.save();
-  //       res.status(200).json({ message: 'Password has been reset successfully' });
-  //     });
-  //   } catch (error) {
-  //     console.error(error);
-  //     res.status(500).json({ message: 'Unexpected error during the password reset process' });
-  //   }
-  // },
+ 
 
   // To update online status
   updateOnlineStatus: async (req, res) => {

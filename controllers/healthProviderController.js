@@ -29,6 +29,8 @@ const healthProviderControllers = {
   
       // Find the user by ID
       const foundUser = await Doctor.findById(providerId);
+      //find user from User model
+      const userModelUser = await User.findById(providerId)
   
       if (!foundUser) {
         return res.status(404).json({ success: false, error: 'User not found' });
@@ -89,7 +91,9 @@ const healthProviderControllers = {
       const updatedDoctor = await Doctor.findByIdAndUpdate(providerId, { $set: updateQueries }, { new: true });
 
        // Set kycVerification to true after successful profile and image updates
-       foundUser.kycVerification = true;
+       
+       userModelUser.kycVerificationStatus = 'Pending';
+       userModelUser.isApproved = 'Pending';
        await foundUser.save(); 
   
       res.status(201).json({
@@ -143,6 +147,8 @@ const healthProviderControllers = {
   
       // Find the provider by ID using the selected model
       const foundUser = await Model.findById(providerId);
+      // find user from user model to update isApproved and kyc
+      const userModelUser = await User.findById(providerId)
   
       if (!foundUser) {
         return res.status(404).json({ success: false, error: 'User not found' });
@@ -189,7 +195,8 @@ const healthProviderControllers = {
       const updatedUser = await Model.findByIdAndUpdate(providerId, { $set: updateQueries }, { new: true });
   
       // Set kycVerification to true after successful profile and image updates
-      foundUser.kycVerification = true;
+      userModelUser.kycVerificationStatus = 'Pending';
+      userModelUser.isApproved = 'Pending';
       await foundUser.save();
   
       res.status(201).json({
@@ -297,39 +304,55 @@ getDoctorReviews: async (req, res) => {
 
   // Function to get top-rated doctors
   getTopRatedDoctors: async (req, res) => {
-  try {
-    const topRatedDoctors = await Doctor.aggregate([
-      {
-        $match: {
-          kycVerification: true // Only include doctors whose kycVerification is true
+    try {
+      const topRatedDoctors = await Doctor.aggregate([
+        {
+          $lookup: {
+            from: "users", // Join with the "users" collection (which is the User model)
+            localField: "_id", // Doctor's _id
+            foreignField: "_id", // User's _id
+            as: "userDetails" // Store the matched user details in userDetails
+          }
+        },
+        {
+          $unwind: "$userDetails" // Flatten the userDetails array to access user fields directly
+        },
+        {
+          $match: {
+            "userDetails.kycVerificationStatus": "Verified", // Filter based on KYC status
+            "userDetails.isApproved": "Approved" // Filter based on approval status
+          }
+        },
+        {
+          $lookup: {
+            from: "reviews", // Assuming the reviews collection is named "reviews"
+            localField: "_id", // Doctor's _id
+            foreignField: "doctor", // The field in the review that references the doctor
+            as: "reviews" // Store the reviews in an array called reviews
+          }
+        },
+        {
+          $addFields: {
+            averageRating: { $avg: "$reviews.rating" } // Add the average rating field
+          }
+        },
+        {
+          $sort: { averageRating: -1 } // Sort by average rating in descending order
+        },
+        {
+          $limit: 10 // Limit to top 10 doctors (you can adjust as needed)
         }
-      },
-      {
-        $lookup: {
-          from: "reviews", // Assuming your reviews collection is named "reviews"
-          localField: "_id",
-          foreignField: "doctor",
-          as: "reviews"
-        }
-      },
-      {
-        $addFields: {
-          averageRating: { $avg: "$reviews.rating" }
-        }
-      },
-      { $sort: { averageRating: -1 } }, // Sort by averageRating in descending order
-      { $limit: 10 } // You can adjust the limit as per your requirement
-    ]);
-
-    res.status(200).json({
-      success: true,
-      data: topRatedDoctors
-    });
-  } catch (error) {
-    console.error("Error fetching top rated doctors:", error);
-    res.status(500).json({ success: false, message: "Error fetching top rated doctors" });
-  }
-},
+      ]);
+  
+      res.status(200).json({
+        success: true,
+        data: topRatedDoctors
+      });
+    } catch (error) {
+      console.error("Error fetching top-rated doctors:", error); // For better error tracking
+      res.status(500).json({ success: false, message: "Error fetching top-rated doctors", error });
+    }
+  }, 
 
 
   getAllLaboratories: async (req, res) => {
@@ -361,18 +384,31 @@ getDoctorReviews: async (req, res) => {
 
   getAllDoctors: async (req, res) => {
     try {
+      // Find all doctors whose id matches the User's id and check for Verified KYC status and Approved status
       const doctors = await Doctor.aggregate([
         {
+          $lookup: {
+            from: 'users', // Assuming the collection name for the User model is 'users'
+            localField: '_id', // Doctor's _id
+            foreignField: '_id', // User's _id
+            as: 'userDetails' // Create an array field 'userDetails' to hold user info
+          }
+        },
+        {
+          $unwind: '$userDetails' // Flatten the 'userDetails' array to access user fields directly
+        },
+        {
           $match: {
-            kycVerification: true // Only include doctors whose kycVerification is true
+            'userDetails.kycVerificationStatus': 'Verified', // Match verified KYC status
+            'userDetails.isApproved': 'Approved' // Match approved status
           }
         }
       ]);
-      
-      // Send the response outside the aggregation pipeline
+  
+      // Send the response with the list of doctors
       res.status(200).json({ success: true, doctors });
     } catch (error) {
-      console.error("Error fetching doctors:", error); // Added console.error for better error tracking
+      console.error("Error fetching doctors:", error); // For better error tracking
       res.status(500).json({ success: false, message: 'Error fetching doctors', error });
     }
   },
