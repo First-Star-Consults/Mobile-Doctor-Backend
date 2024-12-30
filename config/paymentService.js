@@ -18,7 +18,6 @@ export async function chargePatient(email, amount) {
     email: email,
     amount: amount * 100,
     currency: "NGN",
-    // Additional details like callback URL, metadata, etc., can be included here
   };
 
   try {
