@@ -3,10 +3,10 @@ import User from '../models/user.js';
 import { sendPushNotification } from '../utils/pushNotification.js';
 
 const notificationController = {
-    
+
   createNotification: async (recipient, sender, type, message, relatedObject, relatedModel) => {
     try {
-      const user = User.find({_id: recipient})
+      const user = await User.findById(recipient)
       const notification = new Notification({
         recipient,
         sender,
@@ -16,7 +16,11 @@ const notificationController = {
         relatedModel,
       });
       await notification.save();
-      await sendPushNotification(user.pushToken, notification);
+      try {
+        await sendPushNotification(user.pushToken, notification);
+      } catch (pushError) {
+        console.error('Error sending push notification:', pushError);
+      }
       return notification;
     } catch (error) {
       console.error('Error creating notification:', error);
@@ -69,28 +73,29 @@ const notificationController = {
     try {
       const userId = req.params.id;
       const { pushToken } = req.body;
-  
+      
+
       if (!pushToken) {
         return res.status(400).json({ error: 'Push Token is required' });
       }
-  
+
       // Update the user's pushToken
       const updatedUser = await User.findByIdAndUpdate(
         userId,
         { pushToken: pushToken },
         { new: true } // Return the updated document
       );
-  
+
       if (!updatedUser) {
         return res.status(404).json({ error: 'User not found' });
       }
-  
+
       return res.status(200).json({ message: 'Push Token Stored successfully' });
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
   }
-  
+
 };
 
 export default notificationController;

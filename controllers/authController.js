@@ -5,6 +5,7 @@ import { sendNotificationEmail } from "../utils/nodeMailer.js";
 import Notification from "../models/notificationModel.js";
 import { Prescription } from "../models/services.js";
 import Message from "../models/messageModel.js";
+import notificationController from "./notificationController.js";
 
 import passport from "passport";
 import User from "../models/user.js";
@@ -433,15 +434,15 @@ const authController = {
             });
             await transaction.save();
 
-            // Create and save a notification for the user
-            const notification = new Notification({
-              recipient: user._id,
-              type: "wallet funding",
-              message: `Your account has been successfully funded with ₦${amount}. Your new wallet balance is ₦${user.walletBalance}.`,
-              relatedObject: user._id,
-              relatedModel: "Transaction",
-            });
-            await notification.save();
+            // Use createNotification function
+            await notificationController.createNotification(
+              user._id,
+              null,
+              "wallet funding",
+              `Your account has been successfully funded with ₦${amount}. Your new wallet balance is ₦${user.walletBalance}.`, // message
+              transaction._id,
+              "Transaction"
+            );
 
             res
               .status(200)
@@ -844,14 +845,20 @@ const authController = {
         transaction.status = "success";
         await transaction.save();
 
-        const successNotification = new Notification({
-          recipient: user._id,
-          type: "withdrawal",
-          message: `Your withdrawal request of ₦${transaction.amount} has been approved and processed.`,
-          relatedObject: user._id,
-          relatedModel: "Transaction",
-        });
-        await successNotification.save();
+        // Use notificationController.createNotification
+        try {
+          await notificationController.createNotification(
+            user._id,
+            "Account admin",
+            "withdrawal",
+            `Your withdrawal request of ₦${transaction.amount} has been approved and processed.`,
+            user._id,
+            "Transaction"
+          );
+        } catch (notificationError) {
+          console.error("Error creating notification:", notificationError);
+        }
+
         await sendNotificationEmail(
           user.email,
           "Withdrawal Request Approved",
@@ -1103,15 +1110,19 @@ const authController = {
         sessionId: newSession._id,
       });
 
-      // Create an in-app notification for the doctor
-      const notification = new Notification({
-        recipient: doctorId,
-        type: "Consultation",
-        message: `Dear Doctor,\n\n You have a new consultation session scheduled with patient ${patient.firstName} ${patient.lastName}.`,
-        relatedObject: doctorId,
-        relatedModel: "Consultation",
-      });
-      await notification.save();
+      // Use notificationController.createNotification
+      try {
+        await notificationController.createNotification(
+          doctorId,
+          null,
+          "Consultation",
+          `Dear Doctor,\n\n You have a new consultation session scheduled with patient ${patient.firstName} ${patient.lastName}.`,
+          newSession._id,
+          "Consultation"
+        );
+      } catch (notificationError) {
+        console.error("Error creating notification:", notificationError);
+      }
 
       // Send system message in chat
       const systemMessage = new Message({
@@ -1130,7 +1141,7 @@ const authController = {
         sendNotificationEmail(
           doctorUser.email,
           "New Consultation Session",
-          `You have a new consultation session scheduled with patient ${patient.username}. Please check your dashboard for more details.`
+          `You have a new consultation session scheduled with patient ${patient.firstName}. Please check your dashboard for more details.`
         );
       }
 
@@ -1191,8 +1202,6 @@ const authController = {
 
       console.log("Session found with escrowTransaction:", session);
 
-      
-
       // Ensure that the escrowTransaction exists and is in the 'held' state
       if (
         !session.escrowTransaction ||
@@ -1214,16 +1223,19 @@ const authController = {
           .json({ message: "Patient not found for refund" });
       }
 
-       // Assuming conversationId is part of the session model
-       const conversationId = session.conversationId;
+      // Assuming conversationId is part of the session model
+      const conversationId = session.conversationId;
 
-       if (!conversationId) {
-         return res
-           .status(400)
-           .json({ message: "Conversation ID not found for this session, System Message won't show in chat" });
-       }
+      if (!conversationId) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Conversation ID not found for this session, System Message won't show in chat",
+          });
+      }
 
-       // System message notification in chat:
+      // System message notification in chat:
       const systemMessage = new Message({
         sender: null, // or system ID if needed
         receiver: patient._id,
@@ -1245,30 +1257,25 @@ const authController = {
       session.status = "cancelled";
       await session.save();
 
-      // Create notification for the patient
-      const patientNotification = new Notification({
-        recipient: patient,
-        type: "Canceled Consultation",
-        message: `Your consultation session with ${doctor.firstName} has been canceled.`,
-        relatedObject: session,
-        relatedModel: "Consultation",
-      });
-      await patientNotification.save();
+      // Notify the patient
+      await notificationController.createNotification(
+        patient._id,
+        null, // System notification
+        "Canceled Consultation",
+        `Your consultation session with Dr. ${doctor.firstName} ${doctor.lastName} has been canceled.`,
+        session._id,
+        "Consultation"
+      );
 
-      // Create notification for the doctor
-
-      const doctorNotification = new Notification({
-        recipient: doctor,
-        type: "Canceled Consultation",
-        message: `Your consultation session with ${patient.firstName} has been canceled.`,
-        relatedObject: session,
-        relatedModel: "Consultation",
-      });
-      await doctorNotification.save();
-
-     
-
-      
+      // Notify the doctor
+      await notificationController.createNotification(
+        doctor._id,
+        null, // System notification
+        "Canceled Consultation",
+        `Your consultation session with patient ${patient.firstName} ${patient.lastName} has been canceled.`,
+        session._id,
+        "Consultation"
+      );
 
       // Emit system message to notify about consultation cancellation
       io.emit("systemMessage", {
@@ -1318,7 +1325,10 @@ const authController = {
       if (!conversationId) {
         return res
           .status(400)
-          .json({ message: "Conversation ID not found for this session. System Message wont show in chat" });
+          .json({
+            message:
+              "Conversation ID not found for this session. System Message wont show in chat",
+          });
       }
 
       // Send a message in the correct conversation
@@ -1330,8 +1340,6 @@ const authController = {
         isSystemMessage: true,
       });
       await systemMessage.save();
-
-      
 
       const prescription = await Prescription.findOne({
         session: sessionId,
@@ -1367,29 +1375,29 @@ const authController = {
         }
       }
 
-      
+       // Notify the patient
+    if (patient) {
+      await notificationController.createNotification(
+        patient._id,
+        doctor._id,
+        "Consultation Completed",
+        `Your consultation with Dr. ${doctor.firstName} ${doctor.lastName} has ended. If lab tests are required, please complete them and share the results with the doctor.`,
+        session._id,
+        "Consultation"
+      );
+    }
 
-      if (patient) {
-        await new Notification({
-          recipient: patient._id,
-          type: "Consultation Completed",
-          message: `Your consultation with Dr. ${doctor.fullName} has ended. If lab tests are required, please complete them and share the results with the doctor.`,
-          relatedObject: session,
-          relatedModel: "Consultation",
-        }).save();
-      }
-
-      if (doctor) {
-        await new Notification({
-          recipient: doctor._id,
-          type: "Consultation Completed",
-          message: `The consultation with ${patient.firstName} ${patient.lastName} is completed. If lab test ir required, please follow up.`,
-          relatedObject: session,
-          relatedModel: "Consultation",
-        }).save();
-      }
-
-      
+    // Notify the doctor
+    if (doctor) {
+      await notificationController.createNotification(
+        doctor._id,
+        patient._id,
+        "Consultation Completed",
+        `The consultation with ${patient.firstName} ${patient.lastName} is completed. If lab tests are required, please follow up.`,
+        session._id,
+        "Consultation"
+      );
+    }
 
       // Emit the system message via Socket.IO to notify about consultation completion
       io.emit("systemMessage", {
