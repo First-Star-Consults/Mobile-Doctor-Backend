@@ -246,6 +246,7 @@ const authController = {
             return res.status(500).json({ message: "Internal Server Error" });
           }
 
+
           // Prepare the response data
           const responseData = {
             message: "Successfully logged in",
@@ -296,6 +297,7 @@ const authController = {
                 healthProviderInfo.kycVerification;
             }
           }
+
 
           res.status(201).json(responseData);
         });
