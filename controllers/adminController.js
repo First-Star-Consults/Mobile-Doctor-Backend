@@ -752,21 +752,18 @@ getUserTransactions: async (req, res) => {
 
 
 
-
-// Credit user wallet balance
 creditWalletBalance: async (req, res) => {
-  const { adminId } = req.params; // Extract adminId from params
-  const { email, amount } = req.body; // Extract email and amount from body
+  const { adminId } = req.params;
+  const { email, amount } = req.body;
 
   try {
-    if (!email || !amount) {
-      return res.status(400).json({ message: "Email and amount are required." });
+    if (!email || isNaN(amount)) {
+      return res.status(400).json({ message: "Email and valid amount are required." });
     }
 
-    // Check if the requester is an admin
-    const admin = await User.findById(adminId);
-    if (!admin || admin.role !== "admin") {
-      return res.status(403).json({ message: "Unauthorized: Admin access required." });
+    const roundedAmount = Math.round(amount * 100) / 100; // Ensure proper rounding
+    if (roundedAmount <= 0) {
+      return res.status(400).json({ message: "Amount must be greater than zero." });
     }
 
     const user = await User.findOne({ email });
@@ -774,14 +771,14 @@ creditWalletBalance: async (req, res) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    user.walletBalance += amount;
+    user.walletBalance = Math.round((user.walletBalance + roundedAmount) * 100) / 100; // Update balance with rounding
     await user.save();
 
     // Send notification email to admin
     await sendNotificationEmail(
       "admin@mail.com",
       "Wallet Balance Credited",
-      `The wallet balance of ${email} has been credited with ${amount}. New balance: ${user.walletBalance}`
+      `The wallet balance of ${email} has been credited with ${roundedAmount}. New balance: ${user.walletBalance}.`
     );
 
     res.status(200).json({ message: "Wallet balance credited successfully." });
@@ -791,20 +788,18 @@ creditWalletBalance: async (req, res) => {
   }
 },
 
-// Deduct user wallet balance
 deductWalletBalance: async (req, res) => {
-  const { adminId } = req.params; // Extract adminId from params
-  const { email, amount } = req.body; // Extract email and amount from body
+  const { adminId } = req.params;
+  const { email, amount } = req.body;
 
   try {
-    if (!email || !amount) {
-      return res.status(400).json({ message: "Email and amount are required." });
+    if (!email || isNaN(amount)) {
+      return res.status(400).json({ message: "Email and valid amount are required." });
     }
 
-    // Check if the requester is an admin
-    const admin = await User.findById(adminId);
-    if (!admin || admin.role !== "admin") {
-      return res.status(403).json({ message: "Unauthorized: Admin access required." });
+    const roundedAmount = Math.round(amount * 100) / 100; // Ensure proper rounding
+    if (roundedAmount <= 0) {
+      return res.status(400).json({ message: "Amount must be greater than zero." });
     }
 
     const user = await User.findOne({ email });
@@ -812,18 +807,18 @@ deductWalletBalance: async (req, res) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    if (user.walletBalance < amount) {
+    if (user.walletBalance < roundedAmount) {
       return res.status(400).json({ message: "Insufficient wallet balance." });
     }
 
-    user.walletBalance -= amount;
+    user.walletBalance = Math.round((user.walletBalance - roundedAmount) * 100) / 100; // Update balance with rounding
     await user.save();
 
     // Send notification email to admin
     await sendNotificationEmail(
       "admin@mail.com",
       "Wallet Balance Deducted",
-      `The wallet balance of ${email} has been deducted by ${amount}. New balance: ${user.walletBalance}`
+      `The wallet balance of ${email} has been deducted by ${roundedAmount}. New balance: ${user.walletBalance}.`
     );
 
     res.status(200).json({ message: "Wallet balance deducted successfully." });
