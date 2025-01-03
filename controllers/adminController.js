@@ -4,7 +4,7 @@ import { Doctor, Pharmacy, Laboratory } from "../models/healthProviders.js";
 import User from "../models/user.js";
 import Consultation from "../models/consultationModel.js";
 import { Prescription } from "../models/services.js";
-import MedicalRecord from "../models/medicalRecordModel.js";
+import { sendNotificationEmail } from "../utils/nodeMailer.js"
 import moment from 'moment';
 import { Transaction } from "../models/services.js"
 
@@ -752,6 +752,86 @@ getUserTransactions: async (req, res) => {
 
 
 
+
+// Credit user wallet balance
+creditWalletBalance: async (req, res) => {
+  const { adminId } = req.params; // Extract adminId from params
+  const { email, amount } = req.body; // Extract email and amount from body
+
+  try {
+    if (!email || !amount) {
+      return res.status(400).json({ message: "Email and amount are required." });
+    }
+
+    // Check if the requester is an admin
+    const admin = await User.findById(adminId);
+    if (!admin || admin.role !== "admin") {
+      return res.status(403).json({ message: "Unauthorized: Admin access required." });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    user.walletBalance += amount;
+    await user.save();
+
+    // Send notification email to admin
+    await sendNotificationEmail(
+      "admin@mail.com",
+      "Wallet Balance Credited",
+      `The wallet balance of ${email} has been credited with ${amount}. New balance: ${user.walletBalance}`
+    );
+
+    res.status(200).json({ message: "Wallet balance credited successfully." });
+  } catch (error) {
+    console.error("Error crediting wallet balance:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+},
+
+// Deduct user wallet balance
+deductWalletBalance: async (req, res) => {
+  const { adminId } = req.params; // Extract adminId from params
+  const { email, amount } = req.body; // Extract email and amount from body
+
+  try {
+    if (!email || !amount) {
+      return res.status(400).json({ message: "Email and amount are required." });
+    }
+
+    // Check if the requester is an admin
+    const admin = await User.findById(adminId);
+    if (!admin || admin.role !== "admin") {
+      return res.status(403).json({ message: "Unauthorized: Admin access required." });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (user.walletBalance < amount) {
+      return res.status(400).json({ message: "Insufficient wallet balance." });
+    }
+
+    user.walletBalance -= amount;
+    await user.save();
+
+    // Send notification email to admin
+    await sendNotificationEmail(
+      "admin@mail.com",
+      "Wallet Balance Deducted",
+      `The wallet balance of ${email} has been deducted by ${amount}. New balance: ${user.walletBalance}`
+    );
+
+    res.status(200).json({ message: "Wallet balance deducted successfully." });
+  } catch (error) {
+    console.error("Error deducting wallet balance:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+},
 
 
 

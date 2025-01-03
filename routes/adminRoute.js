@@ -35,6 +35,10 @@ router.get('/laboratories', adminController.getAllLaboratories); // Fetch all la
 router.get('/:adminId/total-money-flow', adminController.getTotalMoneyFlow);
 router.get('/:adminId/user-transactions', adminController.getUserTransactions);
 
+router.post("/:adminId/credit-wallet", adminController.creditWalletBalance);
+router.post("/:adminId/deduct-wallet", adminController.deductWalletBalance);
+
+
 
 
 
