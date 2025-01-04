@@ -432,7 +432,7 @@ getDoctorReviews: async (req, res) => {
       }
   
       // Find approved providers by role (providerType)
-      const providers = await User.find({ role: providerType, isApproved: true });
+      const providers = await User.find({ role: providerType, isApproved: "Approved" });
   
       // Ensure patient and providers have location data
       if (!patient.location || !patient.location.coordinates) {
