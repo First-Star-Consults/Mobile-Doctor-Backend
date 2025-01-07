@@ -705,7 +705,9 @@ getTotalMoneyFlow: async (req, res) => {
 getUserTransactions: async (req, res) => {
   try {
     const adminId = req.params.adminId; // Admin making the request
-    const { email } = req.query; // Email of the user whose transactions need to be fetched
+    const { email } = req.body; // Email of the user whose transactions need to be fetched
+
+   
 
     // Verify the admin
     const admin = await User.findById(adminId);
@@ -717,7 +719,10 @@ getUserTransactions: async (req, res) => {
     }
 
     // Find the user by email
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    console.log("User found:", user);
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -726,7 +731,7 @@ getUserTransactions: async (req, res) => {
     }
 
     // Fetch transactions for the specified user
-    const transactions = await Transaction.find({ userId: user._id });
+    const transactions = await Transaction.find({ userId: user.user });
 
     if (!transactions || transactions.length === 0) {
       return res.status(404).json({
@@ -749,6 +754,7 @@ getUserTransactions: async (req, res) => {
     });
   }
 },
+
 
 
 

@@ -15,6 +15,10 @@ router.post('/doctors/update-sponsored-status', adminController.updateSponsoredS
 
 // In your routes file
 router.post('/recommend-doctor/:id', adminController.recommendDoctor);
+//endpoint for admin to review all users transaction by sending their email
+router.post('/:adminId/user-transactions', adminController.getUserTransactions);
+
+
 router.get('/recommended', adminController.getRecommendedDoctors);
 
 router.get('/statistics-cards', adminController.getStatisticsCards);

@@ -541,11 +541,11 @@ const authController = {
   withdraw: async (req, res) => {
     try {
       const userId = req.params.userId;
-      const { amount, accountNumber, bankName } = req.body;
+      const { amount, accountNumber, bankName, bankCode } = req.body;
 
       // Log request details
       console.log(
-        `Withdrawal request by User ID: ${userId}, Amount: ${amount}, Account Number: ${accountNumber}, Bank Name: ${bankName}`
+        `Withdrawal request by User ID: ${userId}, Amount: ${amount}, Account Number: ${accountNumber}, Bank Name: ${bankName}, Bank Code: ${bankCode}`
       );
 
       // Check if the user exists and has the appropriate role
@@ -569,6 +569,15 @@ const authController = {
           .json({ success: false, message: "Insufficient wallet balance" });
       }
 
+
+      // Validate bankCode (optional: add dynamic fetching of valid codes from payment provider)
+    if (!bankCode) {
+      console.log("Missing bankCode");
+      return res
+        .status(400)
+        .json({ success: false, message: "Bank code is required" });
+    }
+
       // Create a pending transaction with account details
       const transaction = new Transaction({
         user: userId,
@@ -577,6 +586,7 @@ const authController = {
         amount: amount,
         accountNumber: accountNumber,
         bankName: bankName,
+        bankCode: bankCode,
       });
 
       const savedTransaction = await transaction.save();
@@ -623,15 +633,15 @@ const authController = {
     try {
       const adminId = req.params.adminId;
 
-      // Validate admin privileges
-      const admin = await User.findById(adminId);
-      if (!admin || !admin.isAdmin) {
-        console.log("Unauthorized admin access");
-        return res.status(403).json({
-          success: false,
-          message: "Unauthorized to perform this action",
-        });
-      }
+      // Validate admin privileges based on role
+    const admin = await User.findById(adminId);
+    if (!admin || admin.role !== "admin") {
+      console.log("Unauthorized admin access");
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized to perform this action",
+      });
+    }
 
       // Retrieve all pending withdrawal transactions
       const pendingWithdrawals = await Transaction.find({
@@ -656,14 +666,15 @@ const authController = {
       const adminId = req.params.adminId;
       const { transactionId, accountNumber, bankCode } = req.body;
 
-      const admin = await User.findById(adminId);
-      if (!admin || !admin.isAdmin) {
-        console.log("Unauthorized admin access");
-        return res.status(403).json({
-          success: false,
-          message: "Unauthorized to perform this action",
-        });
-      }
+      // Validate admin privileges based on role
+    const admin = await User.findById(adminId);
+    if (!admin || admin.role !== "admin") {
+      console.log("Unauthorized admin access");
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized to perform this action",
+      });
+    }
 
       const transaction = await Transaction.findById(transactionId).populate(
         "user"

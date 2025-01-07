@@ -51,6 +51,7 @@ const transactionSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   accountNumber: String,
   bankName: String,
+  bankCode: String,
   paymentMethod: { type: String },
   date: { type: Date, default: Date.now },
 });
