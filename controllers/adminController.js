@@ -879,6 +879,28 @@ suspendUser: async (req, res) => {
   }
 },
 
+ // Function to get all suspended accounts
+ getSuspendedAccounts: async (req, res) => {
+  try {
+    // Fetch all suspended accounts
+    const suspendedAccounts = await User.find({ isSuspended: "true" });
+
+    // Check if there are any suspended accounts
+    if (!suspendedAccounts.length) {
+      return res.status(404).json({ message: "No suspended accounts found." });
+    }
+
+    // Return the suspended accounts
+    res.status(200).json({
+      message: "Suspended accounts retrieved successfully.",
+      data: suspendedAccounts,
+    });
+  } catch (error) {
+    // Handle errors
+    console.error("Error fetching suspended accounts:", error.message);
+    res.status(500).json({ message: "An error occurred while fetching suspended accounts." });
+  }
+},
 
 
 

@@ -44,6 +44,8 @@ router.post("/:adminId/deduct-wallet", adminController.deductWalletBalance);
 
 // Route to suspend a user
 router.post("/:adminId/suspend-user", adminController.suspendUser);
+// Route to get all suspended accounts
+router.get("/suspended-accounts", adminController.getSuspendedAccounts);
 
 
 
