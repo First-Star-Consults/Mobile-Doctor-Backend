@@ -763,6 +763,14 @@ creditWalletBalance: async (req, res) => {
   const { email, amount } = req.body;
 
   try {
+   
+    // Verify the adminId belongs to an admin
+    const admin = await User.findById(adminId);
+    if (!admin || !admin.isAdmin) {
+      return res.status(403).json({ message: "Unauthorized: Only admins can suspend users." });
+    }
+
+
     if (!email || isNaN(amount)) {
       return res.status(400).json({ message: "Email and valid amount are required." });
     }
@@ -799,6 +807,14 @@ deductWalletBalance: async (req, res) => {
   const { email, amount } = req.body;
 
   try {
+
+    // Verify the adminId belongs to an admin
+    const admin = await User.findById(adminId);
+    if (!admin || !admin.isAdmin) {
+      return res.status(403).json({ message: "Unauthorized: Only admins can suspend users." });
+    }
+
+
     if (!email || isNaN(amount)) {
       return res.status(400).json({ message: "Email and valid amount are required." });
     }
@@ -831,6 +847,35 @@ deductWalletBalance: async (req, res) => {
   } catch (error) {
     console.error("Error deducting wallet balance:", error);
     res.status(500).json({ message: "Internal server error." });
+  }
+},
+
+
+suspendUser: async (req, res) => {
+  const { adminId } = req.params;
+  const { userId } = req.body;
+
+  try {
+    // Verify the adminId belongs to an admin
+    const admin = await User.findById(adminId);
+    if (!admin || !admin.isAdmin) {
+      return res.status(403).json({ message: "Unauthorized: Only admins can suspend users." });
+    }
+
+    // Find the user to be suspended
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Suspend the user
+    user.isSuspended = "true";
+    await user.save();
+
+    return res.status(200).json({ message: `User ${user.username} has been suspended successfully.` });
+  } catch (error) {
+    console.error("Error suspending user:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 },
 

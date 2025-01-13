@@ -106,6 +106,7 @@ const userSchema = new mongoose.Schema(
     isAdmin: { type: Boolean, default: false },
     isApproved: { type: String, default: "false" },
     kycVerificationStatus: { type: String, default: "false" },
+    isSuspended: { type: String, default: "false" },
     isVerified: { type: Boolean, default: false },
     underInsurrance: { type: Boolean, default: false },
     pushToken: String,

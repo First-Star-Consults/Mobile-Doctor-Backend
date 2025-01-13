@@ -241,6 +241,11 @@ const authController = {
             .json({ message: "Username or password is incorrect" });
         }
 
+        if (user.isSuspended === "true") {
+          return res.status(403).json({ message: "Your account is suspended. Please contact support." });
+        }
+        
+
         req.logIn(user, async (err) => {
           if (err) {
             console.log(err);

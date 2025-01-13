@@ -42,6 +42,9 @@ router.get('/:adminId/user-transactions', adminController.getUserTransactions);
 router.post("/:adminId/credit-wallet", adminController.creditWalletBalance);
 router.post("/:adminId/deduct-wallet", adminController.deductWalletBalance);
 
+// Route to suspend a user
+router.post("/:adminId/suspend-user", adminController.suspendUser);
+
 
 
 
