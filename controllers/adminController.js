@@ -589,6 +589,7 @@ GetPatients: async (req, res) => {
     // Iterate through each patient and map the result
     const patientData = patients.map((patient) => {
       return {
+        id: patient._id,
         firstName: patient.firstName,
         lastName: patient.lastName,
         email: patient.email,
