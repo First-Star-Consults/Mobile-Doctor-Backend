@@ -537,6 +537,7 @@ approveRequestsList: async (req, res) => {
           );
 
           return {
+            id: provider._id,
             name: provider.fullName || provider.name,
             type: providerType,
             status: user?.isApproved === "true" ? "Approved" : "Pending",
