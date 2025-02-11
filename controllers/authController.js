@@ -542,6 +542,11 @@ const authController = {
     }
   },
 
+  
+  // user.walletBalance -= transaction.amount;
+  // await user.save();
+  // console.log("User balance updated:", user.walletBalance);
+
   // Function to create a withdrawal request
   withdraw: async (req, res) => {
     try {
@@ -573,6 +578,12 @@ const authController = {
           .status(400)
           .json({ success: false, message: "Insufficient wallet balance" });
       }
+
+      //deduct withdrawal amount from user balance
+      user.walletBalance -= amount;
+      await user.save(); 
+
+      console.log(`Updated wallet balance: ${user.walletBalance}`);
 
 
       // Validate bankCode (optional: add dynamic fetching of valid codes from payment provider)
@@ -863,9 +874,6 @@ const authController = {
         if (transferConfirmed.success) {
           console.log("Transfer confirmed, updating user balance and transaction status...");
           
-          user.walletBalance -= transaction.amount;
-          await user.save();
-          console.log("User balance updated:", user.walletBalance);
   
           transaction.status = "success";
           await transaction.save();

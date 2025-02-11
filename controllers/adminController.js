@@ -209,11 +209,6 @@ const adminController = {
     }
 },
 
-  
-  
-  
-  
-
 
   getRecommendedDoctors: async (req, res) => {
     try {
