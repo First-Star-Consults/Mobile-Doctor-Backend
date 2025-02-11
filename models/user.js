@@ -104,7 +104,7 @@ const userSchema = new mongoose.Schema(
     },
     walletBalance: { type: Number, default: 0 },
     isAdmin: { type: Boolean, default: false },
-    isApproved: { type: String, default: "false" },
+    isApproved: { type: String, default: "Pending" },
     kycVerificationStatus: { type: String, default: "false" },
     isSuspended: { type: String, default: "false" },
     isVerified: { type: Boolean, default: false },

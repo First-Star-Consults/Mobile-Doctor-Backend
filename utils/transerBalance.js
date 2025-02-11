@@ -85,7 +85,7 @@ export const transferBalance = async (fromUserId, toUserId, amount, adminFee, ad
       user: toUserId,
       type: 'credit',
       status: 'success',
-      amount: roundedAmount,
+      amount: roundedAmount + roundedAdminFee,
     });
 
     const adminTransaction = new Transaction({

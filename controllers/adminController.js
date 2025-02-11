@@ -531,16 +531,19 @@ approveRequestsList: async (req, res) => {
     const mapRequests = async (providerRequests, providerType) => {
       return Promise.all(
         providerRequests.map(async (provider) => {
+          console.log(`Provider Object:`, provider);
           // Fetch user data using the provider's userId
-          const user = await User.findById(provider.userId).select(
+          const user = await User.findById(provider._id).select(
             "isApproved kycVerificationStatus"
           );
+
+          console.log(`User ${provider._id} Approval Status from DB:`, user?.isApproved);
 
           return {
             id: provider._id,
             name: provider.fullName || provider.name,
             type: providerType,
-            status: user?.isApproved === "true" ? "Approved" : "Pending",
+            status: user?.isApproved === "Approved" ? "Approved" : "Pending",
             kycVerificationStatus: user?.kycVerificationStatus,
             documents: provider.images, // Use images from the provider schema if required
           };

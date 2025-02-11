@@ -828,6 +828,7 @@ const authController = {
       }
 
       const result = await submitOtpForTransfer(otp, transferCode);
+      console.log("OTP Submission Result:", result);
 
       const transaction = await Transaction.findById(transactionId).populate(
         "user"
@@ -851,12 +852,36 @@ const authController = {
       }
 
       if (result.success) {
+        console.log("Transaction OTP verified successfully, checking status...");
+
         const transferConfirmed = await checkTransferStatus(
           result.data.reference
         );
-        if (!transferConfirmed) {
+
+        console.log("Transfer Status Check Result:", transferConfirmed);
+
+        if (transferConfirmed.success) {
+          console.log("Transfer confirmed, updating user balance and transaction status...");
+          
+          user.walletBalance -= transaction.amount;
+          await user.save();
+          console.log("User balance updated:", user.walletBalance);
+  
+          transaction.status = "success";
+          await transaction.save();
+          console.log("Transaction status updated to success.");
+  
+          return res.status(200).json({
+            success: true,
+            message: "Withdrawal completed successfully",
+            transactionId,
+          });
+        } else {
+          console.log("Transfer confirmation failed, marking transaction as failed...");
+  
           transaction.status = "failed";
           await transaction.save();
+  
           await sendFailureNotification(
             user,
             transaction,
@@ -864,54 +889,27 @@ const authController = {
             transaction.accountNumber,
             "Transfer confirmation failed."
           );
+  
           return res.status(500).json({
             success: false,
             message: "Transfer confirmation failed",
             transactionId,
           });
         }
-
-        // Deduct the amount from user's wallet balance
-        user.walletBalance -= transaction.amount;
-        await user.save();
-
-        transaction.status = "success";
-        await transaction.save();
-
-        // Use notificationController.createNotification
-        try {
-          await notificationController.createNotification(
-            user._id,
-            "Account admin",
-            "withdrawal",
-            `Your withdrawal request of ₦${transaction.amount} has been approved and processed.`,
-            user._id,
-            "Transaction"
-          );
-        } catch (notificationError) {
-          console.error("Error creating notification:", notificationError);
-        }
-
-        await sendNotificationEmail(
-          user.email,
-          "Withdrawal Request Approved",
-          `Your withdrawal request of ₦${transaction.amount} has been approved and processed. The amount will be credited to your account shortly.`
-        );
-
-        return res.status(200).json({
-          success: true,
-          message: "Withdrawal finalized and transfer successful.",
-          data: result.data,
-        });
       } else {
-        // for result ques transaction is successful
-        return res.status(400).json({ success: true, message: result.message });
+        console.log("OTP submission failed.");
+  
+        return res.status(400).json({
+          success: false,
+          message: "OTP verification failed.",
+        });
       }
     } catch (error) {
-      console.error("Error finalizing withdrawal:", error);
-      return res
-        .status(500)
-        .json({ success: false, message: "Internal server error." });
+      console.error("Error during finalizeWithdrawal:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal Server Error",
+      });
     }
   },
 
