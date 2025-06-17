@@ -33,9 +33,10 @@ import ConsultationSession from "../models/consultationModel.js";
 import Conversation from "../models/conversationModel.js";
 import { isDoctorAvailable } from "../utils/isDoctorAvailableFunction.js";
 
-//i am wondering why am getting 500 when i from heroku
+
 
 const verificationcode = generateVerificationCode();
+console.log("verification code: ", verificationcode);
 
 const authController = {
   register: async (req, res) => {
@@ -579,21 +580,6 @@ const authController = {
           .json({ success: false, message: "Insufficient wallet balance" });
       }
 
-      //deduct withdrawal amount from user balance
-      user.walletBalance -= amount;
-      await user.save(); 
-
-      console.log(`Updated wallet balance: ${user.walletBalance}`);
-
-
-      // Validate bankCode (optional: add dynamic fetching of valid codes from payment provider)
-    if (!bankCode) {
-      console.log("Missing bankCode");
-      return res
-        .status(400)
-        .json({ success: false, message: "Bank code is required" });
-    }
-
       // Create a pending transaction with account details
       const transaction = new Transaction({
         user: userId,
@@ -607,13 +593,6 @@ const authController = {
 
       const savedTransaction = await transaction.save();
 
-      // Log the saved transaction
-      console.log("Transaction saved:", savedTransaction);
-
-      // Check the saved transaction in the database
-      const checkTransaction = await Transaction.findById(savedTransaction._id);
-      console.log("Checked Transaction in DB:", checkTransaction);
-
       // Create a notification for the user about the withdrawal request
       const notification = new Notification({
         recipient: user._id,
@@ -624,14 +603,6 @@ const authController = {
       });
       await notification.save();
 
-      // Send email notification to the user
-      await sendNotificationEmail(
-        user.email,
-        "Withdrawal Request Created",
-        `Your withdrawal request of ₦${amount} to ${bankName} (${accountNumber}) has been created and is pending approval.`
-      );
-
-      // Notify the admin for approval...
       res.status(200).json({
         success: true,
         message: "Withdrawal request created and pending approval",
@@ -639,9 +610,7 @@ const authController = {
       });
     } catch (error) {
       console.error("Error during withdrawal:", error);
-      res
-        .status(500)
-        .json({ success: false, message: "Internal Server Error" });
+      res.status(500).json({ success: false, message: "Internal Server Error" });
     }
   },
 
@@ -824,7 +793,6 @@ const authController = {
 
       const admin = await User.findById(adminId);
       if (!admin || !admin.isAdmin) {
-        console.log("Unauthorized admin access");
         return res.status(403).json({
           success: false,
           message: "Unauthorized to perform this action",
@@ -838,16 +806,8 @@ const authController = {
         });
       }
 
-      const result = await submitOtpForTransfer(otp, transferCode);
-      console.log("OTP Submission Result:", result);
-
-      const transaction = await Transaction.findById(transactionId).populate(
-        "user"
-      );
+      const transaction = await Transaction.findById(transactionId).populate("user");
       if (!transaction || transaction.status !== "pending") {
-        console.log(
-          `Invalid or already processed transaction. Transaction ID: ${transactionId}`
-        );
         return res.status(400).json({
           success: false,
           message: "Invalid or already processed transaction",
@@ -856,64 +816,74 @@ const authController = {
 
       const user = transaction.user;
       if (!user) {
-        console.log(`User not found for Transaction ID: ${transactionId}`);
-        return res
-          .status(404)
-          .json({ success: false, message: "User not found" });
+        return res.status(404).json({ success: false, message: "User not found" });
       }
 
+      // Start with marking transaction as processing
+      transaction.status = "processing";
+      await transaction.save();
+
+      // Verify OTP
+      const result = await submitOtpForTransfer(otp, transferCode);
+      
       if (result.success) {
-        console.log("Transaction OTP verified successfully, checking status...");
-
-        const transferConfirmed = await checkTransferStatus(
-          result.data.reference
-        );
-
-        console.log("Transfer Status Check Result:", transferConfirmed);
+        // Double check transfer status
+        const transferConfirmed = await checkTransferStatus(result.data.reference);
 
         if (transferConfirmed.success) {
-          console.log("Transfer confirmed, updating user balance and transaction status...");
-          
-  
+          // Only deduct balance after successful transfer
+          if (user.walletBalance < transaction.amount) {
+            transaction.status = "failed";
+            await transaction.save();
+            return res.status(400).json({
+              success: false,
+              message: "Insufficient balance",
+            });
+          }
+
+          user.walletBalance -= transaction.amount;
+          await user.save();
+
           transaction.status = "success";
           await transaction.save();
-          console.log("Transaction status updated to success.");
-  
+
+          // Send success notification
+          await sendNotificationEmail(
+            user.email,
+            "Withdrawal Successful",
+            `Your withdrawal of ₦${transaction.amount} to ${transaction.bankName} (${transaction.accountNumber}) has been completed successfully.`
+          );
+
           return res.status(200).json({
             success: true,
             message: "Withdrawal completed successfully",
             transactionId,
           });
-        } else {
-          console.log("Transfer confirmation failed, marking transaction as failed...");
-  
-          transaction.status = "failed";
-          await transaction.save();
-  
-          await sendFailureNotification(
-            user,
-            transaction,
-            transaction.bankCode,
-            transaction.accountNumber,
-            "Transfer confirmation failed."
-          );
-  
-          return res.status(500).json({
-            success: false,
-            message: "Transfer confirmation failed",
-            transactionId,
-          });
         }
-      } else {
-        console.log("OTP submission failed.");
-  
-        return res.status(400).json({
-          success: false,
-          message: "OTP verification failed.",
-        });
       }
+
+      // If we get here, either OTP verification or transfer failed
+      transaction.status = "failed";
+      await transaction.save();
+
+      return res.status(400).json({
+        success: false,
+        message: "Withdrawal failed. Please try again.",
+      });
     } catch (error) {
       console.error("Error during finalizeWithdrawal:", error);
+      
+      // If there's an error, attempt to mark transaction as failed
+      try {
+        const transaction = await Transaction.findById(transactionId);
+        if (transaction && transaction.status === "processing") {
+          transaction.status = "failed";
+          await transaction.save();
+        }
+      } catch (err) {
+        console.error("Error updating transaction status:", err);
+      }
+
       return res.status(500).json({
         success: false,
         message: "Internal Server Error",
