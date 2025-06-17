@@ -281,6 +281,7 @@ updateSponsoredStatus: async (req, res) => {
 
 setApprovalStatus: async (req, res) => {
    
+  console.log("i got hit o");
   
 
   try {
