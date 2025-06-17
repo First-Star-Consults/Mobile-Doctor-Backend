@@ -154,4 +154,63 @@ export async function submitOtpForTransfer(otp, transferCode) {
       return null;
     }
   }
+
+// Add this function to your paymentService.js file
+export const verifyTransfer = async (reference) => {
+  try {
+    const response = await axios.get(
+      `https://api.paystack.co/transfer/verify/${reference}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        },
+      }
+    );
+
+    if (response.data.status) {
+      return {
+        success: true,
+        data: response.data.data,
+      };
+    } else {
+      return {
+        success: false,
+        message: response.data.message,
+      };
+    }
+  } catch (error) {
+    console.error("Error verifying transfer:", error.response?.data || error.message);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Error verifying transfer",
+    };
+  }
+};
+  
+
+// Add the checkTransferStatus function to check the status of a transfer
+export const checkTransferStatus = async (transferCode) => {
+  try {
+    const response = await paystack.get(`/transfer/${transferCode}`);
+    
+    if (response.data.status === 'success') {
+      return {
+        success: true,
+        data: response.data.data,
+        status: response.data.data.status
+      };
+    } else {
+      return {
+        success: false,
+        message: response.data.message
+      };
+    }
+  } catch (error) {
+    console.error('Error checking transfer status:', error.response?.data || error.message);
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Error checking transfer status'
+    };
+  }
+};
   

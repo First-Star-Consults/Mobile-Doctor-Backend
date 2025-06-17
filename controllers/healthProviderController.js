@@ -357,32 +357,97 @@ getDoctorReviews: async (req, res) => {
 
   getAllLaboratories: async (req, res) => {
     try {
-      const laboratories = await Laboratory.find({}); // Retrieves all laboratories
+      // Find all laboratories whose id matches the User's id and check for Verified KYC status and Approved status
+      const laboratories = await Laboratory.aggregate([
+        {
+          $lookup: {
+            from: 'users', // Assuming the collection name for the User model is 'users'
+            localField: '_id', // Laboratory's _id
+            foreignField: '_id', // User's _id
+            as: 'userDetails' // Create an array field 'userDetails' to hold user info
+          }
+        },
+        {
+          $unwind: '$userDetails' // Flatten the 'userDetails' array to access user fields directly
+        },
+        {
+          $match: {
+            'userDetails.kycVerificationStatus': 'Verified', // Match verified KYC status
+            'userDetails.isApproved': 'Approved' // Match approved status
+          }
+        }
+      ]);
+      
       res.status(200).json({ success: true, laboratories });
     } catch (error) {
+      console.error("Error fetching laboratories:", error); // For better error tracking
       res.status(500).json({ success: false, message: 'Error fetching laboratories', error });
     }
   },
 
   getAllPharmacies: async (req, res) => {
     try {
-      const pharmacies = await Pharmacy.find({}); // Retrieves all pharmacies
+      // Find all pharmacies whose id matches the User's id and check for Verified KYC status and Approved status
+      const pharmacies = await Pharmacy.aggregate([
+        {
+          $lookup: {
+            from: 'users', // Assuming the collection name for the User model is 'users'
+            localField: '_id', // Pharmacy's _id
+            foreignField: '_id', // User's _id
+            as: 'userDetails' // Create an array field 'userDetails' to hold user info
+          }
+        },
+        {
+          $unwind: '$userDetails' // Flatten the 'userDetails' array to access user fields directly
+        },
+        {
+          $match: {
+            'userDetails.kycVerificationStatus': 'Verified', // Match verified KYC status
+            'userDetails.isApproved': 'Approved' // Match approved status
+          }
+        }
+      ]);
+      
       res.status(200).json({ success: true, pharmacies });
     } catch (error) {
+      console.error("Error fetching pharmacies:", error); // For better error tracking
       res.status(500).json({ success: false, message: 'Error fetching pharmacies', error });
     }
   },
 
   getAllTherapists: async (req, res) => {
     try {
-      const therapists = await Therapist.find({}); // Retrieves all therapists
+      // Find all therapists whose id matches the User's id and check for Verified KYC status and Approved status
+      const therapists = await Therapist.aggregate([
+        {
+          $lookup: {
+            from: 'users', // Assuming the collection name for the User model is 'users'
+            localField: '_id', // Therapist's _id
+            foreignField: '_id', // User's _id
+            as: 'userDetails' // Create an array field 'userDetails' to hold user info
+          }
+        },
+        {
+          $unwind: '$userDetails' // Flatten the 'userDetails' array to access user fields directly
+        },
+        {
+          $match: {
+            'userDetails.kycVerificationStatus': 'Verified', // Match verified KYC status
+            'userDetails.isApproved': 'Approved' // Match approved status
+          }
+        }
+      ]);
+      
       res.status(200).json({ success: true, therapists });
     } catch (error) {
+      console.error("Error fetching therapists:", error); // For better error tracking
       res.status(500).json({ success: false, message: 'Error fetching therapists', error });
     }
   },
 
   getAllDoctors: async (req, res) => {
+     
+
     try {
       // Find all doctors whose id matches the User's id and check for Verified KYC status and Approved status
       const doctors = await Doctor.aggregate([
@@ -431,8 +496,12 @@ getDoctorReviews: async (req, res) => {
         return res.status(404).json({ success: false, message: 'Doctor not found' });
       }
   
-      // Find approved providers by role (providerType)
-      const providers = await User.find({ role: providerType, isApproved: "Approved" });
+      // Find approved and verified providers by role (providerType)
+      const providers = await User.find({ 
+        role: providerType, 
+        isApproved: "Approved",
+        kycVerificationStatus: "Verified"
+      });
   
       // Ensure patient and providers have location data
       if (!patient.location || !patient.location.coordinates) {

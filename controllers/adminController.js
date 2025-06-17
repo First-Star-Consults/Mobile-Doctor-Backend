@@ -280,6 +280,9 @@ updateSponsoredStatus: async (req, res) => {
 },
 
 setApprovalStatus: async (req, res) => {
+   
+  
+
   try {
     const adminId = req.params.adminId; // Assuming you're using authentication middleware that adds user info to req
     const { userId, isApproved, type, rejectionNote } = req.body; // Extract approval status, type, and rejection note
@@ -294,14 +297,14 @@ setApprovalStatus: async (req, res) => {
       });
     }
 
-    // Validate user type
-    let user;
+    // Validate user type and find provider
+    let provider;
     if (type === "doctor") {
-      user = await Doctor.findById(userId);
+      provider = await Doctor.findById(userId);
     } else if (type === "laboratory") {
-      user = await Laboratory.findById(userId);
+      provider = await Laboratory.findById(userId);
     } else if (type === "pharmacy") {
-      user = await Pharmacy.findById(userId);
+      provider = await Pharmacy.findById(userId);
     } else {
       return res.status(400).json({
         success: false,
@@ -309,6 +312,15 @@ setApprovalStatus: async (req, res) => {
       });
     }
 
+    if (!provider) {
+      return res.status(404).json({
+        success: false,
+        message: "Provider not found",
+      });
+    }
+
+    // Find the corresponding User record
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -316,9 +328,14 @@ setApprovalStatus: async (req, res) => {
       });
     }
 
-    // Update approval status and KYC verification status
+    // Update approval status and KYC verification status on both models
     if (isApproved === "Approved") {
-      user.isApproved = true;
+      // Update provider model
+      provider.isApproved = true;
+      provider.kycVerificationStatus = "Verified";
+      
+      // Update User model
+      user.isApproved = "Approved";
       user.kycVerificationStatus = "Verified";
     } else if (isApproved === "Rejected") {
       if (!rejectionNote) {
@@ -327,9 +344,16 @@ setApprovalStatus: async (req, res) => {
           message: "Rejection note is required when rejecting an approval",
         });
       }
-      user.isApproved = false;
+      
+      // Update provider model
+      provider.isApproved = false;
+      provider.kycVerificationStatus = "Rejected";
+      provider.rejectionNote = rejectionNote; // Store the reason for rejection
+      
+      // Update User model
+      user.isApproved = "Rejected";
       user.kycVerificationStatus = "Rejected";
-      user.rejectionNote = rejectionNote; // Store the reason for rejection
+      // Store rejection note if needed in User model
     } else {
       return res.status(400).json({
         success: false,
@@ -337,12 +361,13 @@ setApprovalStatus: async (req, res) => {
       });
     }
 
-    // Save the updated user
-    await user.save();
+    // Save both models
+    await Promise.all([provider.save(), user.save()]);
 
     res.status(200).json({
       success: true,
-      message: "User approval and KYC verification status updated successfully",
+      message: "Provider approval and KYC verification status updated successfully",
+      provider,
       user,
     });
   } catch (error) {

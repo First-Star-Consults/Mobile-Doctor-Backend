@@ -29,6 +29,7 @@ import {
   submitOtpForTransfer,
 } from "../config/paymentService.js";
 import { Transaction } from "../models/services.js";
+import { checkTransferStatus } from "../config/paymentService.js";
 import ConsultationSession from "../models/consultationModel.js";
 import Conversation from "../models/conversationModel.js";
 import { isDoctorAvailable } from "../utils/isDoctorAvailableFunction.js";
@@ -652,15 +653,16 @@ const authController = {
       const { transactionId, accountNumber, bankCode } = req.body;
 
       // Validate admin privileges based on role
-    const admin = await User.findById(adminId);
-    if (!admin || admin.role !== "admin") {
-      console.log("Unauthorized admin access");
-      return res.status(403).json({
-        success: false,
-        message: "Unauthorized to perform this action",
-      });
-    }
+      const admin = await User.findById(adminId);
+      if (!admin || admin.role !== "admin") {
+        console.log("Unauthorized admin access");
+        return res.status(403).json({
+          success: false,
+          message: "Unauthorized to perform this action",
+        });
+      }
 
+      // Find the transaction and prevent duplicate processing
       const transaction = await Transaction.findById(transactionId).populate(
         "user"
       );
@@ -674,9 +676,15 @@ const authController = {
         });
       }
 
+      // Update transaction status to processing to prevent duplicate approvals
+      transaction.status = "processing";
+      await transaction.save();
+
       const user = transaction.user;
       if (!user) {
         console.log(`User not found for Transaction ID: ${transactionId}`);
+        transaction.status = "failed";
+        await transaction.save();
         return res
           .status(404)
           .json({ success: false, message: "User not found" });
@@ -768,6 +776,11 @@ const authController = {
         });
       }
 
+      // Store transfer code for OTP verification
+      transaction.transferCode = transferResponse.transfer_code;
+      transaction.recipientCode = recipientDetails.recipient_code;
+      await transaction.save();
+
       // Notify user to finalize the transfer using OTP
       res.status(200).json({
         success: true,
@@ -778,6 +791,20 @@ const authController = {
       });
     } catch (error) {
       console.error("Error during withdrawal approval:", error);
+      
+      // Try to update transaction status if possible
+      try {
+        if (req.body && req.body.transactionId) {
+          const transaction = await Transaction.findById(req.body.transactionId);
+          if (transaction && transaction.status === "processing") {
+            transaction.status = "failed";
+            await transaction.save();
+          }
+        }
+      } catch (err) {
+        console.error("Error updating transaction status:", err);
+      }
+      
       res.status(500).json({
         success: false,
         message: "Internal Server Error",
@@ -792,7 +819,7 @@ const authController = {
       const { otp, transferCode, transactionId } = req.body;
 
       const admin = await User.findById(adminId);
-      if (!admin || !admin.isAdmin) {
+      if (!admin || admin.role !== "admin") {
         return res.status(403).json({
           success: false,
           message: "Unauthorized to perform this action",
@@ -807,7 +834,7 @@ const authController = {
       }
 
       const transaction = await Transaction.findById(transactionId).populate("user");
-      if (!transaction || transaction.status !== "pending") {
+      if (!transaction || transaction.status !== "processing") {
         return res.status(400).json({
           success: false,
           message: "Invalid or already processed transaction",
@@ -816,35 +843,32 @@ const authController = {
 
       const user = transaction.user;
       if (!user) {
+        transaction.status = "failed";
+        await transaction.save();
         return res.status(404).json({ success: false, message: "User not found" });
       }
 
-      // Start with marking transaction as processing
-      transaction.status = "processing";
-      await transaction.save();
+      // Check if user has sufficient balance before proceeding
+      if (user.walletBalance < transaction.amount) {
+        transaction.status = "failed";
+        await transaction.save();
+        return res.status(400).json({
+          success: false,
+          message: "Insufficient balance",
+        });
+      }
 
-      // Verify OTP
-      const result = await submitOtpForTransfer(otp, transferCode);
-      
-      if (result.success) {
-        // Double check transfer status
-        const transferConfirmed = await checkTransferStatus(result.data.reference);
-
-        if (transferConfirmed.success) {
+      try {
+        // Submit OTP for transfer
+        const result = await submitOtpForTransfer(otp, transferCode);
+        
+        if (result.success) {
           // Only deduct balance after successful transfer
-          if (user.walletBalance < transaction.amount) {
-            transaction.status = "failed";
-            await transaction.save();
-            return res.status(400).json({
-              success: false,
-              message: "Insufficient balance",
-            });
-          }
-
           user.walletBalance -= transaction.amount;
           await user.save();
 
           transaction.status = "success";
+          transaction.completedAt = new Date();
           await transaction.save();
 
           // Send success notification
@@ -854,31 +878,94 @@ const authController = {
             `Your withdrawal of ₦${transaction.amount} to ${transaction.bankName} (${transaction.accountNumber}) has been completed successfully.`
           );
 
+          // Create notification in the app
+          try {
+            await notificationController.createNotification(
+              user._id,
+              null,
+              "withdrawal",
+              `Your withdrawal of ₦${transaction.amount} to ${transaction.bankName} (${transaction.accountNumber}) has been completed successfully.`,
+              transaction._id,
+              "Transaction"
+            );
+          } catch (notificationError) {
+            console.error("Error creating notification:", notificationError);
+          }
+
           return res.status(200).json({
             success: true,
             message: "Withdrawal completed successfully",
             transactionId,
           });
+        } else {
+          // Handle OTP verification failure
+          // Check if the error is just an OTP issue but the transaction might have gone through
+          if (result.message && result.message.toLowerCase().includes("otp")) {
+            // Verify with Paystack if the transfer actually went through despite OTP error
+            // This would require implementing a transfer verification function
+            
+            // For now, mark as needing verification
+            transaction.status = "verification_needed";
+            transaction.notes = "OTP verification failed but transaction may have gone through. Manual verification required.";
+            await transaction.save();
+            
+            return res.status(202).json({
+              success: false,
+              message: "OTP verification failed. Manual verification required.",
+              transactionId,
+            });
+          } else {
+            // Definitely failed
+            transaction.status = "failed";
+            await transaction.save();
+            
+            return res.status(400).json({
+              success: false,
+              message: "Withdrawal failed. Please try again.",
+            });
+          }
         }
+      } catch (error) {
+        console.error("Error during OTP submission:", error);
+        
+        // Check if the error message suggests the transaction might have succeeded
+        if (error.message && (
+            error.message.toLowerCase().includes("already") || 
+            error.message.toLowerCase().includes("processed") ||
+            error.message.toLowerCase().includes("completed")
+        )) {
+          // The transaction might have gone through despite the error
+          transaction.status = "verification_needed";
+          transaction.notes = "Error during OTP verification but transaction may have gone through. Manual verification required.";
+          await transaction.save();
+          
+          return res.status(202).json({
+            success: false,
+            message: "Error during verification. Manual verification required.",
+            transactionId,
+          });
+        }
+        
+        // Mark as failed for other errors
+        transaction.status = "failed";
+        await transaction.save();
+        
+        return res.status(500).json({
+          success: false,
+          message: "Error processing withdrawal",
+        });
       }
-
-      // If we get here, either OTP verification or transfer failed
-      transaction.status = "failed";
-      await transaction.save();
-
-      return res.status(400).json({
-        success: false,
-        message: "Withdrawal failed. Please try again.",
-      });
     } catch (error) {
       console.error("Error during finalizeWithdrawal:", error);
       
       // If there's an error, attempt to mark transaction as failed
       try {
-        const transaction = await Transaction.findById(transactionId);
-        if (transaction && transaction.status === "processing") {
-          transaction.status = "failed";
-          await transaction.save();
+        if (req.body && req.body.transactionId) {
+          const transaction = await Transaction.findById(req.body.transactionId);
+          if (transaction && transaction.status === "processing") {
+            transaction.status = "failed";
+            await transaction.save();
+          }
         }
       } catch (err) {
         console.error("Error updating transaction status:", err);
@@ -1424,6 +1511,118 @@ const authController = {
       res.status(500).json({
         message: "Error processing consultation",
         error: error.toString(),
+      });
+    }
+  },
+
+  checkWithdrawalStatus: async (req, res) => {
+    try {
+      const adminId = req.params.adminId;
+      const { transactionId } = req.body;
+
+      const admin = await User.findById(adminId);
+      if (!admin || admin.role !== "admin") {
+        return res.status(403).json({
+          success: false,
+          message: "Unauthorized to perform this action",
+        });
+      }
+
+      const transaction = await Transaction.findById(transactionId).populate("user");
+      if (!transaction) {
+        return res.status(404).json({
+          success: false,
+          message: "Transaction not found",
+        });
+      }
+
+      // If transaction is already marked as success or failed, return its status
+      if (transaction.status === "success" || transaction.status === "failed") {
+        return res.status(200).json({
+          success: true,
+          transactionStatus: transaction.status,
+          message: `Transaction is ${transaction.status}`,
+        });
+      }
+
+      // For transactions that need verification or are in processing state
+      if ((transaction.status === "verification_needed" || transaction.status === "processing") && transaction.transferCode) {
+        // Use the checkTransferStatus function to verify with Paystack
+        const transferStatus = await checkTransferStatus(transaction.transferCode);
+        
+        if (transferStatus.success) {
+          const paystackStatus = transferStatus.status;
+          
+          // Update transaction based on Paystack status
+          if (paystackStatus === "success") {
+            // Transaction was successful, update user balance and transaction status
+            const user = transaction.user;
+            if (user) {
+              // Only deduct if not already deducted
+              if (transaction.status !== "success") {
+                user.walletBalance -= transaction.amount;
+                await user.save();
+              }
+            }
+            
+            transaction.status = "success";
+            transaction.completedAt = new Date();
+            await transaction.save();
+            
+            // Send notification
+            if (user) {
+              await notificationController.createNotification(
+                user._id,
+                null,
+                "withdrawal",
+                `Your withdrawal of ₦${transaction.amount} to ${transaction.bankName} (${transaction.accountNumber}) has been completed successfully.`,
+                transaction._id,
+                "Transaction"
+              );
+            }
+            
+            return res.status(200).json({
+              success: true,
+              transactionStatus: "success",
+              message: "Withdrawal confirmed as successful",
+            });
+          } else if (paystackStatus === "failed") {
+            transaction.status = "failed";
+            await transaction.save();
+            
+            return res.status(200).json({
+              success: true,
+              transactionStatus: "failed",
+              message: "Withdrawal confirmed as failed",
+            });
+          } else {
+            // Still pending or processing
+            return res.status(200).json({
+              success: true,
+              transactionStatus: transaction.status,
+              message: `Withdrawal is still ${paystackStatus} at Paystack`,
+              paystackStatus: paystackStatus
+            });
+          }
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: "Failed to check transfer status with Paystack",
+            error: transferStatus.message,
+          });
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        transactionStatus: transaction.status,
+        message: `Transaction is ${transaction.status}`,
+      });
+    } catch (error) {
+      console.error("Error checking withdrawal status:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal Server Error",
       });
     }
   },
