@@ -21,8 +21,7 @@ const SearchControllers = {
         },
         {
           $match: {
-            "userDetails.kycVerificationStatus": "Verified", // Filter based on KYC status
-            "userDetails.isApproved": "Approved" // Filter based on approval status
+            "userDetails.isApproved": "Approved" // Filter based on approval status only
           }
         }
       ]);
@@ -30,18 +29,18 @@ const SearchControllers = {
       if (verifiedDoctors.length === 0) {
         return res.status(404).json({
           success: false,
-          message: 'No verified doctors found',
+          message: 'No approved doctors found',
         });
       }
   
       res.status(200).json({
         success: true,
-        message: 'Verified doctors retrieved successfully',
+        message: 'Approved doctors retrieved successfully',
         verifiedDoctors,
       });
     } catch (error) {
-      console.error('Error retrieving verified doctors:', error); // For better error tracking
-      res.status(500).json({ success: false, error: 'Error retrieving verified doctors', details: error });
+      console.error('Error retrieving approved doctors:', error); // For better error tracking
+      res.status(500).json({ success: false, error: 'Error retrieving approved doctors', details: error });
     }
   },
 

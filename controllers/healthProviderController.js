@@ -319,8 +319,7 @@ getDoctorReviews: async (req, res) => {
         },
         {
           $match: {
-            "userDetails.kycVerificationStatus": "Verified", // Filter based on KYC status
-            "userDetails.isApproved": "Approved" // Filter based on approval status
+            "userDetails.isApproved": "Approved" // Filter based on approval status only
           }
         },
         {
@@ -333,7 +332,14 @@ getDoctorReviews: async (req, res) => {
         },
         {
           $addFields: {
-            averageRating: { $avg: "$reviews.rating" } // Add the average rating field
+            reviewCount: { $size: "$reviews" },
+            averageRating: { 
+              $cond: {
+                if: { $eq: [{ $size: "$reviews" }, 0] },
+                then: 0, // Default rating for doctors with no reviews
+                else: { $avg: "$reviews.rating" }
+              }
+            }
           }
         },
         {
@@ -343,6 +349,8 @@ getDoctorReviews: async (req, res) => {
           $limit: 10 // Limit to top 10 doctors (you can adjust as needed)
         }
       ]);
+      
+      console.log(`Found ${topRatedDoctors.length} top-rated doctors`);
   
       res.status(200).json({
         success: true,
@@ -357,7 +365,7 @@ getDoctorReviews: async (req, res) => {
 
   getAllLaboratories: async (req, res) => {
     try {
-      // Find all laboratories whose id matches the User's id and check for Verified KYC status and Approved status
+      // Find all laboratories whose id matches the User's id and check for Approved status only
       const laboratories = await Laboratory.aggregate([
         {
           $lookup: {
@@ -372,8 +380,7 @@ getDoctorReviews: async (req, res) => {
         },
         {
           $match: {
-            'userDetails.kycVerificationStatus': 'Verified', // Match verified KYC status
-            'userDetails.isApproved': 'Approved' // Match approved status
+            'userDetails.isApproved': 'Approved' // Match approved status only
           }
         }
       ]);
@@ -387,7 +394,7 @@ getDoctorReviews: async (req, res) => {
 
   getAllPharmacies: async (req, res) => {
     try {
-      // Find all pharmacies whose id matches the User's id and check for Verified KYC status and Approved status
+      // Find all pharmacies whose id matches the User's id and check for Approved status only
       const pharmacies = await Pharmacy.aggregate([
         {
           $lookup: {
@@ -402,8 +409,7 @@ getDoctorReviews: async (req, res) => {
         },
         {
           $match: {
-            'userDetails.kycVerificationStatus': 'Verified', // Match verified KYC status
-            'userDetails.isApproved': 'Approved' // Match approved status
+            'userDetails.isApproved': 'Approved' // Match approved status only
           }
         }
       ]);
@@ -417,7 +423,7 @@ getDoctorReviews: async (req, res) => {
 
   getAllTherapists: async (req, res) => {
     try {
-      // Find all therapists whose id matches the User's id and check for Verified KYC status and Approved status
+      // Find all therapists whose id matches the User's id and check for Approved status only
       const therapists = await Therapist.aggregate([
         {
           $lookup: {
@@ -432,8 +438,7 @@ getDoctorReviews: async (req, res) => {
         },
         {
           $match: {
-            'userDetails.kycVerificationStatus': 'Verified', // Match verified KYC status
-            'userDetails.isApproved': 'Approved' // Match approved status
+            'userDetails.isApproved': 'Approved' // Match approved status only
           }
         }
       ]);
@@ -449,7 +454,7 @@ getDoctorReviews: async (req, res) => {
      
 
     try {
-      // Find all doctors whose id matches the User's id and check for Verified KYC status and Approved status
+      // Find all doctors whose id matches the User's id and check for Approved status only
       const doctors = await Doctor.aggregate([
         {
           $lookup: {
@@ -464,8 +469,7 @@ getDoctorReviews: async (req, res) => {
         },
         {
           $match: {
-            'userDetails.kycVerificationStatus': 'Verified', // Match verified KYC status
-            'userDetails.isApproved': 'Approved' // Match approved status
+            'userDetails.isApproved': 'Approved' // Match approved status only
           }
         }
       ]);
@@ -496,11 +500,10 @@ getDoctorReviews: async (req, res) => {
         return res.status(404).json({ success: false, message: 'Doctor not found' });
       }
   
-      // Find approved and verified providers by role (providerType)
+      // Find approved providers by role (providerType)
       const providers = await User.find({ 
         role: providerType, 
-        isApproved: "Approved",
-        kycVerificationStatus: "Verified"
+        isApproved: "Approved"
       });
   
       // Ensure patient and providers have location data
