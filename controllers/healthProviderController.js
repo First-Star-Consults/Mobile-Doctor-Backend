@@ -759,8 +759,11 @@ getPatientsOfDoctor: async (req, res) => {
       .exec();
 
 
-    // Extract patient IDs
-    const patientIds = [...new Set(sessions.map(session => session.patient._id.toString()))];
+    // Extract patient IDs (with null check)
+    const patientIds = [...new Set(sessions
+      .filter(session => session.patient && session.patient._id) // Filter out sessions with null patient
+      .map(session => session.patient._id.toString())
+    )];
 
     // Fetch prescriptions for these patients and doctor
     const prescriptions = await Prescription.find({ patient: { $in: patientIds }, doctor: doctorId })
@@ -787,10 +790,12 @@ getPatientsOfDoctor: async (req, res) => {
 
 
     // Format the result
-    const result = sessions.map(session => {
-      const patientPrescriptions = prescriptions.filter(prescription => prescription.patient.toString() === session.patient._id.toString());
-      const patientResults = testResults.filter(result => patientPrescriptions.some(prescription => prescription._id.toString() === result.prescription.toString()));
-      const patientMedicalRecord = medicalRecords.find(record => record._id.toString() === session.patient._id.toString()) || null;
+    const result = sessions
+      .filter(session => session.patient && session.patient._id) // Filter out sessions with null patient
+      .map(session => {
+        const patientPrescriptions = prescriptions.filter(prescription => prescription.patient.toString() === session.patient._id.toString());
+        const patientResults = testResults.filter(result => patientPrescriptions.some(prescription => prescription._id.toString() === result.prescription.toString()));
+        const patientMedicalRecord = medicalRecords.find(record => record._id.toString() === session.patient._id.toString()) || null;
 
       return {
         patient: {
