@@ -46,13 +46,17 @@ const transactionSchema = new mongoose.Schema({
   consultationSession: { type: mongoose.Schema.Types.ObjectId, ref: 'Consultation', required: false }, // Optional, if you have a consultation model
   prescription: { type: mongoose.Schema.Types.ObjectId, ref: 'Prescription', required: false },
   type: { type: String, required: true }, // e.g., 'payout', 'consultation fee'
-  status: { type: String, required: true }, // e.g., 'pending', 'success', 'failed'
+  status: { type: String, required: true }, // e.g., 'pending', 'success', 'failed', 'processing', 'verification_needed'
   escrowStatus: { type: String, enum: ['held', 'released', 'refunded'], default: null }, // Handles escrow state
   amount: { type: Number, required: true },
   accountNumber: String,
   bankName: String,
   bankCode: String,
   paymentMethod: { type: String },
+  transferCode: { type: String }, // For storing Paystack transfer code during withdrawal
+  recipientCode: { type: String }, // For storing Paystack recipient code during withdrawal
+  notes: { type: String }, // For storing additional information about the transaction
+  completedAt: { type: Date }, // When the transaction was completed
   date: { type: Date, default: Date.now },
 });
 

@@ -8,6 +8,9 @@ import { sendNotificationEmail } from "../utils/nodeMailer.js"
 import moment from 'moment';
 import { Transaction } from "../models/services.js"
 
+// Import necessary modules for the new functions
+import notificationController from "./notificationController.js";
+
 const adminController = {
   
 
@@ -908,33 +911,284 @@ suspendUser: async (req, res) => {
  // Function to get all suspended accounts
  getSuspendedAccounts: async (req, res) => {
   try {
-    // Fetch all suspended accounts
-    const suspendedAccounts = await User.find({ isSuspended: "true" });
+    // Find all suspended users
+    const suspendedUsers = await User.find({ isSuspended: true });
 
-    // Check if there are any suspended accounts
-    if (!suspendedAccounts.length) {
-      return res.status(404).json({ message: "No suspended accounts found." });
-    }
-
-    // Return the suspended accounts
     res.status(200).json({
-      message: "Suspended accounts retrieved successfully.",
-      data: suspendedAccounts,
+      success: true,
+      message: "Suspended accounts fetched successfully",
+      suspendedUsers,
     });
   } catch (error) {
-    // Handle errors
-    console.error("Error fetching suspended accounts:", error.message);
-    res.status(500).json({ message: "An error occurred while fetching suspended accounts." });
+    console.error("Error fetching suspended accounts:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching suspended accounts",
+      error: error.message,
+    });
   }
 },
 
+  // Function to get transactions that need verification
+  getVerificationNeededTransactions: async (req, res) => {
+    try {
+      const adminId = req.params.adminId;
 
+      // Verify the admin
+      const admin = await User.findById(adminId);
+      if (!admin || !admin.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "Unauthorized to perform this action",
+        });
+      }
 
-  
+      // Fetch transactions with 'verification_needed' status
+      const transactions = await Transaction.find({ status: "verification_needed" })
+        .populate('user', 'firstName lastName email')
+        .sort({ date: -1 });
 
-  
-  
-  
+      if (!transactions || transactions.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "No transactions found that need verification",
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Transactions that need verification fetched successfully",
+        transactions,
+      });
+    } catch (error) {
+      console.error("Error fetching verification needed transactions:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error fetching verification needed transactions",
+        error: error.message,
+      });
+    }
+  },
+
+  // Function to manually verify a transaction
+  manuallyVerifyTransaction: async (req, res) => {
+    try {
+      const adminId = req.params.adminId;
+      const { transactionId, verificationStatus } = req.body;
+
+      // Verify the admin
+      const admin = await User.findById(adminId);
+      if (!admin || !admin.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "Unauthorized to perform this action",
+        });
+      }
+
+      // Find the transaction
+      const transaction = await Transaction.findById(transactionId);
+      if (!transaction) {
+        return res.status(404).json({
+          success: false,
+          message: "Transaction not found",
+        });
+      }
+
+      // Check if the transaction is in 'verification_needed' status
+      if (transaction.status !== "verification_needed") {
+        return res.status(400).json({
+          success: false,
+          message: "This transaction does not need verification",
+        });
+      }
+
+      // Update the transaction status based on admin verification
+      if (verificationStatus === "success") {
+        transaction.status = "success";
+        transaction.notes = `${transaction.notes || ''} | Manually verified by admin ${admin.firstName} ${admin.lastName} on ${new Date().toISOString()}`;
+        transaction.completedAt = new Date();
+
+        // Find the user to send notification
+        const user = await User.findById(transaction.user);
+        if (user) {
+          // Send email notification
+          await sendNotificationEmail(
+            user.email,
+            "Withdrawal Successful",
+            `Your withdrawal of ₦${transaction.amount} has been successfully processed.`
+          );
+
+          // Create in-app notification
+          await notificationController.createNotification({
+            recipient: user._id,
+            title: "Withdrawal Successful",
+            message: `Your withdrawal of ₦${transaction.amount} has been successfully processed.`,
+            type: "transaction",
+          });
+        }
+      } else if (verificationStatus === "failed") {
+        transaction.status = "failed";
+        transaction.notes = `${transaction.notes || ''} | Manually marked as failed by admin ${admin.firstName} ${admin.lastName} on ${new Date().toISOString()}`;
+
+        // Find the user to send notification and refund the amount
+        const user = await User.findById(transaction.user);
+        if (user) {
+          // Refund the amount to user's wallet
+          user.walletBalance += transaction.amount;
+          await user.save();
+
+          // Send email notification
+          await sendNotificationEmail(
+            user.email,
+            "Withdrawal Failed - Amount Refunded",
+            `Your withdrawal of ₦${transaction.amount} has failed. The amount has been refunded to your wallet.`
+          );
+
+          // Create in-app notification
+          await notificationController.createNotification({
+            recipient: user._id,
+            title: "Withdrawal Failed - Amount Refunded",
+            message: `Your withdrawal of ₦${transaction.amount} has failed. The amount has been refunded to your wallet.`,
+            type: "transaction",
+          });
+        }
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid verification status. Use 'success' or 'failed'.",
+        });
+      }
+
+      // Save the updated transaction
+      await transaction.save();
+
+      res.status(200).json({
+        success: true,
+        message: `Transaction has been manually marked as ${verificationStatus}`,
+        transaction,
+      });
+    } catch (error) {
+      console.error("Error manually verifying transaction:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error manually verifying transaction",
+        error: error.message,
+      });
+    }
+  },
+
+  // Function to check transfer status with Paystack
+  checkTransferStatusWithPaystack: async (req, res) => {
+    try {
+      const adminId = req.params.adminId;
+      const { transactionId } = req.body;
+
+      // Verify the admin
+      const admin = await User.findById(adminId);
+      if (!admin || !admin.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "Unauthorized to perform this action",
+        });
+      }
+
+      // Find the transaction
+      const transaction = await Transaction.findById(transactionId);
+      if (!transaction) {
+        return res.status(404).json({
+          success: false,
+          message: "Transaction not found",
+        });
+      }
+
+      // Check if the transaction has a transferCode
+      if (!transaction.transferCode) {
+        return res.status(400).json({
+          success: false,
+          message: "This transaction does not have a transfer code to check",
+        });
+      }
+
+      // Import the checkTransferStatus function
+      const { checkTransferStatus } = await import("../config/paymentService.js");
+
+      // Check the transfer status with Paystack
+      const transferStatus = await checkTransferStatus(transaction.transferCode);
+
+      // Update the transaction based on the Paystack status
+      if (transferStatus === "success") {
+        transaction.status = "success";
+        transaction.notes = `${transaction.notes || ''} | Transfer verified with Paystack as successful on ${new Date().toISOString()}`;
+        transaction.completedAt = new Date();
+
+        // Find the user to send notification
+        const user = await User.findById(transaction.user);
+        if (user) {
+          // Send email notification
+          await sendNotificationEmail(
+            user.email,
+            "Withdrawal Successful",
+            `Your withdrawal of ₦${transaction.amount} has been successfully processed.`
+          );
+
+          // Create in-app notification
+          await notificationController.createNotification({
+            recipient: user._id,
+            title: "Withdrawal Successful",
+            message: `Your withdrawal of ₦${transaction.amount} has been successfully processed.`,
+            type: "transaction",
+          });
+        }
+      } else if (transferStatus === "failed") {
+        transaction.status = "failed";
+        transaction.notes = `${transaction.notes || ''} | Transfer verified with Paystack as failed on ${new Date().toISOString()}`;
+
+        // Find the user to send notification and refund the amount
+        const user = await User.findById(transaction.user);
+        if (user) {
+          // Refund the amount to user's wallet
+          user.walletBalance += transaction.amount;
+          await user.save();
+
+          // Send email notification
+          await sendNotificationEmail(
+            user.email,
+            "Withdrawal Failed - Amount Refunded",
+            `Your withdrawal of ₦${transaction.amount} has failed. The amount has been refunded to your wallet.`
+          );
+
+          // Create in-app notification
+          await notificationController.createNotification({
+            recipient: user._id,
+            title: "Withdrawal Failed - Amount Refunded",
+            message: `Your withdrawal of ₦${transaction.amount} has failed. The amount has been refunded to your wallet.`,
+            type: "transaction",
+          });
+        }
+      } else {
+        // If the status is still pending or processing
+        transaction.notes = `${transaction.notes || ''} | Transfer status checked with Paystack: ${transferStatus} on ${new Date().toISOString()}`;
+      }
+
+      // Save the updated transaction
+      await transaction.save();
+
+      res.status(200).json({
+        success: true,
+        message: `Transfer status checked with Paystack: ${transferStatus}`,
+        paystackStatus: transferStatus,
+        transaction,
+      });
+    } catch (error) {
+      console.error("Error checking transfer status with Paystack:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error checking transfer status with Paystack",
+        error: error.message,
+      });
+    }
+  },
+
 };
 
 export default adminController;

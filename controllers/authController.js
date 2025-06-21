@@ -841,6 +841,12 @@ const authController = {
         });
       }
 
+      // Store transferCode in the transaction for future reference
+      if (!transaction.transferCode) {
+        transaction.transferCode = transferCode;
+        await transaction.save();
+      }
+
       const user = transaction.user;
       if (!user) {
         transaction.status = "failed";
@@ -861,6 +867,18 @@ const authController = {
       try {
         // Submit OTP for transfer
         const result = await submitOtpForTransfer(otp, transferCode);
+
+        // Enhanced logging for Paystack response
+  console.log('=== PAYSTACK OTP RESPONSE ===');
+  console.log('Full Response:', JSON.stringify(result, null, 2));
+  console.log('Success Status:', result.success);
+  console.log('Response Message:', result.message);
+  console.log('Response Data:', result.data);
+  console.log('Transfer Code:', transferCode);
+  console.log('Transaction ID:', transactionId);
+  console.log('Timestamp:', new Date().toISOString());
+  console.log('===============================');
+        
         
         if (result.success) {
           // Only deduct balance after successful transfer
@@ -901,13 +919,75 @@ const authController = {
           // Handle OTP verification failure
           // Check if the error is just an OTP issue but the transaction might have gone through
           if (result.message && result.message.toLowerCase().includes("otp")) {
-            // Verify with Paystack if the transfer actually went through despite OTP error
-            // This would require implementing a transfer verification function
-            
-            // For now, mark as needing verification
+            // Mark as needing verification
             transaction.status = "verification_needed";
-            transaction.notes = "OTP verification failed but transaction may have gone through. Manual verification required.";
+            transaction.notes = `OTP verification failed with message: ${result.message}. Transaction may have gone through. Manual verification required.`;
             await transaction.save();
+            
+            // Try to check the transfer status immediately
+            try {
+              const { checkTransferStatus } = await import("../config/paymentService.js");
+              const transferStatus = await checkTransferStatus(transferCode);
+              
+              // If the check was successful and we can determine the status
+              if (transferStatus.success && transferStatus.data) {
+                const paystackStatus = transferStatus.data.status;
+                transaction.notes = `${transaction.notes} | Immediate status check: ${paystackStatus}`;
+                
+                // If Paystack confirms the transfer was successful, update our records
+                if (paystackStatus === "success") {
+                  // Deduct balance as the transfer was successful
+                  user.walletBalance -= transaction.amount;
+                  await user.save();
+                  
+                  transaction.status = "success";
+                  transaction.completedAt = new Date();
+                  await transaction.save();
+                  
+                  // Send success notification
+                  await sendNotificationEmail(
+                    user.email,
+                    "Withdrawal Successful",
+                    `Your withdrawal of ₦${transaction.amount} to ${transaction.bankName} (${transaction.accountNumber}) has been completed successfully.`
+                  );
+                  
+                  try {
+                    await notificationController.createNotification(
+                      user._id,
+                      null,
+                      "withdrawal",
+                      `Your withdrawal of ₦${transaction.amount} to ${transaction.bankName} (${transaction.accountNumber}) has been completed successfully.`,
+                      transaction._id,
+                      "Transaction"
+                    );
+                  } catch (notificationError) {
+                    console.error("Error creating notification:", notificationError);
+                  }
+                  
+                  return res.status(200).json({
+                    success: true,
+                    message: "Withdrawal completed successfully after verification",
+                    transactionId,
+                  });
+                } else if (paystackStatus === "failed") {
+                  // If Paystack confirms the transfer failed
+                  transaction.status = "failed";
+                  transaction.notes = `${transaction.notes} | Transfer confirmed failed by Paystack`;
+                  await transaction.save();
+                  
+                  return res.status(400).json({
+                    success: false,
+                    message: "Withdrawal failed. Please try again.",
+                  });
+                }
+                // If status is pending or another state, keep as verification_needed
+              }
+              
+              await transaction.save();
+            } catch (statusCheckError) {
+              console.error("Error checking transfer status:", statusCheckError);
+              // Continue with the process even if status check fails
+            }
             
             return res.status(202).json({
               success: false,
@@ -917,6 +997,7 @@ const authController = {
           } else {
             // Definitely failed
             transaction.status = "failed";
+            transaction.notes = `Withdrawal failed: ${result.message}`;
             await transaction.save();
             
             return res.status(400).json({
@@ -936,7 +1017,20 @@ const authController = {
         )) {
           // The transaction might have gone through despite the error
           transaction.status = "verification_needed";
-          transaction.notes = "Error during OTP verification but transaction may have gone through. Manual verification required.";
+          transaction.notes = `Error during OTP verification: ${error.message}. Transaction may have gone through. Manual verification required.`;
+          
+          // Try to check the transfer status immediately
+          try {
+            const { checkTransferStatus } = await import("../config/paymentService.js");
+            const transferStatus = await checkTransferStatus(transferCode);
+            
+            if (transferStatus.success) {
+              transaction.notes = `${transaction.notes} | Immediate status check: ${transferStatus.data.status}`;
+            }
+          } catch (statusCheckError) {
+            console.error("Error checking transfer status:", statusCheckError);
+          }
+          
           await transaction.save();
           
           return res.status(202).json({
@@ -948,6 +1042,7 @@ const authController = {
         
         // Mark as failed for other errors
         transaction.status = "failed";
+        transaction.notes = `Error processing withdrawal: ${error.message}`;
         await transaction.save();
         
         return res.status(500).json({
@@ -964,6 +1059,7 @@ const authController = {
           const transaction = await Transaction.findById(req.body.transactionId);
           if (transaction && transaction.status === "processing") {
             transaction.status = "failed";
+            transaction.notes = `${transaction.notes || ''} | Error during finalization: ${error.message}`;
             await transaction.save();
           }
         }

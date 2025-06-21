@@ -47,8 +47,9 @@ router.post("/:adminId/suspend-user", adminController.suspendUser);
 // Route to get all suspended accounts
 router.get("/suspended-accounts", adminController.getSuspendedAccounts);
 
-
-
-
+// Routes for handling verification-needed transactions
+router.get("/:adminId/verification-needed-transactions", adminController.getVerificationNeededTransactions);
+router.post("/:adminId/manually-verify-transaction", adminController.manuallyVerifyTransaction);
+router.post("/:adminId/check-transfer-status", adminController.checkTransferStatusWithPaystack);
 
 export default router;

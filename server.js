@@ -18,6 +18,7 @@ import prescriptionRoute from './routes/prescriptionRoute.js';
 import notificationRoute from './routes/notificationRoute.js';
 import http from 'http'; 
 import { Server } from 'socket.io';
+import { setupTransactionStatusChecker } from './utils/transactionStatusChecker.js';
 const app = express();
 
 
@@ -137,4 +138,8 @@ io.on('connection', (socket) => {
 export { io };
 server.listen(process.env.PORT || 3000, () => {
   console.log(`Server is listening on port ${process.env.PORT || 3000}`);
+  
+  // Start the transaction status checker to run every 30 minutes
+  setupTransactionStatusChecker(30);
+  console.log('Transaction status checker initialized');
 });

@@ -126,14 +126,34 @@ export async function submitOtpForTransfer(otp, transferCode) {
       transfer_code: transferCode,
     };
 
+    console.log('=== PAYSTACK OTP REQUEST ===');
+    console.log('Transfer Code:', transferCode);
+    console.log('OTP Provided:', otp);
+    console.log('Timestamp:', new Date().toISOString());
+
     const response = await paystack.post('/transfer/finalize_transfer', body);
-    if (response.data.status === 'success') {
+    
+    console.log('=== PAYSTACK OTP RESPONSE ===');
+    console.log('Response Status:', response.status);
+    console.log('Response Status Text:', response.statusText);
+    console.log('Response Data:', JSON.stringify(response.data, null, 2));
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('===============================');
+       
+    if (response.data.status === true) {
       return { success: true, message: 'Transfer successful', data: response.data.data };
     } else {
       return { success: false, message: response.data.message };
     }
   } catch (error) {
-    console.error('Error submitting OTP:', error);
+    console.error('=== PAYSTACK OTP ERROR ===');
+    console.error('Transfer Code:', transferCode);
+    console.error('Error Message:', error.message);
+    console.error('Error Response:', error.response?.data ? JSON.stringify(error.response.data, null, 2) : 'No response data');
+    console.error('Error Status:', error.response?.status);
+    console.error('Timestamp:', new Date().toISOString());
+    console.error('============================');
+    
     return { success: false, message: error.response?.data?.message || error.message };
   }
 }
@@ -193,7 +213,7 @@ export const checkTransferStatus = async (transferCode) => {
   try {
     const response = await paystack.get(`/transfer/${transferCode}`);
     
-    if (response.data.status === 'success') {
+    if (response.data.status === true) {
       return {
         success: true,
         data: response.data.data,
