@@ -3,9 +3,23 @@ import { transferBalance } from './transerBalance.js';
 export const calculateFeesAndTransfer = async (patientId, providerId, amount, adminId) => {
   try {
     // Validate inputs
-    if (!patientId || !providerId || !amount || !adminId) {
-      console.error('Missing required parameters for transfer:', { patientId, providerId, amount, adminId });
+    if (!patientId || !providerId || !amount) {
+      console.error('Missing required parameters for transfer:', { patientId, providerId, amount });
       throw new Error('Missing required parameters for transfer');
+    }
+    
+    if (!adminId) {
+      console.error('Admin ID is missing, attempting to find an admin user');
+      const User = (await import('../models/user.js')).default;
+      const adminUser = await User.findOne({ role: 'admin' });
+      
+      if (!adminUser) {
+        console.error('No admin user found in the database');
+        throw new Error('Admin user not found');
+      }
+      
+      adminId = adminUser._id;
+      console.log('Found admin user with ID:', adminId);
     }
 
     const providerFeePercentage = 0.95; // 95% to provider

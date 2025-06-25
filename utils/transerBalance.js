@@ -17,17 +17,32 @@ export const transferBalance = async (fromUserId, toUserId, amount, adminFee, ad
     console.log(`toUserId: ${toUserId}`);
     console.log(`adminId: ${adminId}`);
 
+    // Validate input parameters
+    if (!fromUserId || !toUserId || !adminId) {
+      console.error('Missing user IDs:', { fromUserId, toUserId, adminId });
+      throw new Error('Missing required user IDs');
+    }
+
     // Fetch users involved in the transaction
     const fromUser = await User.findById(fromUserId);
     const toUser = await User.findById(toUserId);
     const admin = await User.findById(adminId);
 
-    console.log(`fromUser: ${fromUser}`);
-    console.log(`toUser: ${toUser}`);
-    console.log(`admin: ${admin}`);
+    // Log detailed information about the users
+    console.log(`fromUser: ${fromUser ? 'Found' : 'Not found'} (ID: ${fromUserId})`);
+    console.log(`toUser: ${toUser ? 'Found' : 'Not found'} (ID: ${toUserId})`);
+    console.log(`admin: ${admin ? 'Found' : 'Not found'} (ID: ${adminId})`);
 
-    if (!fromUser || !toUser || !admin) {
-      throw new Error('One or more users not found');
+    // Check if all users exist
+    const missingUsers = [];
+    if (!fromUser) missingUsers.push(`fromUser (${fromUserId})`);
+    if (!toUser) missingUsers.push(`toUser (${toUserId})`);
+    if (!admin) missingUsers.push(`admin (${adminId})`);
+
+    if (missingUsers.length > 0) {
+      const errorMessage = `Users not found: ${missingUsers.join(', ')}`;
+      console.error(errorMessage);
+      throw new Error(errorMessage);
     }
 
     if (isNaN(amount) || isNaN(adminFee)) {
@@ -102,6 +117,22 @@ export const transferBalance = async (fromUserId, toUserId, amount, adminFee, ad
     return { debitTransaction, creditTransaction, adminTransaction };
   } catch (error) {
     console.error('Error transferring balance:', error);
-    throw new Error('Error transferring balance');
+    
+    // Provide more specific error messages based on the original error
+    if (error.message.includes('not found')) {
+      throw error; // Pass through the detailed 'not found' error
+    } else if (error.message.includes('Insufficient balance')) {
+      throw error; // Pass through the insufficient balance error
+    } else if (error.message.includes('Invalid amount')) {
+      throw error; // Pass through the invalid amount error
+    } else if (error.name === 'CastError') {
+      throw new Error(`Invalid ID format: ${error.value}`);
+    } else if (error.name === 'ValidationError') {
+      throw new Error(`Validation error: ${error.message}`);
+    } else {
+      // For unexpected errors, provide a generic message but log the details
+      console.error('Unexpected error in transferBalance:', error);
+      throw new Error(`Error transferring balance: ${error.message}`);
+    }
   }
 };

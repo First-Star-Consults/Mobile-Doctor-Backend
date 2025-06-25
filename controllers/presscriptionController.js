@@ -15,9 +15,15 @@ import ConsultationSession from "../models/consultationModel.js";
 import Conversation from "../models/conversationModel.js";
 import { io } from "../server.js";
 import notificationController from "./notificationController.js";
+import { config } from "dotenv"
+config();
+
 
 // Assuming you have an admin user with a fixed ID for receiving fees
-const adminId = process.env.ADMIN_ID;
+const adminId = process.env.ADMIN_ID || "676e9a195a2f8b6f664c2919";
+
+// Log the admin ID to check if it's properly set
+console.log('Admin ID from environment:', adminId);
 
 const prescriptionController = {
   makePrescriptions: async (req, res) => {
@@ -704,34 +710,65 @@ const prescriptionController = {
 
       if (user.walletBalance < amount) {
         return res.status(400).json({ balanceMessage: "Insufficient balance" });
+ }
+
+      try {
+        await calculateFeesAndTransfer(
+          patientId,
+          prescription.provider,
+          amount,
+          validAdminId
+        );
+
+        // Set the approved field to true
+        prescription.approved = true;
+        await prescription.save();
+
+        await notificationController.createNotification(
+          provider._id,
+          null,
+          "Costing Approved",
+          `The patient has approved the cost of ${amount} for the prescription.`,
+          prescriptionId,
+          "Prescription"
+        );
+
+        res
+          .status(200)
+          .json({ message: "Costing approved successfully", transaction });
+      } catch (transferError) {
+        console.error("Error in fee calculation or transfer:", transferError);
+        
+        // Handle specific error cases
+        if (transferError.message.includes('not found')) {
+          return res.status(404).json({ 
+            message: "User not found", 
+            details: transferError.message 
+          });
+        } else if (transferError.message.includes('Insufficient balance')) {
+          return res.status(400).json({ 
+            message: "Insufficient balance", 
+            details: transferError.message 
+          });
+        } else if (transferError.message.includes('Invalid ID format')) {
+          return res.status(400).json({ 
+            message: "Invalid user ID", 
+            details: transferError.message 
+          });
+        } else {
+          return res.status(500).json({ 
+            message: "Error processing payment", 
+            details: transferError.message 
+          });
+        }
       }
-
-      await calculateFeesAndTransfer(
-        patientId,
-        prescription.provider,
-        amount,
-        adminId
-      );
-
-      // Set the approved field to true
-      prescription.approved = true;
-      await prescription.save();
-
-      await notificationController.createNotification(
-        provider._id,
-        null,
-        "Costing Approved",
-        `The patient has approved the cost of ${amount} for the prescription.`,
-        prescriptionId,
-        "Prescription"
-      );
-
-      res
-        .status(200)
-        .json({ message: "Costing approved successfully", transaction });
     } catch (error) {
       console.error("Error approving costing:", error);
-      res.status(500).json({ message: "Internal server error" });
+      res.status(500).json({ 
+        message: "Internal server error", 
+        details: error.message,
+        errorType: error.name || 'Unknown'
+      });
     }
   },
 
