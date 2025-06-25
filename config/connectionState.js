@@ -14,15 +14,44 @@ const connect = async () => {
   console.log("Database connecting...");
 
   try {
+    // Set mongoose connection options to improve reliability
+    mongoose.set('bufferCommands', false); // Disable command buffering when disconnected
+    
     await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      dbName: 'mbdb'
+      dbName: 'mbdb',
+      serverSelectionTimeoutMS: 15000, // Timeout for server selection
+      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      connectTimeoutMS: 30000, // Give up initial connection after 30 seconds
+      maxPoolSize: 10, // Maintain up to 10 socket connections
+      minPoolSize: 2, // Maintain at least 2 socket connections
+      heartbeatFrequencyMS: 10000 // Check connection health every 10 seconds
     });
 
-    
+    // Set up connection event listeners
+    mongoose.connection.on('error', (err) => {
+      console.error('MongoDB connection error:', err);
+      connectionState.connected = false;
+      connectionState.error = err;
+      connectionState.emit('error', err);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.log('MongoDB disconnected');
+      connectionState.connected = false;
+      connectionState.emit('disconnected');
+    });
+
+    mongoose.connection.on('reconnected', () => {
+      console.log('MongoDB reconnected');
+      connectionState.connected = true;
+      connectionState.error = null;
+      connectionState.emit('reconnected');
+    });
 
     connectionState.connected = true;
+    connectionState.error = null;
     console.log("Database Connected!");
   } catch (error) {
     connectionState.error = error;
@@ -42,4 +71,13 @@ const disconnect = async () => {
   }
 };
 
-export { connectionState, connect, disconnect };
+// Function to check connection health
+const checkConnection = () => {
+  return {
+    isConnected: mongoose.connection.readyState === 1,
+    readyState: mongoose.connection.readyState,
+    error: connectionState.error
+  };
+};
+
+export { connectionState, connect, disconnect, checkConnection };

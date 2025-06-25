@@ -21,12 +21,6 @@ export const checkPendingTransactions = async () => {
       return;
     }
     
-    // Set a global timeout for the entire operation
-    const operationTimeout = setTimeout(() => {
-      console.log('Transaction check operation timed out after 25 seconds');
-      // This will not stop the operation but will log that it timed out
-    }, 25000);
-    
     // Find all transactions that need verification with a timeout option
     const pendingTransactions = await Transaction.find({ 
       status: 'verification_needed',
@@ -148,15 +142,8 @@ export const checkPendingTransactions = async () => {
     }
     
     console.log('Completed scheduled check for verification_needed transactions');
-    
-    // Clear the operation timeout
-    clearTimeout(operationTimeout);
   } catch (error) {
     console.error('Error in checkPendingTransactions:', error);
-    // Clear the operation timeout even if there was an error
-    if (typeof operationTimeout !== 'undefined') {
-      clearTimeout(operationTimeout);
-    }
   }
 };
 

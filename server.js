@@ -5,7 +5,7 @@ import passport from 'passport';
 import bodyParser from "body-parser";
 import fileUpload from "express-fileupload";
 import cors from 'cors';
-import { connect } from "./config/connectionState.js";
+import { connect, checkConnection } from "./config/connectionState.js";
 import authRoute from "./routes/authRoute.js";
 import userRouter from './routes/userRoute.js';
 import providerRouter from './routes/healthProviderRoute.js';
@@ -140,6 +140,15 @@ server.listen(process.env.PORT || 3000, () => {
   console.log(`Server is listening on port ${process.env.PORT || 3000}`);
   
   // Start the transaction status checker to run every 30 minutes
-  setupTransactionStatusChecker(30);
-  console.log('Transaction status checker initialized');
+  // Wait for database connection to be established before starting the checker
+  const connectionCheckInterval = setInterval(() => {
+    const connectionStatus = checkConnection();
+    if (connectionStatus.isConnected) {
+      clearInterval(connectionCheckInterval);
+      setupTransactionStatusChecker(30);
+      console.log('Transaction status checker initialized');
+    } else {
+      console.log('Waiting for database connection before initializing transaction checker...');
+    }
+  }, 5000);
 });
