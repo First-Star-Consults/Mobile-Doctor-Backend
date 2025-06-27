@@ -20,7 +20,7 @@ config();
 
 
 // Assuming you have an admin user with a fixed ID for receiving fees
-const adminId = process.env.ADMIN_ID || "676e9a195a2f8b6f664c2919";
+const validAdminId = process.env.ADMIN_ID || "676e9a195a2f8b6f664c2919";
 
 // Log the admin ID to check if it's properly set
 console.log('Admin ID from environment:', adminId);
