@@ -23,7 +23,8 @@ config();
 const adminId = process.env.ADMIN_ID || "676e9a195a2f8b6f664c2919";
 
 // Log the admin ID to check if it's properly set
-console.log('Admin ID from environment:', adminId);
+console.log('Admin ID from environment:', process.env.ADMIN_ID);
+console.log('Default or fallback admin ID:', adminId);
 
 const prescriptionController = {
   makePrescriptions: async (req, res) => {
@@ -665,7 +666,8 @@ const prescriptionController = {
     const { prescriptionId } = req.body;
     const patientId = req.params.patientId;
 
-    console.log("patient id", patientId);
+    console.log("na the patient id be this", patientId);
+    console.log("na the prescription id be this", prescriptionId);
     
 
     try {
@@ -716,11 +718,42 @@ const prescriptionController = {
  }
 
       try {
+        // Validate adminId and fetch admin user if needed
+        let validAdminId = adminId;
+        if (!validAdminId) {
+          console.log('Admin ID is missing, attempting to find an admin user');
+          const adminUser = await User.findOne({ role: 'admin' });
+          
+          if (!adminUser) {
+            console.error('No admin user found in the database');
+            return res.status(500).json({ message: 'Admin user not found. Please contact support.' });
+          }
+          
+          validAdminId = adminUser._id;
+          console.log('Found admin user with ID:', validAdminId);
+        } else {
+          // Verify that the admin user exists
+          const adminUser = await User.findById(validAdminId);
+          if (!adminUser) {
+            console.error(`Admin user with ID ${validAdminId} not found in the database`);
+            // Try to find any admin user
+            const fallbackAdmin = await User.findOne({ role: 'admin' });
+            
+            if (!fallbackAdmin) {
+              console.error('No admin user found in the database');
+              return res.status(500).json({ message: 'Admin user not found. Please contact support.' });
+            }
+            
+            validAdminId = fallbackAdmin._id;
+            console.log('Found fallback admin user with ID:', validAdminId);
+          }
+        }
+        
         await calculateFeesAndTransfer(
           patientId,
           prescription.provider,
           amount,
-          adminId
+          validAdminId
         );
 
         // Set the approved field to true
@@ -746,7 +779,23 @@ const prescriptionController = {
         if (transferError.message.includes('not found')) {
           return res.status(404).json({ 
             message: "User not found", 
-            details: transferError.message 
+            details: transferError.message,
+            error: transferError.message,
+            errorType: 'UserNotFound'
+          });
+        } else if (transferError.message.includes('Insufficient balance')) {
+          return res.status(400).json({ 
+            message: "Insufficient balance", 
+            details: transferError.message,
+            error: transferError.message,
+            errorType: 'InsufficientBalance'
+          });
+        } else if (transferError.message.includes('Invalid user ID')) {
+          return res.status(400).json({ 
+            message: "Invalid user ID", 
+            details: transferError.message,
+            error: transferError.message,
+            errorType: 'InvalidUserId'
           });
         } else if (transferError.message.includes('Insufficient balance')) {
           return res.status(400).json({ 
@@ -758,10 +807,26 @@ const prescriptionController = {
             message: "Invalid user ID", 
             details: transferError.message 
           });
-        } else {
+        } else if (transferError.message.includes('Invalid amount')) {
+          return res.status(400).json({ 
+            message: "Invalid amount", 
+            details: transferError.message,
+            error: transferError.message,
+            errorType: 'InvalidAmount'
+          });
+        } else if (transferError.message.includes('Transaction failed')) {
           return res.status(500).json({ 
-            message: "Error processing payment", 
-            details: transferError.message 
+            message: "Transaction failed", 
+            details: transferError.message,
+            error: transferError.message,
+            errorType: 'TransactionFailed'
+          });
+        } else {
+          return res.status(500).json({
+            message: "Error processing payment",
+            error: transferError.message,
+            details: transferError.toString(),
+            errorType: 'UnknownError'
           });
         }
       }

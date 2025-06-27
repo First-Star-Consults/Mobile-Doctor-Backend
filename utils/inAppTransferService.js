@@ -8,6 +8,39 @@ export const calculateFeesAndTransfer = async (patientId, providerId, amount, ad
       throw new Error('Missing required parameters for transfer');
     }
     
+    // Validate adminId
+    if (!adminId) {
+      console.error('Admin ID is missing, attempting to find an admin user');
+      const User = (await import('../models/user.js')).default;
+      const adminUser = await User.findOne({ role: 'admin' });
+      
+      if (!adminUser) {
+        console.error('No admin user found in the database');
+        throw new Error('Admin user not found');
+      }
+      
+      adminId = adminUser._id;
+      console.log('Found admin user with ID:', adminId);
+    } else {
+      // Verify that the admin user exists
+      const User = (await import('../models/user.js')).default;
+      const adminUser = await User.findById(adminId);
+      
+      if (!adminUser) {
+        console.error(`Admin user with ID ${adminId} not found in the database`);
+        // Try to find any admin user
+        const fallbackAdmin = await User.findOne({ role: 'admin' });
+        
+        if (!fallbackAdmin) {
+          console.error('No admin user found in the database');
+          throw new Error('Admin user not found');
+        }
+        
+        adminId = fallbackAdmin._id;
+        console.log('Found fallback admin user with ID:', adminId);
+      }
+    }
+    
     if (!adminId) {
       console.error('Admin ID is missing, attempting to find an admin user');
       const User = (await import('../models/user.js')).default;

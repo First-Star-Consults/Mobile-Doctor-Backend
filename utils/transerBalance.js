@@ -18,9 +18,19 @@ export const transferBalance = async (fromUserId, toUserId, amount, adminFee, ad
     console.log(`adminId: ${adminId}`);
 
     // Validate input parameters
-    if (!fromUserId || !toUserId || !adminId) {
-      console.error('Missing user IDs:', { fromUserId, toUserId, adminId });
-      throw new Error('Missing required user IDs');
+    if (!fromUserId) {
+      console.error('Missing fromUserId:', { fromUserId });
+      throw new Error('Missing required fromUserId');
+    }
+    
+    if (!toUserId) {
+      console.error('Missing toUserId:', { toUserId });
+      throw new Error('Missing required toUserId');
+    }
+    
+    if (!adminId) {
+      console.error('Missing adminId:', { adminId });
+      throw new Error('Missing required adminId');
     }
 
     // Fetch users involved in the transaction
@@ -120,19 +130,23 @@ export const transferBalance = async (fromUserId, toUserId, amount, adminFee, ad
     
     // Provide more specific error messages based on the original error
     if (error.message.includes('not found')) {
-      throw error; // Pass through the detailed 'not found' error
+      // Pass through the detailed "not found" error
+      throw error;
     } else if (error.message.includes('Insufficient balance')) {
-      throw error; // Pass through the insufficient balance error
+      // Pass through the insufficient balance error
+      throw error;
     } else if (error.message.includes('Invalid amount')) {
-      throw error; // Pass through the invalid amount error
+      // Pass through the invalid amount error
+      throw error;
     } else if (error.name === 'CastError') {
-      throw new Error(`Invalid ID format: ${error.value}`);
+      // Handle invalid ObjectId errors
+      throw new Error(`Invalid user ID format: ${error.value}`);
     } else if (error.name === 'ValidationError') {
+      // Handle validation errors
       throw new Error(`Validation error: ${error.message}`);
     } else {
-      // For unexpected errors, provide a generic message but log the details
-      console.error('Unexpected error in transferBalance:', error);
-      throw new Error(`Error transferring balance: ${error.message}`);
+      // For other errors, provide a generic message
+      throw new Error(`Transaction failed: ${error.message}`);
     }
   }
 };
