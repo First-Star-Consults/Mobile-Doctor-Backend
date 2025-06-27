@@ -665,6 +665,9 @@ const prescriptionController = {
     const { prescriptionId } = req.body;
     const patientId = req.params.patientId;
 
+    console.log("patient id", patientId);
+    
+
     try {
       const prescription = await Prescription.findById(prescriptionId);
 
