@@ -63,6 +63,97 @@ const adminController = {
     }
   },
 
+  getProvidersCredentials: async (req, res) => {
+  try {
+    const adminId = req.params.userId;
+    const { providerId, providerType } = req.query;
+
+    // Validate admin user
+    const admin = await User.findById(adminId);
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found.'
+      });
+    }
+
+    // Check if user is admin
+    if (!admin.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: 'Permission denied. Only admin can access provider credentials.'
+      });
+    }
+
+    // Validate query parameters
+    if (!providerId || !providerType) {
+      return res.status(400).json({
+        success: false,
+        error: 'providerId and providerType are required.'
+      });
+    }
+
+    // Define valid provider types
+    const validProviderTypes = ['Doctor', 'Laboratory', 'Pharmacy'];
+    if (!validProviderTypes.includes(providerType)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid providerType. Must be Doctor, Laboratory, or Pharmacy.'
+      });
+    }
+
+    // Query the appropriate model based on providerType
+    let provider;
+    switch (providerType) {
+      case 'Doctor':
+        provider = await Doctor.findById(providerId).select('images');
+        break;
+      case 'Laboratory':
+        provider = await Laboratory.findById(providerId).select('images');
+        break;
+      case 'Pharmacy':
+        provider = await Pharmacy.findById(providerId).select('images');
+        break;
+    }
+
+    // Check if provider exists
+    if (!provider) {
+      return res.status(404).json({
+        success: false,
+        error: `${providerType} not found.`
+      });
+    }
+
+    // Extract credential URLs
+    const credentials = {
+      profilePhoto: provider.images.profilePhoto || null,
+      governmentIdfront: provider.images.governmentIdfront || null,
+      governmentIdback: provider.images.governmentIdback || null,
+      license: provider.images.license || null,
+      certificate: provider.images.certificate || null,
+      educationQualification: provider.images.educationQualification || null
+    };
+
+    // Return success response with credentials
+    return res.status(200).json({
+      success: true,
+      data: {
+        providerId,
+        providerType,
+        credentials
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching provider credentials:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Something went wrong. Please try again.'
+    });
+  }
+},
+
+
   updateConsultationFees: async (req, res) => {
     try {
       const adminId = req.params.adminId; // or req.user._id if you have the user ID stored in req.user

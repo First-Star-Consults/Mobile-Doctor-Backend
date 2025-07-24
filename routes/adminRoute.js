@@ -20,6 +20,7 @@ router.post('/:adminId/user-transactions', adminController.getUserTransactions);
 
 
 router.get('/recommended', adminController.getRecommendedDoctors);
+router.get('/get-credentials/:userId', adminController.getProvidersCredentials);
 
 router.get('/statistics-cards', adminController.getStatisticsCards);
 
