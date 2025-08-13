@@ -41,6 +41,7 @@ const recommendationSchema = new mongoose.Schema({
   address: { type: String }, // Added address field
   about: { type: String }, // Added about field
   profilePhoto: { type: String }, // Added profilePhoto field
+  phone: { type: String }, // Added phone field
   recommendedBy: {
     doctorId: { type: mongoose.Schema.Types.ObjectId, ref: "Doctor" },
     doctorName: { type: String },

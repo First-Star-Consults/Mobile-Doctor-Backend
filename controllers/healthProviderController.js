@@ -553,6 +553,7 @@ getDoctorReviews: async (req, res) => {
           address: providerDetails.address || 'N/A',
           about: providerDetails.about || 'No information available',
           profilePhoto: providerDetails.images.profilePhoto || null,
+          phone: providerDetails.phone || null,
           recommendedBy: {
             doctorId: doctor._id,
             doctorName: doctor.fullName
@@ -572,6 +573,7 @@ getDoctorReviews: async (req, res) => {
         address: provider.address,
         about: provider.about,
         profilePhoto: provider.profilePhoto,
+        phone: provider.phone,
         recommendedBy: provider.recommendedBy
       }));
       await patient.save();
