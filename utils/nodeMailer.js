@@ -36,6 +36,8 @@ const transporter = nodemailer.createTransport({
 
 
 
+
+
   // Verify SMTP configuration
 transporter.verify(function(error, success) {
   if (error) {
