@@ -12,13 +12,25 @@ import nodemailer from 'nodemailer';
 // });
 
 
+// const transporter = nodemailer.createTransport({
+//   host: process.env.SMTP_HOST,
+//   port: process.env.SMTP_PORT,
+//   auth: {
+//     user: process.env.SMTP_USER,
+//     pass: process.env.SMTP_PASS,
+//   },
+// });
+
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
+  service: 'gmail',
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user: process.env.G_MAIL, 
+    pass: process.env.GOOGLE_APPPASSWORD, 
   },
+  secure: true,
+  tls: {
+    rejectUnauthorized: true
+  }
 });
 
 
@@ -36,7 +48,7 @@ transporter.verify(function(error, success) {
 
 export const sendVerificationEmail = async (to, code) => {
   const mailOptions = {
-    from: '"Mobile Doctor" <no-reply@mobiledoctor.health>',
+    from: '"Mobile Doctor" <no-reply@mobiledoctorapp.com>',
     to,
     subject: 'Mobile-Doctor Verification Code',
     text: `Dear Mobile Doctor User,\n\nYour verification code is: ${code}\n\nThank you for choosing Mobile Doctor.\n\nBest regards,\nMobile Doctor Team`,
@@ -50,7 +62,7 @@ export const sendVerificationEmail = async (to, code) => {
 
 export const sendForgetPasswordEmail = async (to, otp) => {
   const mailOptions = {
-    from: '"Mobile Doctor" <no-reply@mobiledoctor.health>', // Updated line
+    from: '"Mobile Doctor" <no-reply@mobiledoctorapp.com>', 
     to,
     subject: 'Password Reset OTP',
     text: `You have requested a password reset. Use the following OTP to reset your password: ${otp}`,
@@ -65,7 +77,7 @@ export const sendForgetPasswordEmail = async (to, otp) => {
 
 export const sendNotificationEmail = async (to, subject, message) => {
   const mailOptions = {
-    from: '"Mobile Doctor" <no-reply@mobiledoctor.health>',
+    from: '"Mobile Doctor" <no-reply@mobiledoctorapp.com>',
     to,
     subject,
     text: message,
