@@ -26,6 +26,73 @@ const healthProviderControllers = {
         about,
         medicalSpecialty 
       } = req.body;
+
+      // Validation: Check if all required fields are provided
+      const requiredFields = {
+        fullName: 'Full name',
+        registrationNumber: 'Registration number',
+        registrationYear: 'Registration year',
+        registrationCouncil: 'Registration council',
+        country: 'Country',
+        address: 'Address',
+        gender: 'Gender',
+        about: 'About section',
+        medicalSpecialty: 'Medical specialty'
+      };
+
+      const missingFields = [];
+      for (const [field, displayName] of Object.entries(requiredFields)) {
+        if (!req.body[field] || (typeof req.body[field] === 'string' && req.body[field].trim() === '')) {
+          missingFields.push(displayName);
+        }
+      }
+
+      if (missingFields.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields',
+          message: `Please provide the following required fields: ${missingFields.join(', ')}`,
+          missingFields: missingFields
+        });
+      }
+
+      // Validate registration year
+      const currentYear = new Date().getFullYear();
+      const regYear = parseInt(registrationYear);
+      if (isNaN(regYear) || regYear < 1900 || regYear > currentYear) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid registration year',
+          message: `Registration year must be a valid year between 1900 and ${currentYear}`
+        });
+      }
+
+      // Validate gender
+      const validGenders = ['male', 'female', 'other'];
+      if (!validGenders.includes(gender.toLowerCase())) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid gender',
+          message: 'Gender must be one of: male, female, other'
+        });
+      }
+
+      // Validate medical specialty structure
+      if (typeof medicalSpecialty === 'string' && medicalSpecialty.trim() === '') {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid medical specialty',
+          message: 'Medical specialty cannot be empty'
+        });
+      }
+
+      if (typeof medicalSpecialty === 'object' && (!medicalSpecialty.name || medicalSpecialty.name.trim() === '')) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid medical specialty',
+          message: 'Medical specialty name is required'
+        });
+      }
   
       // Find the user by ID
       const foundUser = await Doctor.findById(providerId);
@@ -124,6 +191,66 @@ const healthProviderControllers = {
         phone,
         about,
       } = req.body;
+
+      // Validation: Check if all required fields are provided
+      const requiredFields = {
+        name: 'Provider name',
+        providerType: 'Provider type',
+        registrationNumber: 'Registration number',
+        registrationYear: 'Registration year',
+        registrationCouncil: 'Registration council',
+        country: 'Country',
+        address: 'Address',
+        phone: 'Phone number',
+        about: 'About section'
+      };
+
+      const missingFields = [];
+      for (const [field, displayName] of Object.entries(requiredFields)) {
+        if (!req.body[field] || (typeof req.body[field] === 'string' && req.body[field].trim() === '')) {
+          missingFields.push(displayName);
+        }
+      }
+
+      if (missingFields.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields',
+          message: `Please provide the following required fields: ${missingFields.join(', ')}`,
+          missingFields: missingFields
+        });
+      }
+
+      // Validate provider type
+      const validProviderTypes = ['doctor', 'pharmacy', 'therapist', 'laboratory'];
+      if (!validProviderTypes.includes(providerType.toLowerCase())) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid provider type',
+          message: `Provider type must be one of: ${validProviderTypes.join(', ')}`
+        });
+      }
+
+      // Validate registration year
+      const currentYear = new Date().getFullYear();
+      const regYear = parseInt(registrationYear);
+      if (isNaN(regYear) || regYear < 1900 || regYear > currentYear) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid registration year',
+          message: `Registration year must be a valid year between 1900 and ${currentYear}`
+        });
+      }
+
+      // Validate phone number format (basic validation)
+      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+      if (!phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''))) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid phone number',
+          message: 'Please provide a valid phone number'
+        });
+      }
   
   
       // Determine the appropriate model based on providerType

@@ -10,7 +10,7 @@ import {
 } from "../models/healthProviders.js";
 import Message from "../models/messageModel.js";
 import { upload } from "../config/cloudinary.js";
-import { sendNotificationEmail } from "../utils/nodeMailer.js";
+import { sendNotificationEmail, sendProviderContactEmail } from "../utils/nodeMailer.js";
 import ConsultationSession from "../models/consultationModel.js";
 import Conversation from "../models/conversationModel.js";
 import { io } from "../server.js";
@@ -290,7 +290,7 @@ const prescriptionController = {
         prescriptions.map(async (prescription) => {
           let providerDetails = null;
 
-          // Fetch the provider based on the providerType
+          // Fetch the provider based on the providerType (only for pharmacy and laboratory)
           if (prescription.providerType === "pharmacy") {
             providerDetails = await Pharmacy.findById(
               prescription.provider
@@ -300,6 +300,7 @@ const prescriptionController = {
               prescription.provider
             ).select("name address phone");
           }
+          // Note: Contact details are only provided for pharmacy and laboratory providers
 
           // Transform the prescription data with provider and doctor details
           return {
@@ -318,7 +319,7 @@ const prescriptionController = {
             providerType: prescription.providerType,
             provider: providerDetails
               ? {
-                  name: providerDetails.name,
+                  name: providerDetails.name || providerDetails.fullName,
                   address: providerDetails.address,
                   phoneNumber: providerDetails.phone,
                 }
@@ -702,7 +703,7 @@ const prescriptionController = {
           providerModel = Laboratory;
           break;
         default:
-          return res.status(400).json({ message: "Invalid provider type" });
+          return res.status(400).json({ message: "Invalid provider type. Only pharmacy and laboratory providers are supported for cost approval." });
       }
 
       const provider = await providerModel.findById(prescription.provider);
@@ -768,6 +769,49 @@ const prescriptionController = {
           prescriptionId,
           "Prescription"
         );
+
+        // Send provider contact email to patient (only for pharmacy and laboratory)
+        if (prescription.providerType === "pharmacy" || prescription.providerType === "laboratory") {
+          try {
+            const patient = await User.findById(patientId);
+            console.log("Patient found for email:", patient ? "Yes" : "No");
+            console.log("Patient email:", patient?.email);
+            
+            if (patient && patient.email) {
+              const providerDetails = {
+                name: provider.name,
+                phone: provider.phone,
+                address: provider.address,
+                type: prescription.providerType
+              };
+
+              const prescriptionDetails = {
+                id: prescription._id,
+                totalCost: prescription.totalCost
+              };
+
+              console.log("Sending email with provider details:", providerDetails);
+              console.log("Prescription details:", prescriptionDetails);
+
+              await sendProviderContactEmail(
+                patient.email,
+                patient.firstName || patient.fullName || 'Patient',
+                providerDetails,
+                prescriptionDetails
+              );
+              
+              console.log("Provider contact email sent successfully to patient:", patient.email);
+            } else {
+              console.log("Patient not found or email missing for patient ID:", patientId);
+            }
+          } catch (emailError) {
+            console.error("Error sending provider contact email:", emailError);
+            console.error("Email error details:", emailError.message);
+            // Don't fail the entire operation if email fails
+          }
+        } else {
+          console.log("Provider contact email not sent - provider type is:", prescription.providerType, "(only pharmacy and laboratory supported)");
+        }
 
         res
           .status(200)
