@@ -189,6 +189,6 @@ const sendProviderContactEmail = async (patientEmail, patientName, providerDetai
   }
 };
 
-export { sendVerificationEmail, sendForgetPasswordEmail, sendNotificationEmail, sendProviderContactEmail };
+export { sendProviderContactEmail };
 
 
