@@ -177,32 +177,61 @@ const userController = {
     }
   },
 
-  forgotPassword: async (req, res) => {
-    const { email } = req.body;
-    try {
-      const user = await User.findOne({ email });
-      if (!user) {
-        return res.status(404).json({ message: 'No account with that email address exists.' });
-      }
+ // Optimized forgotPassword function - Non-blocking email sending
+forgotPassword: async (req, res) => {
+  const { email } = req.body;
   
-      // Generate an OTP
-      const otp = generateVerificationCode();
-  
-      // Set OTP and expiry on user model
-      user.resetPasswordOtp = otp;
-      user.resetPasswordOtpExpires = Date.now() + 3600000; // 1 hour
-  
-      await user.save();
-  
-      // Send the OTP to the user's email
-      await sendForgetPasswordEmail(user.email, otp);
-  
-      res.status(200).json({ message: 'An OTP has been sent to ' + user.email + ' with further instructions.' });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Unexpected error during the forgot password process' });
+  try {
+    // Validate email input
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
     }
-  },
+
+    console.log(`[${new Date().toISOString()}] Forgot password request for: ${email}`);
+
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ 
+        message: 'No account with that email address exists.' 
+      });
+    }
+
+    // Generate OTP
+    const otp = generateVerificationCode();
+    
+    // Save OTP to database
+    user.resetPasswordOtp = otp;
+    user.resetPasswordOtpExpires = Date.now() + 3600000; // 1 hour
+    await user.save();
+
+    console.log(`[${new Date().toISOString()}] OTP saved for ${email}, initiating email send...`);
+
+    // Send email WITHOUT blocking the response
+    // Fire and forget - don't await
+    sendForgetPasswordEmail(user.email, otp)
+      .then(() => {
+        console.log(`[${new Date().toISOString()}] ✓ Password reset email sent successfully to ${email}`);
+      })
+      .catch((error) => {
+        console.error(`[${new Date().toISOString()}] ✗ Failed to send password reset email to ${email}:`, error.message);
+        // Email failed but user can still try to use OTP if it was saved
+      });
+
+    // Respond immediately - don't wait for email
+    res.status(200).json({ 
+      message: 'An OTP has been sent to ' + user.email + ' with further instructions.',
+      success: true 
+    });
+
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Forgot password error:`, error);
+    res.status(500).json({ 
+      message: 'Unexpected error during the forgot password process',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+},
 
 
   resetPasswordWithOtp: async (req, res) => {

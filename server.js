@@ -5,6 +5,7 @@ import passport from 'passport';
 import bodyParser from "body-parser";
 import fileUpload from "express-fileupload";
 import cors from 'cors';
+import timeout from 'connect-timeout';
 import { connect, checkConnection } from "./config/connectionState.js";
 import authRoute from "./routes/authRoute.js";
 import userRouter from './routes/userRoute.js';
@@ -49,6 +50,11 @@ app.use(
       useTempFiles: true
     })
 );
+
+app.use(timeout('25s')); // Set timeout slightly less than Render's limit
+app.use((req, res, next) => {
+  if (!req.timedout) next();
+});
 
 connect();
 
